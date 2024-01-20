@@ -14,14 +14,14 @@ class FileEvent(Base):
     file_id: Mapped[int] = mapped_column(ForeignKey("file_model.id"))
     file: Mapped["FileModel"] = relationship(back_populates="history_entries")
     timestamp: Mapped[str] = mapped_column(nullable=False)
-    message: Mapped[str] = mapped_column(nullable=False)
+    event: Mapped[str] = mapped_column(nullable=False)
 
     def __init__(self, message):
-        self.message = message
+        self.event = message
         self.timestamp = timestamp_str()
 
     def __repr__(self) -> str:
         return "<FileEvent(timestamp='%s', message='%s')>" % (
             self.timestamp,
-            self.message,
+            self.event,
         )

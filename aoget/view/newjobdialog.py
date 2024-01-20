@@ -21,7 +21,7 @@ class NewJobDialog(QDialog):
     """New job dialog. Note that this is more a controller than a view. View was done in
     Qt Designer and is loaded from a .ui file found under aoget/qt/new_job.ui"""
 
-    job = None
+    job: Job = None
 
     def __init__(self):
         super(NewJobDialog, self).__init__()
@@ -159,13 +159,13 @@ class NewJobDialog(QDialog):
         self.job.ingest_links(ao_page)
 
         nodes = []
-        for extension in self.job.file_set.get_sorted_extensions():
+        for extension in self.job.get_sorted_extensions():
             if extension == "":
                 displayed_extension = "(blank)"
             else:
                 displayed_extension = extension
             extension_node = QTreeWidgetItem([displayed_extension])
-            for file in self.job.file_set.get_sorted_filenames_by_extension(extension):
+            for file in self.job.get_sorted_filenames_by_extension(extension):
                 child = QTreeWidgetItem([file])
                 child.setFlags(child.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
                 child.setCheckState(0, QtCore.Qt.CheckState.Unchecked)

@@ -106,14 +106,13 @@ class AoGetMainWindow(QMainWindow):
     def __show_files(self, job):
         if job is None:
             return
-        file_set = job.file_set
-        selected_filenames = file_set.get_selected_filenames()
+        selected_filenames = job.get_selected_filenames()
         self.tblFiles.setRowCount(len(selected_filenames))
         for i, filename in enumerate(selected_filenames):
-            file = file_set.files[filename]
-            if len(file.history) > 0:
-                latest_history_timestamp = max(file.history.keys())
-                latest_history_event = file.history[latest_history_timestamp]
+            file = job.get_file_by_name(filename)
+            if file.has_history():
+                latest_history_timestamp = file.get_latest_history_timestamp()
+                latest_history_event = file.get_latest_history_entry().event
             self.tblFiles.setItem(i, 0, QTableWidgetItem(file.name))
             self.tblFiles.setItem(i, 1, QTableWidgetItem(file.status))
             self.tblFiles.setItem(i, 2, QTableWidgetItem(file.size_bytes))

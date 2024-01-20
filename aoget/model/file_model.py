@@ -1,5 +1,6 @@
 import logging
 from urllib.parse import unquote
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from . import Base
 from .file_event import FileEvent
@@ -26,7 +27,8 @@ class FileModel(Base):
     status: Mapped[str] = mapped_column(default=STATUS_NEW)
     local_path: Mapped[str]
     history_entries = relationship("FileEvent", back_populates="file")
-
+    job_id: Mapped[int] = mapped_column(ForeignKey("job.id"))
+    job: Mapped["Job"] = relationship(back_populates="files")
 
     def __init__(self, url):
         self.name = unquote(url.split("/")[-1])
@@ -40,3 +42,25 @@ class FileModel(Base):
 
     def __repr__(self):
         return "<FileModel(name='%s', url='%s')>" % (self.name, self.url)
+    
+    def has_history(self) -> bool:
+        """Determine whether this file has any history entries.
+        :return:
+            True if this file has history entries, False otherwise"""
+        return len(self.history_entries) > 0
+
+    def get_latest_history_timestamp(self) -> int:
+        """Get the timestamp of the latest history entry.
+        :return:
+            The timestamp of the latest history entry, or None if there are no history entries"""
+        if not self.has_history():
+            return None
+        return max(self.history_entries, key=lambda event: event.timestamp, default=None)
+    
+    def get_latest_history_entry(self) -> FileEvent:
+        """Get the latest history entry.
+        :return:
+            The latest history entry, or None if there are no history entries"""
+        if not self.has_history():
+            return None
+        return self.history_entries[self.get_latest_history_timestamp()]

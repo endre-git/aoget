@@ -7,7 +7,7 @@ class TestFileEvent(unittest.TestCase):
         # Test case for initializing FileEvent
         message = "Test message"
         file_event = FileEvent(message)
-        self.assertEqual(file_event.message, message)
+        self.assertEqual(file_event.event, message)
         self.assertIsNotNone(file_event.timestamp)
 
     def test_file_event_repr(self):

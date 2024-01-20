@@ -1,5 +1,6 @@
 import unittest
-from aoget.model.file_model import FileModel
+from urllib.parse import unquote
+from aoget.model.file_model import FileModel, FileEvent
 
 
 class TestFileModel(unittest.TestCase):
@@ -19,6 +20,22 @@ class TestFileModel(unittest.TestCase):
         )
         self.assertEqual(repr(self.file_model), expected_repr)
 
+    def test_init_with_extension(self):
+        url = "https://example.com/image.jpg"
+        file_model = FileModel(url)
+        self.assertEqual(file_model.extension, "jpg")
+
+    def test_init_without_extension(self):
+        url = "https://example.com/document"
+        file_model = FileModel(url)
+        self.assertEqual(file_model.extension, "")
+
+    def test_init_with_history_entry(self):
+        url = "https://example.com/file.txt"
+        file_model = FileModel(url)
+        self.assertEqual(len(file_model.history_entries), 1)
+        self.assertIsInstance(file_model.history_entries[0], FileEvent)
+        self.assertEqual(file_model.history_entries[0].event_type, "Parsed from page")
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,6 +3,7 @@ import os
 from PyQt6.QtWidgets import QApplication
 
 from view.aogetmainwindow import AoGetMainWindow
+from util.qt_util import install_catch_all_exception_handler
 import logging
 
 logger = logging.getLogger("aogetapp")
@@ -24,6 +25,6 @@ setup_app()
 
 logger.info("Working dir: " + os.getcwd())
 app = QApplication(sys.argv)
-
 window = AoGetMainWindow()
+install_catch_all_exception_handler(window)
 app.exec()
