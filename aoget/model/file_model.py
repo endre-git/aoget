@@ -1,4 +1,5 @@
 import logging
+from typing import List
 from urllib.parse import unquote
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -26,7 +27,7 @@ class FileModel(Base):
     size_bytes: Mapped[int] = mapped_column(nullable=False, default=0)
     status: Mapped[str] = mapped_column(default=STATUS_NEW)
     local_path: Mapped[str]
-    history_entries = relationship("FileEvent", back_populates="file")
+    history_entries: Mapped[List["FileEvent"]] = relationship(back_populates="file")
     job_id: Mapped[int] = mapped_column(ForeignKey("job.id"))
     job: Mapped["Job"] = relationship(back_populates="files")
 

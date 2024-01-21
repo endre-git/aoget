@@ -16,12 +16,12 @@ class FileEvent(Base):
     timestamp: Mapped[str] = mapped_column(nullable=False)
     event: Mapped[str] = mapped_column(nullable=False)
 
-    def __init__(self, message):
-        self.event = message
+    def __init__(self, event):
+        self.event = event
         self.timestamp = timestamp_str()
 
     def __repr__(self) -> str:
-        return "<FileEvent(timestamp='%s', message='%s')>" % (
+        return "<FileEvent(timestamp='%s', event='%s')>" % (
             self.timestamp,
             self.event,
         )

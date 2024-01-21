@@ -1,5 +1,7 @@
 import unittest
 from aoget.model.file_event import FileEvent
+from aoget.model.file_model import FileModel
+from aoget.model.job import Job
 
 
 class TestFileEvent(unittest.TestCase):
@@ -17,7 +19,7 @@ class TestFileEvent(unittest.TestCase):
         file_event = FileEvent(message)
         file_event.timestamp = timestamp
         expected_repr = (
-            "<FileEvent(timestamp='2022-01-01 00:00:00', message='Test message')>"
+            "<FileEvent(timestamp='2022-01-01 00:00:00', event='Test message')>"
         )
         self.assertEqual(repr(file_event), expected_repr)
 

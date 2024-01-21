@@ -1,6 +1,8 @@
 import unittest
 from urllib.parse import unquote
-from aoget.model.file_model import FileModel, FileEvent
+from aoget.model.file_model import FileModel
+from aoget.model.file_event import FileEvent
+from aoget.model.job import Job
 
 
 class TestFileModel(unittest.TestCase):
@@ -35,7 +37,7 @@ class TestFileModel(unittest.TestCase):
         file_model = FileModel(url)
         self.assertEqual(len(file_model.history_entries), 1)
         self.assertIsInstance(file_model.history_entries[0], FileEvent)
-        self.assertEqual(file_model.history_entries[0].event_type, "Parsed from page")
+        self.assertEqual(file_model.history_entries[0].event, "Parsed from page")
 
 if __name__ == "__main__":
     unittest.main()

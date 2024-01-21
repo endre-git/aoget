@@ -1,4 +1,5 @@
 import os
+from typing import List
 from model.file_model import FileModel
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from . import Base
@@ -17,7 +18,7 @@ class Job(Base):
     page_url: Mapped[str] = mapped_column(nullable=False)
     total_size_bytes: Mapped[int] = mapped_column(default=0)
     target_folder: Mapped[str] = mapped_column(nullable=False)
-    files = relationship("FileModel", back_populates="job")
+    files: Mapped[List["FileModel"]] = relationship(back_populates="job")
 
     def __is_file_downloaded(self, file: FileModel) -> bool:
         """Determine whether the given file is downloaded.
@@ -25,7 +26,7 @@ class Job(Base):
             The file to check
         :return:
             True if the file is downloaded, False otherwise"""
-        return os.path.isfile(os.path.join(self.job.target_folder, file.name))
+        return os.path.isfile(os.path.join(self.target_folder, file.name))
 
     def __len__(self) -> int:
         """Get the number of files in the job.
@@ -44,12 +45,12 @@ class Job(Base):
             :return:
                 A list of files to download"""
         files_to_download = []
-        for filename in self.job.get_selected_filenames():
-            file = self.job.file_set.files[filename]
+        for filename in self.get_selected_filenames():
+            file = self.get_file_by_name(filename)
             if not self.__is_file_downloaded(file):
                 files_to_download.append(file)
         return files_to_download
-    
+
     def set_files(self, filemodels: list) -> None:
         """Set the filemodels in the fileset.
         :param filemodels:
@@ -70,15 +71,19 @@ class Job(Base):
             A list of filenames"""
         if extension not in self.get_sorted_extensions():
             return []
-        return sorted(filemodel.name for filemodel in
-                      self.files if filemodel.extension == extension)
+        return sorted(
+            filemodel.name
+            for filemodel in self.files
+            if filemodel.extension == extension
+        )
 
     def set_file_selected(self, filename: str) -> None:
         """Set the file with the given filename to selected.
         :param filename:
             The filename to set to selected"""
-        filemodel = next((filemodel for filemodel in self.files
-                          if filemodel.name == filename), None)
+        filemodel = next(
+            (filemodel for filemodel in self.files if filemodel.name == filename), None
+        )
         if filemodel:
             filemodel.selected = True
 
@@ -94,8 +99,7 @@ class Job(Base):
         """Get the filenames of the selected files sorted alphabetically.
         :return:
             A list of filenames"""
-        return sorted(filemodel.name for filemodel in self.files
-                      if filemodel.selected)
+        return sorted(filemodel.name for filemodel in self.files if filemodel.selected)
 
     def get_file_by_name(self, filename: str) -> FileModel:
         """Get the file with the given filename.
@@ -103,5 +107,6 @@ class Job(Base):
             The filename to get the file for
         :return:
             The file with the given filename"""
-        return next((filemodel for filemodel in self.files
-                     if filemodel.name == filename), None)
+        return next(
+            (filemodel for filemodel in self.files if filemodel.name == filename), None
+        )
