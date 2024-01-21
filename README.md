@@ -20,7 +20,7 @@ This is more notes for me, but you might find it useful if you want to contribut
   * Black Formatter (find the one with the most downloads)
   * Flake8 - this adds linting support
   * Python Test Explorer for Visual Studio Code
-* Create your virtual environment (my example: conda create --name aoget-venv)
+* Create your virtual environment (my example: conda create --name aoget-venv python)
 * Activate your virtual environment in VSCode (Ctrl-P then Select Python Interpreter)
 * Checkout git from VSCode or from the command line and use Open Folder from VSCode (trust the authors :))
 * Run a sanity-check pytest from a terminal
