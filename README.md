@@ -1,4 +1,8 @@
 # Contribute
+
+## Report bugs
+When the app crashes, it'll prompt you to open a new issue.
+
 ## Develop
 You can actively develop AOGet. Take a look at the issues, fix one, raise a PR and bug one of the admins to get it reviewed and merged.
 
