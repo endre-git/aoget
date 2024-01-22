@@ -49,7 +49,7 @@ def __downloader(
     """
     # Get size of file
     r = requests.head(url, timeout=TIMEOUT_SECONDS)
-    file_size = __resolve_remote_file_size(url)
+    file_size = resolve_remote_file_size(url)
 
     # Append information to resume download at specific byte position
     # to header
@@ -93,7 +93,7 @@ def download_file(
     r = requests.head(url, timeout=TIMEOUT_SECONDS)
 
     # Get filesize of online and offline file
-    file_size_online = __resolve_remote_file_size(url)
+    file_size_online = resolve_remote_file_size(url)
     server_resume_supported = r.headers.get("accept-ranges", None) is not None
     logger.info("Server supports resume for: %s", url)
     file = Path(local_path)
@@ -124,7 +124,7 @@ def download_file(
         __downloader(url, local_path, progress_observer=progress_observer)
 
 
-def __resolve_remote_file_size(url: str) -> int:
+def resolve_remote_file_size(url: str) -> int:
     """Resolve the size of a remote file. Go through redirects if necessary.
     Parameters
     ----------
@@ -136,7 +136,7 @@ def __resolve_remote_file_size(url: str) -> int:
     actual_location = r.headers.get("location", None)
     if content_length == 0 and actual_location is not None:
         logger.info("Resolving redirect to %s from URL %s", actual_location, url)
-        return __resolve_remote_file_size(actual_location)
+        return resolve_remote_file_size(actual_location)
     return content_length
 
 

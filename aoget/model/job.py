@@ -17,7 +17,7 @@ class Job(Base):
     status: Mapped[str] = mapped_column(default=STATUS_CREATED)
     page_url: Mapped[str] = mapped_column(nullable=False)
     total_size_bytes: Mapped[int] = mapped_column(default=0)
-    target_folder: Mapped[str] = mapped_column(nullable=False)
+    target_folder: Mapped[str] = mapped_column(nullable=True)
     files: Mapped[List["FileModel"]] = relationship(back_populates="job",
                                                     cascade="all, delete, delete-orphan")
 
@@ -117,7 +117,11 @@ class Job(Base):
         the file does not have a local_path set.
         :param file:
             The file to add"""
-        if file.local_path is None:
-            file.local_path = os.path.join(self.target_folder, file.name)
         if file not in self.files:
             self.files.append(file)
+
+    def get_selected_files_with_unknown_size(self) -> list:
+        """Get the selected files with an unknown size.
+        :return:
+            A list of files"""
+        return [file for file in self.files if file.selected and file.size_bytes == 0]

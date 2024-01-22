@@ -92,3 +92,18 @@ class FileModelDAO:
         self.session.query(FileModel).delete()
         if commit:
             self.session.commit()
+
+    def update_file_model_size(self, file_model_id: int, new_size: int, commit: bool = True) -> None:
+        """Update the size of a FileModel.
+        :param file_model_id:
+            The ID of the FileModel to update
+        :param new_size:
+            The new size of the FileModel
+        :param commit:
+            Whether to commit the transaction"""
+        file_model = self.session.query(FileModel).get(file_model_id)
+        if file_model:
+            file_model.size_bytes = new_size
+            logger.info(f"Updated size of FileModel {file_model.name} to {new_size}")
+            if commit:
+                self.session.commit()

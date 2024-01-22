@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 from pathlib import Path
-from aoget.downloader.downloader import ProgressObserver, download_file, validate_file
+from aoget.web.downloader import ProgressObserver, download_file, validate_file
 
 
 class TestProgressObserver(ProgressObserver):
@@ -22,7 +22,7 @@ class TestDownloader(unittest.TestCase):
 
     def test_download_file(self):
         progress_observer = TestProgressObserver()
-        with patch("aoget.downloader.downloader.requests") as mock_requests:
+        with patch("aoget.web.downloader.requests") as mock_requests:
             mock_head = MagicMock()
             mock_head.headers = {"content-length": str(self.file_size)}
             mock_requests.head.return_value = mock_head
@@ -40,7 +40,7 @@ class TestDownloader(unittest.TestCase):
     def test_download_file_resume(self):
         progress_observer = TestProgressObserver()
         expected_file_size = len("partial_datachunk1chunk2")
-        with patch("aoget.downloader.downloader.requests") as mock_requests:
+        with patch("aoget.web.downloader.requests") as mock_requests:
             mock_head = MagicMock()
             mock_head.headers = {
                 "content-length": expected_file_size,

@@ -153,7 +153,11 @@ class NewJobDialog(QDialog):
         )
 
         ao_page = AoPage()
-        process.crawl(AoSpider, [base_url, ao_page])
+        process.crawl(AoSpider,
+                      ao_page=ao_page,
+                      name="aoget",
+                      allowed_domains="archive.org",
+                      start_url=base_url)
         process.start()  # the script will block here until the crawling is finished
 
         self.job.ingest_links(ao_page)

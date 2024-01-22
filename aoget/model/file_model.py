@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import List
 from urllib.parse import unquote
 from sqlalchemy import ForeignKey
@@ -26,7 +27,6 @@ class FileModel(Base):
     url: Mapped[str] = mapped_column(nullable=False)
     size_bytes: Mapped[int] = mapped_column(nullable=False, default=0)
     status: Mapped[str] = mapped_column(default=STATUS_NEW)
-    local_path: Mapped[str] = mapped_column(nullable=True)
     history_entries: Mapped[List["FileEvent"]] = relationship(back_populates="file",
                                                               cascade="all, delete, delete-orphan")
     job_id: Mapped[int] = mapped_column(ForeignKey("job.id"))
@@ -58,12 +58,20 @@ class FileModel(Base):
             The timestamp of the latest history entry, or None if there are no history entries"""
         if not self.has_history():
             return None
-        return max(self.history_entries, key=lambda event: event.timestamp, default=None)
-    
+        return self.get_latest_history_entry().timestamp
+
     def get_latest_history_entry(self) -> FileEvent:
         """Get the latest history entry.
         :return:
             The latest history entry, or None if there are no history entries"""
         if not self.has_history():
             return None
-        return self.history_entries[self.get_latest_history_timestamp()]
+        return max(self.history_entries, key=lambda event: event.timestamp, default=None)
+
+    def get_target_path(self) -> str:
+        """Get the target path of the file.
+        :return:
+            The target path of the file"""
+        if self.job.target_folder is None:
+            raise ValueError("Job target folder is None")
+        return os.path.join(self.job.target_folder, self.name)

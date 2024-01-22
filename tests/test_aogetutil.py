@@ -1,5 +1,5 @@
 import unittest
-from aoget.util.aogetutil import is_valid_url, timestamp_str, human_timestamp_from
+from aoget.util.aogetutil import is_valid_url, timestamp_str, human_timestamp_from, human_filesize
 
 
 class TestAogetutil(unittest.TestCase):
@@ -39,6 +39,55 @@ class TestAogetutil(unittest.TestCase):
         date = "20200101-000000"
         expected_result = "2020-01-01 00:00:00"
         result = human_timestamp_from(date)
+        self.assertEqual(result, expected_result)
+
+    def test_human_filesize(self):
+        # Test case for a filesize of 0 bytes
+        file_size_bytes = 0
+        expected_result = "0B"
+        result = human_filesize(file_size_bytes)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a filesize of 1 byte
+        file_size_bytes = 1
+        expected_result = "1.0B"
+        result = human_filesize(file_size_bytes)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a filesize of 1024 bytes
+        file_size_bytes = 1024
+        expected_result = "1.0KB"
+        result = human_filesize(file_size_bytes)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a filesize of 2048 bytes
+        file_size_bytes = 2048
+        expected_result = "2.0KB"
+        result = human_filesize(file_size_bytes)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a filesize of 3500 bytes
+        file_size_bytes = 3500
+        expected_result = "3.4KB"
+        result = human_filesize(file_size_bytes)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a filesize of 1024 * 1024 bytes
+        file_size_bytes = 1024 * 1024
+        expected_result = "1.0MB"
+        result = human_filesize(file_size_bytes)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a filesize of 1024 * 1024 * 1024 bytes
+        file_size_bytes = 1024 * 1024 * 1024
+        expected_result = "1.0GB"
+        result = human_filesize(file_size_bytes)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a filesize of 1024 * 1024 * 1024 * 1024 bytes
+        file_size_bytes = 1024 * 1024 * 1024 * 1024
+        expected_result = "1.0TB"
+        result = human_filesize(file_size_bytes)
         self.assertEqual(result, expected_result)
         
 

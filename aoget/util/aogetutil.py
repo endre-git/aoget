@@ -31,3 +31,18 @@ def human_timestamp_from(timestamp_str: str):
     return datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S").strftime(
         "%Y-%m-%d %H:%M:%S"
     )
+
+def human_filesize(file_size_bytes: int) -> str:
+    """Get a human readable filesize from the given filesize in bytes.
+    :param file_size_bytes:
+        The filesize in bytes
+    :return:
+        The human readable filesize"""
+    if file_size_bytes == 0:
+        return "0B"
+    suffixes = ["B", "KB", "MB", "GB", "TB"]
+    suffix_index = 0
+    while file_size_bytes >= 1024:
+        suffix_index += 1
+        file_size_bytes /= 1024
+    return f"{file_size_bytes:.1f}{suffixes[suffix_index]}"

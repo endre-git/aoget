@@ -86,7 +86,15 @@ class TestJob(unittest.TestCase):
         self.job.add_file(file)
         self.assertEqual(len(self.job.files), 3)
         self.assertEqual(self.job.files[2], file)
-        self.assertEqual(self.job.files[2].local_path, "c:\\tmp\\file3.txt")
+        self.assertEqual(self.job.files[2].get_target_path(), "c:\\tmp\\file3.txt")
+
+    def test_get_selected_files_with_unknown_size(self):
+        self.file1.selected = True
+        self.file2.selected = True
+        self.file1.size_bytes = 0
+        self.file2.size_bytes = 100
+        files = self.job.get_selected_files_with_unknown_size()
+        self.assertEqual(files, [self.file1])
 
 
 if __name__ == "__main__":

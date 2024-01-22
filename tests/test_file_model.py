@@ -8,7 +8,7 @@ from aoget.model.job import Job
 class TestFileModel(unittest.TestCase):
     def setUp(self):
         self.job = Job(
-            name="Test Job", page_url="http://example.com", target_folder="/tmp"
+            name="Test Job", page_url="http://example.com", target_folder="c:\\tmp"
         )
         self.url = "https://example.com/file.txt"
         self.file_model = FileModel(self.job, self.url)
@@ -41,6 +41,23 @@ class TestFileModel(unittest.TestCase):
         self.assertEqual(len(file_model.history_entries), 1)
         self.assertIsInstance(file_model.history_entries[0], FileEvent)
         self.assertEqual(file_model.history_entries[0].event, "Added.")
+
+    def test_get_target_path(self):
+        self.assertEqual(
+            self.file_model.get_target_path(),
+            "c:\\tmp\\file.txt",
+        )
+
+    def test_get_latest_history_entry(self):
+        self.assertEqual(self.file_model.get_latest_history_entry().event, "Added.")
+
+    def test_get_latest_history_timestamp(self):
+        message = "Test message"
+        timestamp = "2199-01-01 00:00:00"
+        file_event = FileEvent(message, None)
+        file_event.timestamp = timestamp
+        self.file_model.history_entries.append(file_event)
+        self.assertEqual(self.file_model.get_latest_history_timestamp(), timestamp)
 
 
 if __name__ == "__main__":
