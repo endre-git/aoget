@@ -1,15 +1,20 @@
 import unittest
 from unittest.mock import MagicMock
-from aoget.model.file_event import FileEvent
 from aoget.model.file_model import FileModel
 from aoget.model.job import Job
 
+
 class TestJob(unittest.TestCase):
     def setUp(self):
-        self.job = Job()
-        self.file1 = FileModel("https://example.com/file1.txt")
-        self.file2 = FileModel("https://example.com/file2.txt")
+        self.job = Job(
+            name='Test Job', page_url='http://example.com', target_folder='c:\\tmp'
+        )
+        self.file1 = FileModel(self.job, "https://example.com/file1.txt")
+        self.file2 = FileModel(self.job, "https://example.com/file2.txt")
         self.job.files = [self.file1, self.file2]
+
+    def tearDown(self) -> None:
+        return super().tearDown()
 
     def test_len(self):
         self.assertEqual(len(self.job), 0)  # none selected = 0
@@ -20,8 +25,9 @@ class TestJob(unittest.TestCase):
         ao_page = MagicMock()
         ao_page.files_by_extension = {
             "txt": ["https://example.com/file3.txt", "https://example.com/file4.txt"],
-            "jpg": ["https://example.com/image1.jpg", "https://example.com/image2.jpg"]
+            "jpg": ["https://example.com/image1.jpg", "https://example.com/image2.jpg"],
         }
+        self.assertEqual(len(self.job.files), 2)  # during setup we already add two files
         self.job.ingest_links(ao_page)
         self.assertEqual(len(self.job.files), 6)  # during setup we already add two files
 
@@ -38,7 +44,10 @@ class TestJob(unittest.TestCase):
             self.assertEqual(files_to_download[0], self.file2)
 
     def test_set_files(self):
-        filemodels = [FileModel("https://example.com/file3.txt"), FileModel("https://example.com/file4.txt")]
+        filemodels = [
+            FileModel(self.job, "https://example.com/file3.txt"),
+            FileModel(self.job, "https://example.com/file4.txt"),
+        ]
         self.job.set_files(filemodels)
         self.assertEqual(self.job.files, filemodels)
 
@@ -67,6 +76,18 @@ class TestJob(unittest.TestCase):
     def test_get_file_by_name(self):
         file = self.job.get_file_by_name("file1.txt")
         self.assertEqual(file, self.file1)
+
+    def test_get_file_by_name_not_found(self):
+        file = self.job.get_file_by_name("file3.txt")
+        self.assertIsNone(file)
+
+    def test_add_file(self):
+        file = FileModel(self.job, "https://example.com/file3.txt")
+        self.job.add_file(file)
+        self.assertEqual(len(self.job.files), 3)
+        self.assertEqual(self.job.files[2], file)
+        self.assertEqual(self.job.files[2].local_path, "c:\\tmp\\file3.txt")
+
 
 if __name__ == "__main__":
     unittest.main()

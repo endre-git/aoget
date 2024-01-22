@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "reveal-variables",
+            "type": "shell",
+            "command": "echo workspaceFolder='${workspaceFolder}' pythonPath='${python}'",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

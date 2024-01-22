@@ -10,7 +10,6 @@ class ConsoleProgressObserver:
         """Update download progress"""
         print(f"{written}/{total} bytes written")
 
-
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(levelname)s :: %(name)s :: %(asctime)s :: %(message)s",

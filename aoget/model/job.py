@@ -18,7 +18,8 @@ class Job(Base):
     page_url: Mapped[str] = mapped_column(nullable=False)
     total_size_bytes: Mapped[int] = mapped_column(default=0)
     target_folder: Mapped[str] = mapped_column(nullable=False)
-    files: Mapped[List["FileModel"]] = relationship(back_populates="job")
+    files: Mapped[List["FileModel"]] = relationship(back_populates="job",
+                                                    cascade="all, delete, delete-orphan")
 
     def __is_file_downloaded(self, file: FileModel) -> bool:
         """Determine whether the given file is downloaded.
@@ -37,7 +38,7 @@ class Job(Base):
         """Ingest the links from the ao_page into the job's fileset"""
         for extension, files in ao_page.files_by_extension.items():
             for url in files:
-                self.files.append(FileModel(url))
+                self.add_file(FileModel(self, url))
 
     def resolve_files_to_download(self) -> list:
         """Resolve the files to download by comparing the files in the job's
@@ -110,3 +111,13 @@ class Job(Base):
         return next(
             (filemodel for filemodel in self.files if filemodel.name == filename), None
         )
+
+    def add_file(self, file: FileModel) -> None:
+        """Add a file to the job. Changes the file's local_path to the job's target_folder if
+        the file does not have a local_path set.
+        :param file:
+            The file to add"""
+        if file.local_path is None:
+            file.local_path = os.path.join(self.target_folder, file.name)
+        if file not in self.files:
+            self.files.append(file)

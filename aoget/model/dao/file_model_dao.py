@@ -1,7 +1,7 @@
 import logging
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from aoget.model import FileModel
+from aoget.model import FileModel, Job
 
 logger = logging.getLogger(__name__)
 
@@ -9,62 +9,86 @@ logger = logging.getLogger(__name__)
 class FileModelDAO:
     """Data access object for FileModels."""
 
-    def __init__(self, Session: sessionmaker):
+    def __init__(self, session: Session):
         """Create a new FileModelDAO.
-        :param Session:
+        :param session:
             The SQLAlchemy session to use."""
-        self.Session = Session
+        self.session = session
 
-    def add_file_model(self, file_model: FileModel) -> None:
+    def create_file_model(self, job: Job, url: str, commit: bool = True) -> FileModel:
+        """Create and persist a new FileModel using the bare minimum parameter set.
+        :param url:
+            The URL of the file
+        :param commit:
+            Whether to commit the transaction
+        :return:
+            The newly created FileModel"""
+        new_file_model = FileModel(url=url, job=job)
+        try:
+            self.session.add(new_file_model)
+            if commit:
+                self.session.commit()
+            return new_file_model
+        except SQLAlchemyError as e:
+            logger.error(f"Error persisting newly created FileModel: {e}")
+            raise e
+
+    def add_file_model(self, file_model: FileModel, commit: bool = True) -> None:
         """Add a FileModel to the database.
         :param file_model:
-            The FileModel to add."""
+            The FileModel to add
+        :param commit:
+            Whether to commit the transaction"""
         try:
-            with self.Session() as session:
-                session.add(file_model)
-                session.commit()
+            self.session.add(file_model)
+            if commit:
+                self.session.commit()
         except SQLAlchemyError as e:
-            print(f"Error adding FileModel to the database: {e}")
             logger.error(f"Error adding FileModel to the database: {e}")
+            raise e
 
     def get_file_model_by_id(self, file_model_id: int) -> FileModel:
         """Get a FileModel by its ID.
         :param file_model_id:
             The ID of the FileModel to get."""
-        with self.Session() as session:
-            return session.query(FileModel).get(file_model_id)
+        return self.session.query(FileModel).get(file_model_id)
 
     def get_all_file_models(self) -> list:
         """Get all FileModels.
         :return:
             A list of FileModels."""
-        with self.Session() as session:
-            return session.query(FileModel).all()
+        return self.session.query(FileModel).all()
 
-    def update_file_model_status(self, file_model_id: int, new_status: str) -> None:
+    def update_file_model_status(self, file_model_id: int, new_status: str, commit: bool = True) -> None:
         """Update the status of a FileModel.
         :param file_model_id:
             The ID of the FileModel to update.
         :param new_status:
-            The new status of the FileModel."""
-        with self.Session() as session:
-            file_model = session.query(FileModel).get(file_model_id)
-            if file_model:
-                file_model.status = new_status
-                session.commit()
+            The new status of the FileModel
+        :param commit:
+            Whether to commit the transaction"""
+        file_model = self.session.query(FileModel).get(file_model_id)
+        if file_model:
+            file_model.status = new_status
+            if commit:
+                self.session.commit()
 
-    def delete_file_model(self, file_model_id: int) -> None:
+    def delete_file_model(self, file_model_id: int, commit: bool = True) -> None:
         """Delete a FileModel.
         :param file_model_id:
-            The ID of the FileModel to delete."""
-        with self.Session() as session:
-            file_model = session.query(FileModel).get(file_model_id)
-            if file_model:
-                session.delete(file_model)
-                session.commit()
+            The ID of the FileModel to delete
+        :param commit:
+            Whether to commit the transaction"""
+        file_model = self.session.query(FileModel).get(file_model_id)
+        if file_model:
+            self.session.delete(file_model)
+            if commit:
+                self.session.commit()
 
-    def delete_all_file_models(self) -> None:
-        """Delete all FileModels."""
-        with self.Session() as session:
-            session.query(FileModel).delete()
-            session.commit()
+    def delete_all_file_models(self, commit: bool = True) -> None:
+        """Delete all FileModels.
+        :param commit:
+            Whether to commit the transaction"""
+        self.session.query(FileModel).delete()
+        if commit:
+            self.session.commit()

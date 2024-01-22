@@ -26,12 +26,13 @@ class FileModel(Base):
     url: Mapped[str] = mapped_column(nullable=False)
     size_bytes: Mapped[int] = mapped_column(nullable=False, default=0)
     status: Mapped[str] = mapped_column(default=STATUS_NEW)
-    local_path: Mapped[str]
-    history_entries: Mapped[List["FileEvent"]] = relationship(back_populates="file")
+    local_path: Mapped[str] = mapped_column(nullable=True)
+    history_entries: Mapped[List["FileEvent"]] = relationship(back_populates="file",
+                                                              cascade="all, delete, delete-orphan")
     job_id: Mapped[int] = mapped_column(ForeignKey("job.id"))
     job: Mapped["Job"] = relationship(back_populates="files")
 
-    def __init__(self, url):
+    def __init__(self, job, url):
         self.name = unquote(url.split("/")[-1])
         if "." in self.name:
             self.extension = self.name.split(".")[-1]
@@ -39,7 +40,8 @@ class FileModel(Base):
             self.extension = ""
         self.url = url
         self.status = FileModel.STATUS_NEW
-        self.history_entries.append(FileEvent("Parsed from page"))
+        FileEvent("Added.", self)
+        self.job = job
 
     def __repr__(self):
         return "<FileModel(name='%s', url='%s')>" % (self.name, self.url)

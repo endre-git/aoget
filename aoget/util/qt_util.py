@@ -56,15 +56,17 @@ def install_catch_all_exception_handler(main_window):
                 QtGui.qApp.quit()
                 return
 
-        filename, line, dummy, dummy = traceback.extract_tb( exc_traceback ).pop()
-        filename = os.path.basename( filename )
-        error    = "%s: %s" % ( exc_type.__name__, exc_value )
+        filename, line, dummy, dummy = traceback.extract_tb(exc_traceback).pop()
+        filename = os.path.basename(filename)
+        error = "%s: %s" % (exc_type.__name__, exc_value)
 
-        error_dialog(main_window,
+        error_dialog(
+            main_window,
             "<html>A critical error has occured.<br/> "
-        + "<b>%s</b><br/><br/>" % error
-        + "It occurred at <b>line %d</b> of file <b>%s</b>.<br/>" % (line, filename)
-        + "</html>")
+            + "<b>%s</b><br/><br/>" % error
+            + "It occurred at <b>line %d</b> of file <b>%s</b>.<br/>" % (line, filename)
+            + "</html>",
+        )
         print("Closed due to an error. This is the full error report:")
         print()
         print("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))

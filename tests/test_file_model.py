@@ -7,8 +7,11 @@ from aoget.model.job import Job
 
 class TestFileModel(unittest.TestCase):
     def setUp(self):
+        self.job = Job(
+            name="Test Job", page_url="http://example.com", target_folder="/tmp"
+        )
         self.url = "https://example.com/file.txt"
-        self.file_model = FileModel(self.url)
+        self.file_model = FileModel(self.job, self.url)
 
     def test_init(self):
         self.assertEqual(self.file_model.url, self.url)
@@ -24,20 +27,21 @@ class TestFileModel(unittest.TestCase):
 
     def test_init_with_extension(self):
         url = "https://example.com/image.jpg"
-        file_model = FileModel(url)
+        file_model = FileModel(self.job, url)
         self.assertEqual(file_model.extension, "jpg")
 
     def test_init_without_extension(self):
         url = "https://example.com/document"
-        file_model = FileModel(url)
+        file_model = FileModel(self.job, url)
         self.assertEqual(file_model.extension, "")
 
     def test_init_with_history_entry(self):
         url = "https://example.com/file.txt"
-        file_model = FileModel(url)
+        file_model = FileModel(self.job, url)
         self.assertEqual(len(file_model.history_entries), 1)
         self.assertIsInstance(file_model.history_entries[0], FileEvent)
-        self.assertEqual(file_model.history_entries[0].event, "Parsed from page")
+        self.assertEqual(file_model.history_entries[0].event, "Added.")
+
 
 if __name__ == "__main__":
     unittest.main()
