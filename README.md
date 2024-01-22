@@ -1,4 +1,8 @@
 # Contribute
+
+## Report bugs
+When the app crashes, it'll prompt you to open a new issue.
+
 ## Develop
 You can actively develop AOGet. Take a look at the issues, fix one, raise a PR and bug one of the admins to get it reviewed and merged.
 
@@ -15,7 +19,8 @@ This is more notes for me, but you might find it useful if you want to contribut
   * Python extension for Visual Studio Code
   * Black Formatter (find the one with the most downloads)
   * Flake8 - this adds linting support
-* Create your virtual environment (my example: conda create --name aoget-venv)
+  * Python Test Explorer for Visual Studio Code
+* Create your virtual environment (my example: conda create --name aoget-venv python)
 * Activate your virtual environment in VSCode (Ctrl-P then Select Python Interpreter)
 * Checkout git from VSCode or from the command line and use Open Folder from VSCode (trust the authors :))
 * Run a sanity-check pytest from a terminal
