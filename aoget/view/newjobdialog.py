@@ -183,4 +183,5 @@ class NewJobDialog(QDialog):
 
     def get_job(self):
         """Get the job. The only public method."""
+        self.job.target_folder = self.cmbLocalTarget.currentText()
         return self.job

@@ -26,6 +26,7 @@ class FileModel(Base):
     selected: Mapped[bool] = mapped_column(default=False, nullable=False)
     url: Mapped[str] = mapped_column(nullable=False)
     size_bytes: Mapped[int] = mapped_column(nullable=False, default=0)
+    downloaded_bytes: Mapped[int] = mapped_column(nullable=False, default=0)
     status: Mapped[str] = mapped_column(default=STATUS_NEW)
     history_entries: Mapped[List["FileEvent"]] = relationship(back_populates="file",
                                                               cascade="all, delete, delete-orphan")
@@ -75,3 +76,9 @@ class FileModel(Base):
         if self.job.target_folder is None:
             raise ValueError("Job target folder is None")
         return os.path.join(self.job.target_folder, self.name)
+
+    def add_event(self, message: str) -> None:
+        """Add a history event.
+        :param message:
+            The message to add"""
+        FileEvent(message, self)  # appending is implicit thanks to ORM mapping
