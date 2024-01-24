@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch
 from pathlib import Path
-from aoget.web.downloader import ProgressObserver, download_file, validate_file
+from aoget.web.downloader import DownloadSignals, download_file, validate_file
 
 
-class TestProgressObserver(ProgressObserver):
+class TestProgressObserver(DownloadSignals):
     def on_update_progress(self, written: int, total: int) -> None:
         pass
 

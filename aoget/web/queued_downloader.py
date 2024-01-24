@@ -5,15 +5,14 @@ import logging
 import queue
 import threading
 from model.job import Job
-from .downloader import download_file, ProgressObserver
+from .downloader import download_file, DownloadSignals
 from model.file_model import FileModel
-from aoget.util.aogetutil import timestamp_str
 from .monitor_daemon import MonitorDaemon
 
 logger = logging.getLogger(__name__)
 
 
-class FileProgressObserver(ProgressObserver):
+class FileProgressSignals(DownloadSignals):
     """A progress observer that binds to a file and reports progress to a MonitorDaemon."""
 
     filename = ""
@@ -43,14 +42,16 @@ class FileProgressObserver(ProgressObserver):
 
 
 class QueuedDownloader:
-    """A thread-safe queue for downloading files in a job. Intended to be created per job. 
-    The dependency chain is as follows: JobDownloaderQueue -> JobDownloader -> Job -> FileModel"""
+    """A thread-safe queue for downloading files in a job. Intended to be created per job.
+    The dependency chain is as follows: JobDownloaderQueue -> JobDownloader -> Job -> FileModel
+    """
 
     job = None
     monitor = None
     worker_pool_size = 3
     queue = queue.Queue()
     threads = []
+    signals = {}
 
     def __init__(
         self,
@@ -126,7 +127,9 @@ class QueuedDownloader:
             except Exception as e:
                 logger.error("Worker failed with file: %s", file_to_download.name)
                 logging.exception(e)
-                self.__post_download(file_to_download, success=False, err=str(e))
+                self.__post_download(
+                    file_to_download, new_status=FileModel.STATUS_FAILED, err=str(e)
+                )
             self.queue.task_done()
 
     def __start_download(self, file_to_download: FileModel) -> None:
@@ -135,36 +138,46 @@ class QueuedDownloader:
             The file to download"""
         file_to_download.status = FileModel.STATUS_DOWNLOADING
         file_to_download.add_event("Started downloading")
-        download_file(
+        signal = self.__create_download_signals_for(file_to_download.name)
+        self.signals[file_to_download.name] = signal
+        finished, msg = download_file(
             file_to_download.url,
             os.path.join(self.job.target_folder, file_to_download.name),
-            self.__create_download_observer_for(file_to_download.name),
+            signal,
         )
         logger.info("Worker finished with file: %s", file_to_download.name)
-        self.__post_download(file_to_download, success=True)
+        self.__post_download(
+            file_to_download,
+            new_status=FileModel.STATUS_COMPLETED
+            if finished
+            else FileModel.STATUS_STOPPED,
+            err=msg,
+        )
 
-    def __post_download(self, file: FileModel, success: bool, err: str = "") -> None:
+    def __post_download(self, file: FileModel, new_status: str, err: str = "") -> None:
         """Post download metadata update of a file.
         :param file:
             The file that was downloaded
         :param success:
             Whether the download was successful or not"""
-        if success:
-            file.status = FileModel.STATUS_DOWNLOADED
+        file.status = new_status
+        if new_status == FileModel.STATUS_COMPLETED:
             file.add_event("Completed downloading")
-        else:
+        elif new_status == FileModel.STATUS_STOPPED:
+            file.add_event("Stopped downloading")
+        elif new_status == FileModel.STATUS_FAILED:
             file.status = FileModel.STATUS_FAILED
             file.add_event("Failed downloading: " + err)
 
-    def __create_download_observer_for(self, filename: str):
+    def __create_download_signals_for(self, filename: str):
         """Create a progress observer for the given filename.
         :param filename:
             The filename to create the observer for
         :return:
             A progress observer"""
         logger.debug(
-            "Creating download observer for job %s and file %s",
+            "Creating download signaler for job %s and file %s",
             self.job.name,
             filename,
         )
-        return FileProgressObserver(self.job.name, filename, self.monitor)
+        return FileProgressSignals(self.job.name, filename, self.monitor)

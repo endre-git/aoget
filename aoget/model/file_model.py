@@ -17,8 +17,11 @@ class FileModel(Base):
 
     STATUS_NEW = "New"
     STATUS_DOWNLOADING = "Downloading"
-    STATUS_DOWNLOADED = "Completed"
+    STATUS_QUEUED = "In queue"
+    STATUS_COMPLETED = "Completed"
     STATUS_FAILED = "Failed"
+    STATUS_STOPPED = "Stopped"
+    STATUS_INVALID = "Invalid"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
@@ -81,4 +84,4 @@ class FileModel(Base):
         """Add a history event.
         :param message:
             The message to add"""
-        FileEvent(message, self)  # appending is implicit thanks to ORM mapping
+        self.history_entries.append(FileEvent(message, self))

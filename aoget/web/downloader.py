@@ -14,8 +14,16 @@ TIMEOUT_SECONDS = 5
 logger = logging.getLogger(__name__)
 
 
-class ProgressObserver(ABC):
-    """Abstract class for download progress observers."""
+DOWNLOAD_SUCCESS_MSG = 'Downloaded successfully'
+DOWNLOAD_FAIL_MSG = 'Download failed'
+DOWNLOAD_CANCELLED_MSG = 'Download cancelled'
+
+
+class DownloadSignals(ABC):
+    """Abstract class for bi-directional signaling. Download progress is sent
+    to observers, whereas downloaders can cancel downloads."""
+
+    cancelled = False
 
     @abstractmethod
     def on_update_progress(self, written: int, total: int) -> None:
@@ -28,13 +36,17 @@ class ProgressObserver(ABC):
             Size of the remote file."""
         pass
 
+    def cancel(self) -> None:
+        """Cancel the download."""
+        self.cancelled = True
+    
 
 def __downloader(
     url: str,
     local_path: str,
     resume_byte_pos: int = None,
-    progress_observer: ProgressObserver = None,
-) -> None:
+    signals: DownloadSignals = None,
+) -> (bool, str):
     """Download url to disk with possible resumption.
     Parameters
     ----------
@@ -70,13 +82,19 @@ def __downloader(
         for chunk in r.iter_content(32 * block_size):
             f.write(chunk)
             written += len(chunk)
-            if progress_observer is not None:
-                progress_observer.on_update_progress(written, total)
+            if signals is not None:
+                signals.on_update_progress(written, total)
+            if signals.cancelled:
+                logger.info("Download cancelled.")
+                return False, DOWNLOAD_CANCELLED_MSG
+
+    logger.info("Downloaded %s", url)
+    return True, DOWNLOAD_SUCCESS_MSG
 
 
 def download_file(
-    url: str, local_path: str, progress_observer: ProgressObserver = None
-) -> None:
+    url: str, local_path: str, signals: DownloadSignals = None
+) -> (bool, str):
     """Execute the correct download operation.
     Depending on the size of the file online and offline, resume the
     download if the file offline is smaller than online.
@@ -105,23 +123,24 @@ def download_file(
             if server_resume_supported:
                 # resume download
                 logger.info("Resuming download of %s", url)
-                __downloader(
+                return __downloader(
                     url,
                     local_path,
                     file_size_offline,
-                    progress_observer=progress_observer,
+                    signals=signals,
                 )
             else:
                 logger.info(
                     "Server does not support resume for %s, downloading from scratch.",
                     url,
                 )
-                __downloader(url, local_path, progress_observer=progress_observer)
+                return __downloader(url, local_path, signals=signals)
         else:
             logger.info("File %s already downloaded.", url)
+            return True, DOWNLOAD_SUCCESS_MSG
     else:
         logger.info("Downloading %s from scratch.", url)
-        __downloader(url, local_path, progress_observer=progress_observer)
+        return __downloader(url, local_path, signals=signals)
 
 
 def resolve_remote_file_size(url: str) -> int:

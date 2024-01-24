@@ -11,7 +11,7 @@ from PyQt6 import uic
 
 from view.newjobdialog import NewJobDialog
 from util.aogetutil import human_timestamp_from, human_filesize
-from aogetdb import get_job_dao, get_file_model_dao, get_file_event_dao
+from aogetdb import get_job_dao, get_file_model_dao
 from web.background_resolver import BackgroundResolver, ResolverMonitor
 from model.file_model import FileModel
 from model.job_monitor import JobMonitor
@@ -85,6 +85,7 @@ class AoGetMainWindow(QMainWindow):
 
         # file toolbar buttons
         self.btnFileStartDownload.clicked.connect(self.__on_file_start_download)
+        self.btnFileStopDownload.clicked.connect(self.__on_file_stop_download)
 
     def __update_jobs_table(self):
         """Update the list of jobs"""
@@ -205,6 +206,21 @@ class AoGetMainWindow(QMainWindow):
         else:
             self.__show_error_dialog("Failed to start download: " + message)
 
+    def __on_file_stop_download(self):
+        """Stop downloading the selected file"""
+        if not self.__is_job_selected() or not self.__is_file_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        file_name = self.tblFiles.selectedItems()[0].text()
+        ok, message = self.window_data.stop_download(job_name, file_name)
+        if ok:
+            # update files table view to Downloading in the status column
+            self.tblFiles.setItem(
+                self.tblFiles.currentRow(), 1, QTableWidgetItem(message)
+            )
+        else:
+            self.__show_error_dialog("Failed to start download: " + message)
+
     def __show_error_dialog(
         self, message, title="Error", icon=QMessageBox.Icon.Critical
     ):
@@ -215,7 +231,7 @@ class AoGetMainWindow(QMainWindow):
         error_dialog.setWindowTitle(title)
         error_dialog.exec()
 
-    def update_file_progress(self, jobname, filename, written, total):
+    def update_file_progress(self, jobname, filename, percent_completed, download_rate):
         """Update the file progress of the given file if the right job is selected"""
         if (
             self.__is_job_selected()
@@ -224,11 +240,13 @@ class AoGetMainWindow(QMainWindow):
             for row in range(self.tblFiles.rowCount()):
                 if filename == self.tblFiles.item(row, 0).text():
                     progress_bar = self.tblFiles.cellWidget(row, 3)
-                    progress_bar.setValue(int(written / total * 100))
+                    progress_bar.setValue(percent_completed)
 
 
 class MainWindowJobMonitor(JobMonitor):
     """Implementation of the JobMonitor interface that publishes events to the main window"""
+
+    file_bytes_written = {}
 
     def __init__(
         self, main_window_data: Any, main_window: AoGetMainWindow, job_name: str
@@ -248,7 +266,12 @@ class MainWindowJobMonitor(JobMonitor):
             Bytes written so far locally.
         :param total:
             Size of the remote file."""
-        self.main_window.update_file_progress(self.job_name, filename, written, total)
+        percent_completed = 0 if total == 0 else int(written / total * 100)
+        delta = 0
+        if filename in self.file_bytes_written.get(filename):
+            delta = written - self.file_bytes_written[filename]
+            self.file_bytes_written[filename] = written
+        self.main_window.update_file_progress(self.job_name, filename, percent_completed, delta)
 
     def on_file_status_update(self, filename: str, status: str) -> None:
         """When the status of a file is updated.
@@ -276,6 +299,7 @@ class MainWindowData:
         jobs = get_job_dao().get_all_jobs()
         for job in jobs:
             self.jobs[job.name] = job
+        self.__validate_file_states()
 
     def job_count(self) -> int:
         """Get the number of jobs"""
@@ -319,6 +343,42 @@ class MainWindowData:
             ResolverMonitorImpl(self, self.main_window),
         )
 
+    def __validate_file_states(self) -> None:
+        """Validate the file states"""
+        for job in self.jobs.values():
+            for file in job.files:
+                if file.status == FileModel.STATUS_DOWNLOADING:
+                    logger.info("File %s was downloaded at last app run, will resume now.", file.name)
+                    file.add_event(
+                            "Resumed after app-restart."
+                        )
+                    self.start_download(job.name, file.name)
+                    get_file_model_dao().update_file_model_status(
+                            file.id, file.status
+                        )
+
+            for file in job.files:
+                if file.status == FileModel.STATUS_QUEUED:
+                    logger.info("File %s was queued at last app run, will re-queue now.", file.name)
+                    file.add_event(
+                            "Re-queued after app-restart."
+                        )
+                    self.start_download(job.name, file.name)
+                    get_file_model_dao().update_file_model_status(
+                            file.id, file.status
+                        )
+
+            for file in job.files:
+                if file.status == FileModel.STATUS_COMPLETED:
+                    if not file.validate_downloaded():
+                        file.status = FileModel.STATUS_INVALID
+                        file.add_event(
+                            "Could not file local file despite marked as downloaded."
+                        )
+                        get_file_model_dao().update_file_model_status(
+                            file.id, file.status
+                        )
+
     def on_resolver_finished(self, job_name: str) -> None:
         """Called when a resolver has finished"""
         self.active_resolvers.pop(job_name)
@@ -345,6 +405,23 @@ class MainWindowData:
         file.status = FileModel.STATUS_DOWNLOADING
         get_file_model_dao().update_file_model_status(file.id, file.status)
         return True, FileModel.STATUS_DOWNLOADING
+
+    def stop_download(self, job_name: str, file_name: str) -> (bool, str):
+        """Stop downloading the given file
+        :param job_name:
+            The name of the job
+        :param file_name:
+            The name of the file
+        :return:
+            A tuple containing a boolean indicating whether the download was stopped successfully
+            and a string containing the status of the file or the error message if download
+            could not be stopped"""
+        if job_name not in self.download_queues:
+            return False, f"Unknown job: {job_name}"
+        if file_name not in self.download_queues[job_name].signals:
+            return False, f"Unknown file: {file_name} in job {job_name}"
+        self.download_queues[job_name].signals[file_name].cancel()
+        return True, "Stopped"
 
     def __setup_downloader(self, job_name: str) -> None:
         """Setup the downloader for the given job"""

@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>AOGet</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>../resources/icons/download.svg</normaloff>../resources/icons/download.svg</iconset>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2" stretch="35,65">
     <property name="spacing">
@@ -154,16 +158,16 @@
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="btnFilePauseDownload">
+           <widget class="QToolButton" name="btnFileStopDownload">
             <property name="toolTip">
-             <string>Pause download</string>
+             <string>Stop download</string>
             </property>
             <property name="text">
              <string>...</string>
             </property>
             <property name="icon">
              <iconset>
-              <normaloff>../resources/icons/pause.svg</normaloff>../resources/icons/pause.svg</iconset>
+              <normaloff>../resources/icons/octagon.svg</normaloff>../resources/icons/octagon.svg</iconset>
             </property>
             <property name="iconSize">
              <size>
