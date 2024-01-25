@@ -24,7 +24,7 @@ class TestBackgroundResolver(unittest.TestCase):
                           FileModel(None, 'http://example.com/file2')]
 
             # Run the method under test
-            resolver.resolve_file_sizes(filemodels, resolver_monitor_mock)
+            resolver.resolve_file_sizes("test-job", filemodels, resolver_monitor_mock)
 
             # Wait for thread to complete (simple way - better to use more robust synchronization)
             import time

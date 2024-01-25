@@ -13,10 +13,13 @@ TIMEOUT_SECONDS = 5
 
 logger = logging.getLogger(__name__)
 
-
-DOWNLOAD_SUCCESS_MSG = 'Downloaded successfully'
-DOWNLOAD_FAIL_MSG = 'Download failed'
-DOWNLOAD_CANCELLED_MSG = 'Download cancelled'
+STATUS_NEW = 'New'
+STATUS_DOWNLOADING = 'Downloading'
+STATUS_QUEUED = 'In queue'
+STATUS_COMPLETED = 'Completed'
+STATUS_FAILED = 'Failed'
+STATUS_STOPPED = 'Stopped'
+STATUS_INVALID = 'Invalid'
 
 
 class DownloadSignals(ABC):
@@ -36,17 +39,25 @@ class DownloadSignals(ABC):
             Size of the remote file."""
         pass
 
+    def on_update_status(self, status: str) -> None:
+        """When the status of a file is updated.
+        Parameters:
+        ----------
+        status: str
+            The new status of the file"""
+        pass
+
     def cancel(self) -> None:
         """Cancel the download."""
         self.cancelled = True
-    
+
 
 def __downloader(
     url: str,
     local_path: str,
     resume_byte_pos: int = None,
     signals: DownloadSignals = None,
-) -> (bool, str):
+) -> str:
     """Download url to disk with possible resumption.
     Parameters
     ----------
@@ -86,15 +97,13 @@ def __downloader(
                 signals.on_update_progress(written, total)
             if signals.cancelled:
                 logger.info("Download cancelled.")
-                return False, DOWNLOAD_CANCELLED_MSG
+                return STATUS_STOPPED
 
     logger.info("Downloaded %s", url)
-    return True, DOWNLOAD_SUCCESS_MSG
+    return STATUS_COMPLETED
 
 
-def download_file(
-    url: str, local_path: str, signals: DownloadSignals = None
-) -> (bool, str):
+def download_file(url: str, local_path: str, signals: DownloadSignals = None) -> str:
     """Execute the correct download operation.
     Depending on the size of the file online and offline, resume the
     download if the file offline is smaller than online.
@@ -137,7 +146,7 @@ def download_file(
                 return __downloader(url, local_path, signals=signals)
         else:
             logger.info("File %s already downloaded.", url)
-            return True, DOWNLOAD_SUCCESS_MSG
+            return STATUS_COMPLETED
     else:
         logger.info("Downloading %s from scratch.", url)
         return __downloader(url, local_path, signals=signals)

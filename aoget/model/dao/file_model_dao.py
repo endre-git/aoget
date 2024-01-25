@@ -59,7 +59,9 @@ class FileModelDAO:
             A list of FileModels."""
         return self.session.query(FileModel).all()
 
-    def update_file_model_status(self, file_model_id: int, new_status: str, commit: bool = True) -> None:
+    def update_file_model_status(
+        self, file_model_id: int, new_status: str, commit: bool = True
+    ) -> None:
         """Update the status of a FileModel.
         :param file_model_id:
             The ID of the FileModel to update.
@@ -93,7 +95,9 @@ class FileModelDAO:
         if commit:
             self.session.commit()
 
-    def update_file_model_size(self, file_model_id: int, new_size: int, commit: bool = True) -> None:
+    def update_file_model_size(
+        self, file_model_id: int, new_size: int, commit: bool = True
+    ) -> None:
         """Update the size of a FileModel.
         :param file_model_id:
             The ID of the FileModel to update

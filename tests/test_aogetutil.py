@@ -1,5 +1,12 @@
 import unittest
-from aoget.util.aogetutil import is_valid_url, timestamp_str, human_timestamp_from, human_filesize
+from aoget.util.aogetutil import (
+    is_valid_url,
+    timestamp_str,
+    human_timestamp_from,
+    human_filesize,
+    human_eta,
+    human_rate
+)
 
 
 class TestAogetutil(unittest.TestCase):
@@ -89,7 +96,87 @@ class TestAogetutil(unittest.TestCase):
         expected_result = "1.0TB"
         result = human_filesize(file_size_bytes)
         self.assertEqual(result, expected_result)
-        
+
+    def test_human_eta(self):
+        # Test case for an ETA of 0 seconds
+        eta_seconds = 0
+        expected_result = ""
+        result = human_eta(eta_seconds)
+        self.assertEqual(result, expected_result)
+
+        # Test case for an ETA of 1 second
+        eta_seconds = 1
+        expected_result = "0:00:01"
+        result = human_eta(eta_seconds)
+        self.assertEqual(result, expected_result)
+
+        # Test case for an ETA of 60 seconds
+        eta_seconds = 60
+        expected_result = "0:01:00"
+        result = human_eta(eta_seconds)
+        self.assertEqual(result, expected_result)
+
+        # Test case for an ETA of 3600 seconds
+        eta_seconds = 3600
+        expected_result = "1:00:00"
+        result = human_eta(eta_seconds)
+        self.assertEqual(result, expected_result)
+
+        # Test case for an ETA of 86400 seconds
+        eta_seconds = 86400
+        expected_result = "1 day, 0:00:00"
+        result = human_eta(eta_seconds)
+        self.assertEqual(result, expected_result)
+
+    def test_human_rate(self):
+        # Test case for a rate of 0 bytes per second
+        rate_bytes_per_second = 0
+        expected_result = "0B/s"
+        result = human_rate(rate_bytes_per_second)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a rate of 1 byte per second
+        rate_bytes_per_second = 1
+        expected_result = "1.0B/s"
+        result = human_rate(rate_bytes_per_second)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a rate of 1024 bytes per second
+        rate_bytes_per_second = 1024
+        expected_result = "1.0KB/s"
+        result = human_rate(rate_bytes_per_second)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a rate of 2048 bytes per second
+        rate_bytes_per_second = 2048
+        expected_result = "2.0KB/s"
+        result = human_rate(rate_bytes_per_second)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a rate of 3500 bytes per second
+        rate_bytes_per_second = 3500
+        expected_result = "3.4KB/s"
+        result = human_rate(rate_bytes_per_second)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a rate of 1024 * 1024 bytes per second
+        rate_bytes_per_second = 1024 * 1024
+        expected_result = "1.0MB/s"
+        result = human_rate(rate_bytes_per_second)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a rate of 1024 * 1024 * 1024 bytes per second
+        rate_bytes_per_second = 1024 * 1024 * 1024
+        expected_result = "1.0GB/s"
+        result = human_rate(rate_bytes_per_second)
+        self.assertEqual(result, expected_result)
+
+        # Test case for a rate of 1024 * 1024 * 1024 * 1024 bytes per second
+        rate_bytes_per_second = 1024 * 1024 * 1024 * 1024
+        expected_result = "1.0TB/s"
+        result = human_rate(rate_bytes_per_second)
+        self.assertEqual(result, expected_result)
+
 
 if __name__ == "__main__":
     unittest.main()

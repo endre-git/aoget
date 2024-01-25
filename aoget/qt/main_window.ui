@@ -278,6 +278,46 @@
            </widget>
           </item>
           <item>
+           <widget class="QToolButton" name="btnFileCopyURL">
+            <property name="toolTip">
+             <string>Copy download URL to clipboard</string>
+            </property>
+            <property name="text">
+             <string>...</string>
+            </property>
+            <property name="icon">
+             <iconset>
+              <normaloff>../resources/icons/link-2.svg</normaloff>../resources/icons/link-2.svg</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>40</width>
+              <height>22</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="btnFileOpenLink">
+            <property name="toolTip">
+             <string>Open download URL (starts a browser download)</string>
+            </property>
+            <property name="text">
+             <string>...</string>
+            </property>
+            <property name="icon">
+             <iconset>
+              <normaloff>../resources/icons/external-link.svg</normaloff>../resources/icons/external-link.svg</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>40</width>
+              <height>22</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QFrame" name="frame">
             <property name="frameShape">
              <enum>QFrame::StyledPanel</enum>

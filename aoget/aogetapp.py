@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt6.QtWidgets import QApplication
 
-from view.aogetmainwindow import AoGetMainWindow
+from aoget.view.main_window import MainWindow
 from util.qt_util import install_catch_all_exception_handler
 import logging
 from config.app_config import get_config_value, load_config_from_file, AppConfig
@@ -43,6 +43,6 @@ setup_db()
 logger.info("Working dir: " + os.getcwd())
 logger.info("App config initialized with: " + str(AppConfig.app_config))
 app = QApplication(sys.argv)
-window = AoGetMainWindow()
+window = MainWindow()
 install_catch_all_exception_handler(window)
 app.exec()

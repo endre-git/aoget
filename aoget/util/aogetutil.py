@@ -1,5 +1,6 @@
 import urllib.parse
 from datetime import datetime
+from datetime import timedelta
 
 
 def is_valid_url(url: str) -> bool:
@@ -32,6 +33,7 @@ def human_timestamp_from(timestamp_str: str):
         "%Y-%m-%d %H:%M:%S"
     )
 
+
 def human_filesize(file_size_bytes: int) -> str:
     """Get a human readable filesize from the given filesize in bytes.
     :param file_size_bytes:
@@ -46,3 +48,30 @@ def human_filesize(file_size_bytes: int) -> str:
         suffix_index += 1
         file_size_bytes /= 1024
     return f"{file_size_bytes:.1f}{suffixes[suffix_index]}"
+
+
+def human_rate(rate_bytes_per_second: float) -> str:
+    """Get a human readable rate from the given rate in bytes per second.
+    :param rate_bytes_per_second:
+        The rate in bytes per second
+    :return:
+        The human readable rate"""
+    if rate_bytes_per_second == 0:
+        return "0B/s"
+    suffixes = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"]
+    suffix_index = 0
+    while rate_bytes_per_second >= 1024:
+        suffix_index += 1
+        rate_bytes_per_second /= 1024
+    return f"{rate_bytes_per_second:.1f}{suffixes[suffix_index]}"
+
+
+def human_eta(eta_seconds: int) -> str:
+    """Get a human readable ETA from the given ETA in seconds in a HH:mm:ss format.
+    :param eta_seconds:
+        The ETA in seconds
+    :return:
+        The human readable ETA. For zero time left returns a blank string"""
+    if eta_seconds == 0:
+        return ""
+    return str(timedelta(seconds=eta_seconds))

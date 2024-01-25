@@ -40,6 +40,12 @@ class FileProgressSignals(DownloadSignals):
             self.jobname, self.filename, written, total
         )
 
+    def on_update_status(self, status: str) -> None:
+        """Report status to the monitor daemon.
+        :param status:
+            The new status"""
+        self.monitor.update_file_status(self.jobname, self.filename, status)
+
 
 class QueuedDownloader:
     """A thread-safe queue for downloading files in a job. Intended to be created per job.
@@ -56,7 +62,7 @@ class QueuedDownloader:
     def __init__(
         self,
         job: Job,
-        monitor: MonitorDaemon = MonitorDaemon(),  # Blank monitor suppresses progress reporting
+        monitor: MonitorDaemon,  # Blank monitor suppresses progress reporting
         worker_pool_size: int = 3,
     ):
         """Create a download queue for a job.
@@ -140,7 +146,8 @@ class QueuedDownloader:
         file_to_download.add_event("Started downloading")
         signal = self.__create_download_signals_for(file_to_download.name)
         self.signals[file_to_download.name] = signal
-        finished, msg = download_file(
+        signal.on_update_status(FileModel.STATUS_DOWNLOADING)
+        result_state = download_file(
             file_to_download.url,
             os.path.join(self.job.target_folder, file_to_download.name),
             signal,
@@ -148,10 +155,7 @@ class QueuedDownloader:
         logger.info("Worker finished with file: %s", file_to_download.name)
         self.__post_download(
             file_to_download,
-            new_status=FileModel.STATUS_COMPLETED
-            if finished
-            else FileModel.STATUS_STOPPED,
-            err=msg,
+            new_status=result_state
         )
 
     def __post_download(self, file: FileModel, new_status: str, err: str = "") -> None:
@@ -168,6 +172,7 @@ class QueuedDownloader:
         elif new_status == FileModel.STATUS_FAILED:
             file.status = FileModel.STATUS_FAILED
             file.add_event("Failed downloading: " + err)
+        self.signals[file.name].on_update_status(file.status)
 
     def __create_download_signals_for(self, filename: str):
         """Create a progress observer for the given filename.
