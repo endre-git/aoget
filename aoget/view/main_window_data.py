@@ -1,5 +1,7 @@
+import os
 import logging
 from typing import Any
+from threading import Event
 from .main_window_job_monitor import MainWindowJobMonitor
 from web.monitor_daemon import MonitorDaemon
 from web.queued_downloader import QueuedDownloader
@@ -20,6 +22,8 @@ class MainWindowData:
     active_resolvers = {}
     download_queues = {}
     download_monitors = {}
+
+    FILE_DELETION_WAIT_SECONDS = 5
 
     def __init__(self, main_window: Any):
         self.main_window = main_window
@@ -62,6 +66,56 @@ class MainWindowData:
                     file.size_bytes = size
                     get_file_model_dao().update_file_model_size(file.id, size)
 
+    def resolve_file_url(self, job_name: str, file_name: str) -> str:
+        """Resolve the URL of a file"""
+        if job_name not in self.jobs:
+            return ""
+        return self.jobs[job_name].get_file_by_name(file_name).url
+
+    def resolve_local_file_path(self, job_name: str, file_name: str) -> str:
+        """Resolve the local file path of a file"""
+        if job_name not in self.jobs:
+            return ""
+        return self.jobs[job_name].get_file_by_name(file_name).get_target_path()
+
+    def redownload_file(self, job_name: str, file_name: str) -> (bool, str):
+        """Redownload the given file
+        :param job_name:
+            The name of the job
+        :param file_name:
+            The name of the file
+        :return:
+            A tuple containing a boolean indicating whether the download was started successfully
+            and a string containing the status of the file or the error message if download
+            could not be started"""
+        if self.download_queues.get(job_name) is None:
+            return self.start_download(job_name, file_name)
+        if file_name in self.download_queues[job_name].files_in_queue:
+            return True, "File is already downloading or queued."
+        stopped_event = Event()
+        if file_name in self.download_queues[job_name].files_downloading:
+            # stop the current download and wait for it to conclude
+            could_stop, msg = self.stop_download(
+                job_name, file_name, stopped_event
+            )
+            if not could_stop:
+                return False, msg
+            stopped_event.wait(self.FILE_DELETION_WAIT_SECONDS)
+        # delete file from disk
+        try:
+            file = self.jobs[job_name].get_file_by_name(file_name)
+            if os.path.exists(file.get_target_path()):
+                os.remove(file.get_target_path())
+            # reset downloaded bytes
+            file.downloaded_bytes = 0
+            self.download_queues[job_name].signals[file_name].on_update_progress(
+                0, file.size_bytes
+            )
+        except Exception as e:
+            logger.error("Could not delete file from disk: %s", e)
+            return False, "Could not delete file from disk."
+        return self.start_download(job_name, file_name)
+
     def __resolve_file_sizes(self, job_name: str) -> None:
         """Resolve the file sizes of all selected files that have an unknown size"""
         if self.active_resolvers.get(job_name) is not None:
@@ -99,11 +153,16 @@ class MainWindowData:
 
             for file in job.files:
                 if file.status == FileModel.STATUS_COMPLETED:
-                    if not file.validate_downloaded():
+                    local_size = file.validate_downloaded()
+                    if local_size == -1:
                         file.status = FileModel.STATUS_INVALID
-                        file.add_event(
-                            "Could not file local file despite marked as downloaded."
+                        file.add_event("Local file does not exist.")
+                        get_file_model_dao().update_file_model_status(
+                            file.id, file.status
                         )
+                    elif local_size < file.downloaded_bytes:
+                        file.status = FileModel.STATUS_INVALID
+                        file.add_event("Local file might be corrupted.")
                         get_file_model_dao().update_file_model_status(
                             file.id, file.status
                         )
@@ -129,13 +188,18 @@ class MainWindowData:
         self.download_queues[job_name].download_file(job.get_file_by_name(file_name))
 
         file = job.get_file_by_name(file_name)
-        if file.status == FileModel.STATUS_DOWNLOADING or file.status == FileModel.STATUS_QUEUED:
+        if (
+            file.status == FileModel.STATUS_DOWNLOADING
+            or file.status == FileModel.STATUS_QUEUED
+        ):
             return False, "File is already downloading or queued."
         file.status = FileModel.STATUS_QUEUED
         get_file_model_dao().update_file_model_status(file.id, file.status)
         return True, FileModel.STATUS_QUEUED
 
-    def stop_download(self, job_name: str, file_name: str) -> (bool, str):
+    def stop_download(
+        self, job_name: str, file_name: str, completion_event=None
+    ) -> (bool, str):
         """Stop downloading the given file
         :param job_name:
             The name of the job
@@ -149,6 +213,11 @@ class MainWindowData:
             return False, f"Unknown job: {job_name}"
         if file_name not in self.download_queues[job_name].signals:
             return False, f"Unknown file: {file_name} in job {job_name}"
+
+        if completion_event is not None:
+            self.download_queues[job_name].register_listener(
+                completion_event, file_name, FileModel.STATUS_STOPPED
+            )
         self.download_queues[job_name].signals[file_name].cancel()
         return True, "Stopped"
 

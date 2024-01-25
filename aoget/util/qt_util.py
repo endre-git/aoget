@@ -7,15 +7,31 @@ from PyQt6.QtCore import QTimer
 from PyQt6 import QtGui
 
 
-def error_dialog(parent, message: str) -> None:
+def error_dialog(parent, message: str, header="Error") -> None:
     """Show an error dialog with the given message
     :param parent:
         The parent window
     :param message:
         The message to show in the dialog"""
     msg = QtWidgets.QErrorMessage(parent)
-    msg.setWindowTitle("Error")
+    msg.setWindowTitle(header)
     msg.showMessage(message)
+
+
+def confirmation_dialog(parent, message: str, header="Please confirm") -> bool:
+    """Show a confirmation dialog with the given message
+    :param parent:
+        The parent window
+    :param message:
+        The message to show in the dialog
+    :return:
+        True if the user confirmed, False otherwise"""
+    msg = QtWidgets.QMessageBox(parent)
+    msg.setWindowTitle(header)
+    msg.setText(message)
+    msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
+    msg.setDefaultButton(QtWidgets.QMessageBox.StandardButton.No)
+    return msg.exec() == QtWidgets.QMessageBox.StandardButton.Yes
 
 
 def qt_debounce(component, wait_ms, function, *args, **kwargs):

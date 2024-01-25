@@ -1,3 +1,4 @@
+import os
 import logging
 from PyQt6.QtWidgets import (
     QMainWindow,
@@ -5,14 +6,17 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QProgressBar,
     QMessageBox,
+    QApplication,
 )
 from PyQt6 import uic
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, QUrl
+from PyQt6.QtGui import QDesktopServices
 from .main_window_data import MainWindowData
 from model.file_model import FileModel
 
 from aoget.view.new_job_dialog import NewJobDialog
 from util.aogetutil import human_timestamp_from, human_filesize, human_eta, human_rate
+from util.qt_util import confirmation_dialog
 
 logger = logging.getLogger(__name__)
 
@@ -159,10 +163,29 @@ class MainWindow(QMainWindow):
 
         # jobs table selection
         # self.tblFiles.doubleClicked.connect(self.__on_file_table_double_clicked)
+        self.tblFiles.clicked.connect(self.__on_file_selected)
 
         # file toolbar buttons
         self.btnFileStartDownload.clicked.connect(self.__on_file_start_download)
         self.btnFileStopDownload.clicked.connect(self.__on_file_stop_download)
+        self.btnFileRedownload.clicked.connect(self.__on_file_redownload)
+        self.btnFileRemoveFromList.clicked.connect(self.__on_file_remove_from_list)
+        self.btnFileRemove.clicked.connect(self.__on_file_remove)
+        self.btnFileDetails.clicked.connect(self.__on_file_details)
+        self.btnFileShowInFolder.clicked.connect(self.__on_file_show_in_folder)
+        self.btnFileCopyURL.clicked.connect(self.__on_file_copy_url)
+        self.btnFileOpenLink.clicked.connect(self.__on_file_open_link)
+
+        # disable all file toolbar buttons
+        self.btnFileStartDownload.setEnabled(False)
+        self.btnFileStopDownload.setEnabled(False)
+        self.btnFileRedownload.setEnabled(False)
+        self.btnFileRemoveFromList.setEnabled(False)
+        self.btnFileRemove.setEnabled(False)
+        self.btnFileDetails.setEnabled(False)
+        self.btnFileShowInFolder.setEnabled(False)
+        self.btnFileCopyURL.setEnabled(False)
+        self.btnFileOpenLink.setEnabled(False)
 
     def __sort_files_table(self, logical_index):
         """Sort the files table by the given column"""
@@ -182,10 +205,11 @@ class MainWindow(QMainWindow):
 
     def __on_job_selected(self):
         """A job has been selected in the jobs table"""
-        self.__show_files(
-            self.window_data.get_job_by_name(self.tblJobs.item(0, 0).text())
-        )
-        self.window_data.job_post_select(self.tblJobs.item(0, 0).text())
+        if not self.__is_job_selected():
+            return
+        selected_job = self.tblJobs.selectedItems()[0].text()
+        self.__show_files(self.window_data.get_job_by_name(selected_job))
+        self.window_data.job_post_select(selected_job)
 
     def __on_job_table_double_clicked(self):
         """A job has been double clicked in the jobs table"""
@@ -231,7 +255,11 @@ class MainWindow(QMainWindow):
                 if file.size_bytes == 0
                 else int(file.downloaded_bytes / file.size_bytes * 100)
             )
-            progress_bar.setStyleSheet(MainWindow.PROGRESS_BAR_PASSIVE_STYLE)
+            progress_bar.setStyleSheet(
+                MainWindow.PROGRESS_BAR_ACTIVE_STYLE
+                if file.status == FileModel.STATUS_DOWNLOADING
+                else MainWindow.PROGRESS_BAR_PASSIVE_STYLE
+            )
             self.tblFiles.setCellWidget(i, MainWindow.FILE_PROGRESS_IDX, progress_bar)
             self.tblFiles.setItem(
                 i,
@@ -277,16 +305,43 @@ class MainWindow(QMainWindow):
             and len(self.tblJobs.selectedItems()) > 0
         )
 
-    def __is_file_selected(self):
+    def __on_file_selected(self):
+        """A file has been selected in the files table"""
+        if not self.__is_file_selected():
+            return
+        # reenable all buttons but the first two which is handled based on status later
+        self.btnFileRedownload.setEnabled(True)
+        self.btnFileRemoveFromList.setEnabled(True)
+        self.btnFileRemove.setEnabled(True)
+        self.btnFileDetails.setEnabled(True)
+        self.btnFileShowInFolder.setEnabled(True)
+        self.btnFileCopyURL.setEnabled(True)
+        self.btnFileOpenLink.setEnabled(True)
+
+        file_status = self.tblFiles.item(
+            self.tblFiles.currentRow(), MainWindow.FILE_STATUS_IDX
+        ).text()
+        self.__update_file_toolbar_buttons(file_status)
+
+    def __is_file_selected(self, filename=None):
         """Determine whether a file is selected"""
-        return (
-            self.tblFiles.selectedItems() is not None
-            and len(self.tblFiles.selectedItems()) > 0
-        )
+        if filename is None:
+            return (
+                self.tblFiles.selectedItems() is not None
+                and len(self.tblFiles.selectedItems()) > 0
+            )
+        else:
+            return (
+                self.tblFiles.selectedItems() is not None
+                and self.tblFiles.selectedItems()[0].text() == filename
+            )
 
     def __on_file_start_download(self):
         """Start downloading the selected file"""
+        # immediately set the button to disabled, reset if an error occurs later
+        self.btnFileStartDownload.setEnabled(False)
         if not self.__is_job_selected() or not self.__is_file_selected():
+            self.btnFileStartDownload.setEnabled(True)
             return
         job_name = self.tblJobs.selectedItems()[0].text()
         file_name = self.tblFiles.selectedItems()[0].text()
@@ -300,10 +355,14 @@ class MainWindow(QMainWindow):
             )
         else:
             self.__show_error_dialog("Failed to start download: " + message)
+            self.btnFileStartDownload.setEnabled(True)
 
     def __on_file_stop_download(self):
         """Stop downloading the selected file"""
+        # immediately set the button to disabled, reset if an error occurs later
+        self.btnFileStopDownload.setEnabled(False)
         if not self.__is_job_selected() or not self.__is_file_selected():
+            self.btnFileStopDownload.setEnabled(True)
             return
         job_name = self.tblJobs.selectedItems()[0].text()
         file_name = self.tblFiles.selectedItems()[0].text()
@@ -316,7 +375,122 @@ class MainWindow(QMainWindow):
                 QTableWidgetItem(message),
             )
         else:
-            self.__show_error_dialog("Failed to start download: " + message)
+            self.__show_error_dialog("Failed to stop download: " + message)
+            self.btnFileStopDownload.setEnabled(True)
+
+    def __on_file_redownload(self):
+        """Redownload the selected file"""
+        if confirmation_dialog(
+            self,
+            'Redownload file: "' + self.tblFiles.selectedItems()[0].text() + '"?',
+        ):
+            row = self.tblFiles.currentRow()
+            # immediately set the button to disabled, reset if an error occurs later
+            self.btnFileRedownload.setEnabled(False)
+            self.btnFileStartDownload.setEnabled(False)
+            self.btnFileStopDownload.setEnabled(False)
+            if not self.__is_job_selected() or not self.__is_file_selected():
+                self.btnFileRedownload.setEnabled(True)
+                self.__update_file_toolbar_buttons(
+                    self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX).text()
+                )
+                return
+            job_name = self.tblJobs.selectedItems()[0].text()
+            file_name = self.tblFiles.selectedItems()[0].text()
+            self.__reset_rate_and_eta_for_file(file_name)
+            ok, message = self.window_data.redownload_file(job_name, file_name)
+            if ok:
+                # update files table view to Downloading in the status column
+                self.tblFiles.setItem(
+                    self.tblFiles.currentRow(),
+                    MainWindow.FILE_STATUS_IDX,
+                    QTableWidgetItem(message),
+                )
+            else:
+                self.__show_error_dialog("Failed to redownload: " + message)
+                self.btnFileRedownload.setEnabled(True)
+                self.__reset_rate_and_eta_for_file(file_name)
+            self.__update_file_toolbar_buttons(
+                self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX).text()
+            )
+
+    def __on_file_remove_from_list(self):
+        """Remove the selected file from the list"""
+        if confirmation_dialog(
+            self,
+            f"""You can re-add this file on the job editor screen.<br/>
+            Remove file from list: <b>{self.tblFiles.selectedItems()[0].text()}</b>?"""
+        ):
+            # immediately set the button to disabled, reset if an error occurs later
+            self.btnFileRemoveFromList.setEnabled(False)
+            if not self.__is_job_selected() or not self.__is_file_selected():
+                self.btnFileRemoveFromList.setEnabled(True)
+                return
+            job_name = self.tblJobs.selectedItems()[0].text()
+            file_name = self.tblFiles.selectedItems()[0].text()
+            ok, message = self.window_data.deselect_file(job_name, file_name)
+            if ok:
+                self.tblFiles.removeRow(self.tblFiles.currentRow())
+            else:
+                self.__show_error_dialog("Failed to remove from list: " + message)
+            self.btnFileRemoveFromList.setEnabled(True)
+
+    def __on_file_remove(self):
+        """Remove the selected file from the list and delete the local file"""
+        if confirmation_dialog(
+            'Remove file from list and disk: "'
+            + self.tblFiles.selectedItems()[0].text()
+            + '"?'
+        ):
+            # immediately set the button to disabled, reset if an error occurs later
+            self.btnFileRemove.setEnabled(False)
+            if not self.__is_job_selected() or not self.__is_file_selected():
+                self.btnFileRemove.setEnabled(True)
+                return
+            job_name = self.tblJobs.selectedItems()[0].text()
+            file_name = self.tblFiles.selectedItems()[0].text()
+            ok, message = self.window_data.deselect_and_remove_file(job_name, file_name)
+            if ok:
+                self.tblFiles.removeRow(self.tblFiles.currentRow())
+            else:
+                self.__show_error_dialog("Failed to remove: " + message)
+                self.btnFileRemove.setEnabled(True)
+
+    def __on_file_details(self):
+        """Show the details of the selected file"""
+        if not self.__is_job_selected() or not self.__is_file_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        file_name = self.tblFiles.selectedItems()[0].text()
+        self.window_data.show_file_details(job_name, file_name)
+
+    def __on_file_show_in_folder(self):
+        """Show the selected file in the file explorer"""
+        if not self.__is_job_selected() or not self.__is_file_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        file_name = self.tblFiles.selectedItems()[0].text()
+        local_url = self.window_data.resolve_local_file_path(job_name, file_name)
+        parent_folder = os.path.dirname(local_url)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(parent_folder))
+
+    def __on_file_copy_url(self):
+        """Copy the URL of the selected file to the clipboard"""
+        if not self.__is_job_selected() or not self.__is_file_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        file_name = self.tblFiles.selectedItems()[0].text()
+        url = self.window_data.resolve_file_url(job_name, file_name)
+        QApplication.clipboard().setText(url)
+
+    def __on_file_open_link(self):
+        """Open the URL of the selected file in the default browser"""
+        if not self.__is_job_selected() or not self.__is_file_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        file_name = self.tblFiles.selectedItems()[0].text()
+        url = self.window_data.resolve_file_url(job_name, file_name)
+        QDesktopServices.openUrl(QUrl(url))
 
     def __show_error_dialog(
         self, message, title="Error", icon=QMessageBox.Icon.Critical
@@ -332,6 +506,42 @@ class MainWindow(QMainWindow):
         """Disable the given cell in the files table"""
         progress_bar = self.tblFiles.cellWidget(row, MainWindow.FILE_PROGRESS_IDX)
         progress_bar.setStyleSheet(style)
+
+    def __reset_rate_and_eta_for_file(self, filename):
+        """Reset the rate and ETA for the given file"""
+        for row in range(self.tblFiles.rowCount()):
+            if filename == self.tblFiles.item(row, MainWindow.FILE_NAME_IDX).text():
+                self.tblFiles.setItem(
+                    row, MainWindow.FILE_RATE_IDX, QTableWidgetItem("")
+                )
+                self.tblFiles.setItem(
+                    row, MainWindow.FILE_ETA_IDX, QTableWidgetItem("")
+                )
+                break
+
+    def __update_file_toolbar_buttons(self, status):
+        """Update the file toolbar buttons based on the given status"""
+        if status == FileModel.STATUS_DOWNLOADING:
+            self.btnFileStartDownload.setEnabled(False)
+            self.btnFileStopDownload.setEnabled(True)
+        elif status == FileModel.STATUS_QUEUED:
+            self.btnFileStartDownload.setEnabled(False)
+            self.btnFileStopDownload.setEnabled(True)
+        elif status == FileModel.STATUS_COMPLETED:
+            self.btnFileStartDownload.setEnabled(False)
+            self.btnFileStopDownload.setEnabled(False)
+        elif status == FileModel.STATUS_FAILED:
+            self.btnFileStartDownload.setEnabled(True)
+            self.btnFileStopDownload.setEnabled(False)
+        elif status == FileModel.STATUS_STOPPED:
+            self.btnFileStartDownload.setEnabled(True)
+            self.btnFileStopDownload.setEnabled(False)
+        elif status == FileModel.STATUS_INVALID:
+            self.btnFileStartDownload.setEnabled(True)
+            self.btnFileStopDownload.setEnabled(False)
+        elif status == FileModel.STATUS_NEW:
+            self.btnFileStartDownload.setEnabled(True)
+            self.btnFileStopDownload.setEnabled(False)
 
     def update_file_progress(
         self, jobname, filename, percent_completed, download_rate, eta_seconds
@@ -363,16 +573,7 @@ class MainWindow(QMainWindow):
                             QTableWidgetItem(human_eta(eta_seconds)),
                         )
                     else:
-                        self.tblFiles.setItem(
-                            row,
-                            MainWindow.FILE_RATE_IDX,
-                            QTableWidgetItem(""),
-                        )
-                        self.tblFiles.setItem(
-                            row,
-                            MainWindow.FILE_ETA_IDX,
-                            QTableWidgetItem(""),
-                        )
+                        self.__reset_rate_and_eta_for_file(filename)
                     return
 
     def update_file_status(self, jobname, filename, status, last_updated, last_event):
@@ -395,8 +596,7 @@ class MainWindow(QMainWindow):
                         QTableWidgetItem(last_event),
                     )
                     if status != FileModel.STATUS_DOWNLOADING:
-                        self.tblFiles.item(row, MainWindow.FILE_RATE_IDX).setText("")
-                        self.tblFiles.item(row, MainWindow.FILE_ETA_IDX).setText("")
+                        self.__reset_rate_and_eta_for_file(filename)
                         self.__restyleFileProgressBar(
                             row, MainWindow.PROGRESS_BAR_PASSIVE_STYLE
                         )
@@ -404,4 +604,6 @@ class MainWindow(QMainWindow):
                         self.__restyleFileProgressBar(
                             row, MainWindow.PROGRESS_BAR_ACTIVE_STYLE
                         )
-                    return
+                    break
+            if self.__is_file_selected(filename):
+                self.__update_file_toolbar_buttons(status)

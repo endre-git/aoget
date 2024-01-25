@@ -17,6 +17,7 @@ class FileProgressSignals(DownloadSignals):
 
     filename = ""
     monitor = None
+    status_listeners = {}
 
     def __init__(self, jobname: str, filename: str, monitor: MonitorDaemon):
         """Create a progress observer that binds to a monitor daemon.
@@ -45,6 +46,18 @@ class FileProgressSignals(DownloadSignals):
         :param status:
             The new status"""
         self.monitor.update_file_status(self.jobname, self.filename, status)
+        if status in self.status_listeners:
+            listener = self.status_listeners.pop(status)
+            listener.set()
+
+    def register_status_listener(self, event: threading.Event, status: str) -> None:
+        """Register a listener for a status update. If called multiple times, the last listener
+        will be used.
+        :param event:
+            The event to invoke when the status is updated
+        :param status:
+            The status to listen to"""
+        self.status_listeners[status] = event
 
 
 class QueuedDownloader:
@@ -58,6 +71,8 @@ class QueuedDownloader:
     queue = queue.Queue()
     threads = []
     signals = {}
+    files_in_queue = []
+    files_downloading = []
 
     def __init__(
         self,
@@ -100,7 +115,20 @@ class QueuedDownloader:
         """Download the given file.
         :param file:
             The file to download"""
+        self.files_in_queue.append(file.name)
         self.queue.put(file)
+
+    def register_listener(self, event, filename: str, status: str) -> None:
+        """Register a listener for a file status update.
+        :param event:
+            The event to invoke when the status is updated
+        :param filename:
+            The name of the file to listen to
+        :param status:
+            The status to listen to"""
+        if filename not in self.signals:
+            raise ValueError("Unknown file: " + filename)
+        self.signals[filename].register_status_listener(event, status)
 
     def __start_workers(self, worker_pool=3):
         """Start the workers as per the worker pool size."""
@@ -119,24 +147,31 @@ class QueuedDownloader:
     def __populate_queue(self):
         """Populate the queue with files to download."""
         for file in self.job.resolve_files_to_download():
-            self.queue.put(file)
+            self.download_file(file)
 
     def __download_worker(self):
         """The worker thread that downloads files from the queue."""
         while True:
-            file_to_download = self.queue.get()
-            if file_to_download is None:
-                break
-            logger.info("Worker took file: %s", file_to_download.name)
             try:
-                self.__start_download(file_to_download)
+                file_to_download = self.queue.get()
+                self.files_in_queue.remove(file_to_download.name)
+                self.files_downloading.append(file_to_download.name)
+                if file_to_download is None:
+                    break
+                logger.info("Worker took file: %s", file_to_download.name)
+                try:
+                    self.__start_download(file_to_download)
+                except Exception as e:
+                    logger.error("Worker failed with file: %s", file_to_download.name)
+                    logging.exception(e)
+                    self.__post_download(
+                        file_to_download, new_status=FileModel.STATUS_FAILED, err=str(e)
+                    )
+                self.files_downloading.remove(file_to_download.name)
+                self.queue.task_done()
             except Exception as e:
-                logger.error("Worker failed with file: %s", file_to_download.name)
-                logging.exception(e)
-                self.__post_download(
-                    file_to_download, new_status=FileModel.STATUS_FAILED, err=str(e)
-                )
-            self.queue.task_done()
+                # This is a catch-all exception handler to prevent the worker from dying
+                logger.error("Unexpected error in worker: %s", e)
 
     def __start_download(self, file_to_download: FileModel) -> None:
         """Start the download of a file.
@@ -153,10 +188,7 @@ class QueuedDownloader:
             signal,
         )
         logger.info("Worker finished with file: %s", file_to_download.name)
-        self.__post_download(
-            file_to_download,
-            new_status=result_state
-        )
+        self.__post_download(file_to_download, new_status=result_state)
 
     def __post_download(self, file: FileModel, new_status: str, err: str = "") -> None:
         """Post download metadata update of a file.

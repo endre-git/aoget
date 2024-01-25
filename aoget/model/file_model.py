@@ -85,3 +85,10 @@ class FileModel(Base):
         :param message:
             The message to add"""
         self.history_entries.append(FileEvent(message, self))
+
+    def validate_downloaded(self) -> int:
+        """Check on disk if the file has been downloaded successfully."""
+        if not os.path.exists(self.get_target_path()):
+            self.add_event("File does not exist on disk.")
+            return -1
+        return os.path.getsize(self.get_target_path())

@@ -38,6 +38,10 @@ class MainWindowJobMonitor(JobMonitor):
         self.main_window.update_file_progress_signal.emit(
             self.job_name, filename, percent_completed, delta, eta_seconds
         )
+        get_file_model_dao().update_file_model_downloaded_bytes(
+            self.main_window_data.jobs[self.job_name].get_file_by_name(filename).id,
+            written
+        )
 
     def on_file_status_update(self, filename: str, status: str) -> None:
         """When the status of a file is updated.
