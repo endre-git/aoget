@@ -1,21 +1,20 @@
 import logging
 from typing import Any
 from model.job_monitor import JobMonitor
-from aogetdb import get_file_model_dao
 
 
 logger = logging.getLogger(__name__)
 
 
 class MainWindowJobMonitor(JobMonitor):
-    """Implementation of the JobMonitor interface that publishes events to the main window"""
+    """Implementation of the JobMonitor interface that publishes events to the main window.
+    To be created per-job."""
 
     file_bytes_written = {}
 
-    def __init__(self, main_window_data: Any, main_window: Any, job_name: str):
+    def __init__(self, main_window_controller: Any, job_name: str):
         """Create a new job monitor."""
-        self.main_window = main_window
-        self.main_window_data = main_window_data
+        self.main_window_controller = main_window_controller
         self.job_name = job_name
 
     def on_download_progress_update(
@@ -35,12 +34,8 @@ class MainWindowJobMonitor(JobMonitor):
             delta = written - self.file_bytes_written[filename]
             eta_seconds = int((total - written) / delta) if delta > 0 else 0
         self.file_bytes_written[filename] = written
-        self.main_window.update_file_progress_signal.emit(
-            self.job_name, filename, percent_completed, delta, eta_seconds
-        )
-        get_file_model_dao().update_file_model_downloaded_bytes(
-            self.main_window_data.jobs[self.job_name].get_file_by_name(filename).id,
-            written
+        self.main_window_controller.update_file_download_progress(
+            self.job_name, filename, written, percent_completed, delta, eta_seconds
         )
 
     def on_file_status_update(self, filename: str, status: str) -> None:
@@ -49,12 +44,4 @@ class MainWindowJobMonitor(JobMonitor):
             The name of the file
         :param status:
             The new status of the file"""
-        file = self.main_window_data.jobs[self.job_name].get_file_by_name(filename)
-        get_file_model_dao().update_file_model_status(file.id, status)
-        self.main_window.update_file_status_signal.emit(
-            self.job_name,
-            filename,
-            status,
-            file.get_latest_history_timestamp(),
-            file.get_latest_history_entry().event
-        )
+        self.main_window_controller.update_file_status(self.job_name, filename, status)

@@ -1,5 +1,4 @@
 import logging
-import threading
 from sqlalchemy.orm import Session
 from aoget.model.dao.job_dao import JobDAO
 from aoget.model.dao.file_model_dao import FileModelDAO
@@ -7,37 +6,11 @@ from aoget.model.dao.file_event_dao import FileEventDAO
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from aoget.model import initialize_sql
-import time
+from .db_update_queue import DbUpdateQueue
+from .db_write import DbWrite
+from threading import RLock
 
 logger = logging.getLogger(__name__)
-
-
-class CommitDaemon:
-    """A daemon that commits the session periodically."""
-
-    def __init__(self, session: Session, commit_interval_seconds: int = 5):
-        self.session = session
-        self.running = True
-        self.commit_interval_seconds = commit_interval_seconds
-        self.commit_thread = threading.Thread(target=self.run, daemon=True)
-
-    def run(self):
-        """Run the daemon."""
-        while self.running:
-            try:
-                self.session.commit()
-                time.sleep(self.commit_interval_seconds)
-            except Exception as e:
-                logger.error("Failed to commit session.")
-                logging.exception(e)
-    
-    def start(self):
-        """Start the daemon."""
-        self.commit_thread.start()
-
-    def stop(self):
-        """Stop the daemon."""
-        self.running = False
 
 
 class AogetDb:
@@ -46,27 +19,32 @@ class AogetDb:
     session is not shared beetween threads, except for the state update thread that monitors file 
     downloads, but that is explicitly synchronized."""
 
-    Session = None
+    scoped_session_factory = None
+    shared_session = None
     job_dao = None
     file_model_dao = None
     file_event_dao = None
-    commit_daemon = None
-    commit_lock = threading.Lock()
+    write_queue = DbUpdateQueue()
+    state_lock = RLock()
 
 
-def init_db(connection_url: str) -> AogetDb:
+def init_db(connection_url: str):
     """Initialize the DB.
-    :param session: The SQLAlchemy session to use.
-    :return: The AogetDb instance."""
+    :param session: The SQLAlchemy session to use."""
     engine = create_engine(connection_url)
     logger.info(f"Initializing DB engine using URL '{connection_url}'.")
     session_factory = sessionmaker(bind=engine)
-    Session = scoped_session(session_factory)
-    AogetDb.job_dao = JobDAO(Session)
-    AogetDb.file_model_dao = FileModelDAO(Session, AogetDb.commit_lock)
-    AogetDb.file_event_dao = FileEventDAO(Session, AogetDb.commit_lock)
+    shared_session = session_factory()
+    AogetDb.scoped_session_factory = scoped_session(sessionmaker(bind=engine))
+    logger.info("Initialized DB session factory.")
+    AogetDb.shared_session = shared_session
+    logger.info("Initialized shared DB session.")
+    AogetDb.job_dao = JobDAO(shared_session)
+    AogetDb.file_model_dao = FileModelDAO(shared_session)
+    AogetDb.file_event_dao = FileEventDAO(shared_session)
     initialize_sql(engine)
-    logger.info("Initialized DB.")
+    logger.info("DB init completed.")
+    return AogetDb
 
 
 def get_job_dao() -> JobDAO:
@@ -90,4 +68,10 @@ def get_file_event_dao() -> FileEventDAO:
 def get_session() -> Session:
     """Get the SQLAlchemy session.
     :return: The SQLAlchemy session."""
-    return AogetDb.session
+    return AogetDb.shared_session
+
+
+def db_write(func_call, *args, **kwargs):
+    """Write to the database.
+    :param db_write: The callable that performs the write operation."""
+    AogetDb.write_queue.put(DbWrite(func_call, args, kwargs))

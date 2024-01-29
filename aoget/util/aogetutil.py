@@ -17,10 +17,10 @@ def is_valid_url(url: str) -> bool:
 
 
 def timestamp_str():
-    """Get a timestamp string in the format YYYYMMDD-HHMMSS.
+    """Get a timestamp string in the format YYYYMMDD-HHMMSSmmm.
     :return:
         The timestamp string"""
-    return datetime.now().strftime("%Y%m%d-%H%M%S")
+    return datetime.now().strftime("%Y%m%d-%H%M%S%f")[:-3]
 
 
 def human_timestamp_from(timestamp_str: str):
@@ -29,7 +29,7 @@ def human_timestamp_from(timestamp_str: str):
         The timestamp string to convert
     :return:
         The human readable timestamp"""
-    return datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S").strftime(
+    return datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S%f").strftime(
         "%Y-%m-%d %H:%M:%S"
     )
 
@@ -40,8 +40,8 @@ def human_filesize(file_size_bytes: int) -> str:
         The filesize in bytes
     :return:
         The human readable filesize"""
-    if file_size_bytes == 0:
-        return "0B"
+    if file_size_bytes == 0 or file_size_bytes is None:
+        return ""
     suffixes = ["B", "KB", "MB", "GB", "TB"]
     suffix_index = 0
     while file_size_bytes >= 1024:
@@ -56,7 +56,7 @@ def human_rate(rate_bytes_per_second: float) -> str:
         The rate in bytes per second
     :return:
         The human readable rate"""
-    if rate_bytes_per_second == 0:
+    if rate_bytes_per_second <= 0 or rate_bytes_per_second is None:
         return "0B/s"
     suffixes = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"]
     suffix_index = 0
@@ -72,6 +72,6 @@ def human_eta(eta_seconds: int) -> str:
         The ETA in seconds
     :return:
         The human readable ETA. For zero time left returns a blank string"""
-    if eta_seconds == 0:
+    if eta_seconds <= 0 or eta_seconds is None:
         return ""
     return str(timedelta(seconds=eta_seconds))

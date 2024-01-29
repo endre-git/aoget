@@ -40,10 +40,10 @@ class TestAogetutil(unittest.TestCase):
     def test_timestamp_str(self):
         # Test case for a valid timestamp string
         result = timestamp_str()
-        self.assertTrue("-" in result and len(result) == 15)
+        self.assertTrue("-" in result and len(result) == 18)
 
     def test_human_timestamp_from(self):
-        date = "20200101-000000"
+        date = "20200101-000000000"
         expected_result = "2020-01-01 00:00:00"
         result = human_timestamp_from(date)
         self.assertEqual(result, expected_result)
@@ -51,7 +51,7 @@ class TestAogetutil(unittest.TestCase):
     def test_human_filesize(self):
         # Test case for a filesize of 0 bytes
         file_size_bytes = 0
-        expected_result = "0B"
+        expected_result = ""
         result = human_filesize(file_size_bytes)
         self.assertEqual(result, expected_result)
 

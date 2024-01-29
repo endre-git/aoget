@@ -28,8 +28,8 @@ class FileModel(Base):
     extension: Mapped[str] = mapped_column(nullable=False)
     selected: Mapped[bool] = mapped_column(default=False, nullable=False)
     url: Mapped[str] = mapped_column(nullable=False)
-    size_bytes: Mapped[int] = mapped_column(nullable=False, default=0)
-    downloaded_bytes: Mapped[int] = mapped_column(nullable=False, default=0)
+    size_bytes: Mapped[int] = mapped_column(nullable=True, default=0)
+    downloaded_bytes: Mapped[int] = mapped_column(nullable=True, default=0)
     status: Mapped[str] = mapped_column(default=STATUS_NEW)
     history_entries: Mapped[List["FileEvent"]] = relationship(back_populates="file",
                                                               cascade="all, delete, delete-orphan")
@@ -89,6 +89,6 @@ class FileModel(Base):
     def validate_downloaded(self) -> int:
         """Check on disk if the file has been downloaded successfully."""
         if not os.path.exists(self.get_target_path()):
-            self.add_event("File does not exist on disk.")
             return -1
         return os.path.getsize(self.get_target_path())
+    

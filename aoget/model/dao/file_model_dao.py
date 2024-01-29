@@ -1,5 +1,4 @@
 import logging
-import threading
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from aoget.model import FileModel, Job
@@ -10,17 +9,19 @@ logger = logging.getLogger(__name__)
 class FileModelDAO:
     """Data access object for FileModels."""
 
-    def __init__(self, session: Session, commit_lock: threading.Lock):
+    def __init__(self, shared_session: Session):
         """Create a new FileModelDAO.
         :param session:
             The SQLAlchemy session to use."""
-        self.session = session
-        self.commit_lock = commit_lock
+        self.session = shared_session
 
     def _commit(self):
-        """Thread-safe commit using the commit lock."""
-        with self.commit_lock:
+        """Commit the current transaction."""
+        try:
             self.session.commit()
+        except SQLAlchemyError as e:
+            logger.error(f"Error committing transaction: {e}")
+            raise e
 
     def create_file_model(self, job: Job, url: str, commit: bool = True) -> FileModel:
         """Create and persist a new FileModel using the bare minimum parameter set.
@@ -68,12 +69,11 @@ class FileModelDAO:
         :param file_model_id: The ID of the FileModel to update.
         :param new_status: The new status of the FileModel
         :param commit: Whether to commit the transaction"""
-        with self.commit_lock:
-            file_model = self.session.query(FileModel).get(file_model_id)
-            if file_model:
-                file_model.status = new_status
-                if commit:
-                    self.session.commit()
+        file_model = self.session.query(FileModel).get(file_model_id)
+        if file_model:
+            file_model.status = new_status
+            if commit:
+                self._commit()
 
     def delete_file_model(self, file_model_id: int, commit: bool = True) -> None:
         """Delete a FileModel.
@@ -118,3 +118,34 @@ class FileModelDAO:
             file_model.downloaded_bytes = new_downloaded_bytes
             if commit:
                 self._commit()
+
+    def get_selected_files_of_job(self, job_id: int) -> list:
+        """Get the selected files of a job.
+        :param job_id: The ID of the job to get the selected files for
+        :return: A list of FileModel objects"""
+        return (
+            self.session.query(FileModel)
+            .filter_by(job_id=job_id, selected=True)
+            .all()
+        )
+    
+    def get_selected_files_with_unknown_size(self, job_id: int) -> list:
+        """Get the selected files of a job with unknown size.
+        :param job_id: The ID of the job to get the selected files for
+        :return: A list of FileModel objects"""
+        return (
+            self.session.query(FileModel)
+            .filter_by(job_id=job_id, selected=True, size_bytes=None)
+            .all()
+        )
+
+    def get_file_model_by_name(self, job_id: int, filename: str) -> FileModel:
+        """Get a FileModel by its name.
+        :param job_id: The ID of the job to get the FileModel for
+        :param filename: The name of the FileModel to get
+        :return: The requested FileModel"""
+        return (
+            self.session.query(FileModel)
+            .filter_by(job_id=job_id, name=filename)
+            .first()
+        )

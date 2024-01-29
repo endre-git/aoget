@@ -1,5 +1,4 @@
 import logging
-import threading
 from sqlalchemy.orm import Session
 from ..file_event import FileEvent
 from ..file_model import FileModel
@@ -15,13 +14,12 @@ class FileEventDAO:
     objects within a database using SQLAlchemy. It employs a thread-safe commit
     mechanism to ensure data integrity in concurrent environments."""
 
-    def __init__(self, session: Session, commit_lock: threading.Lock):
+    def __init__(self, session: Session):
         """Create a new FileEventDAO.
 
         :param session: The SQLAlchemy session to use for database operations.
         """
         self.session = session
-        self.commit_lock = commit_lock
 
     def _commit(self):
         """Perform a thread-safe commit using the commit lock.
@@ -29,8 +27,7 @@ class FileEventDAO:
         This method handles the commit operation within a lock, ensuring that
         commit operations are thread-safe.
         """
-        with self.commit_lock:
-            self.session.commit()
+        self.session.commit()
 
     def create_file_event(
         self, event: str, file_model: FileModel, commit: bool = True

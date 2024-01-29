@@ -1,6 +1,6 @@
 import unittest
 from collections import defaultdict
-from aoget.web.monitor_daemon import MonitorDaemon
+from aoget.web.journal_daemon import JournalDaemon
 from time import sleep
 
 
@@ -22,7 +22,7 @@ class TestMonitorDaemon(unittest.TestCase):
         job_name = "test_job"
         filename = "test_file.txt"
         mock_monitor = MockJobMonitor()
-        daemon = MonitorDaemon(update_interval_seconds=0.01)
+        daemon = JournalDaemon(update_interval_seconds=0.01)
 
         # Add job monitor
         daemon.add_job_monitor(job_name, mock_monitor)

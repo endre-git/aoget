@@ -101,6 +101,12 @@ class Job(Base):
         :return:
             A list of filenames"""
         return sorted(filemodel.name for filemodel in self.files if filemodel.selected)
+    
+    def get_selected_filemodels(self):
+        """Get the filemodels of the selected files.
+        :return:
+            A list of filemodels"""
+        return [filemodel for filemodel in self.files if filemodel.selected]
 
     def get_file_by_name(self, filename: str) -> FileModel:
         """Get the file with the given filename.
@@ -125,3 +131,9 @@ class Job(Base):
         :return:
             A list of files"""
         return [file for file in self.files if file.selected and file.size_bytes == 0]
+
+    def has_files_with_unknown_size(self) -> bool:
+        """Determine whether the job has any files with an unknown size.
+        :return:
+            True if the job has files with an unknown size, False otherwise"""
+        return len(self.get_selected_files_with_unknown_size()) > 0

@@ -105,3 +105,20 @@ class JobDAO:
             logger.info(f"Deleted and committed job: {job}")
         else:
             logger.info(f"Deleted job (not committed): {job}")
+
+    def get_job_by_name(self, name: str) -> Job:
+        """Get a Job by its name.
+        :param name:
+            The name of the Job to get
+        :return:
+            The Job"""
+        return self.session.query(Job).filter(Job.name == name).first()
+
+    def save_job(self, job: Job, commit: bool = True) -> None:
+        """Save a Job.
+        :param job:
+            The Job to save
+        :param commit:
+            Whether to commit the changes to the database"""
+        if commit:
+            self.session.commit()

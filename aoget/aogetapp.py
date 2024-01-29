@@ -2,11 +2,11 @@ import sys
 import os
 from PyQt6.QtWidgets import QApplication
 
-from aoget.view.main_window import MainWindow
+from view.main_window import MainWindow
 from util.qt_util import install_catch_all_exception_handler
 import logging
 from config.app_config import get_config_value, load_config_from_file, AppConfig
-from aogetdb import init_db
+from db.aogetdb import init_db
 
 logger = logging.getLogger(__name__)
 
@@ -34,15 +34,15 @@ def setup_db():
     config_db_url = get_config_value(AppConfig.DATABASE_URL)
     if config_db_url is None:
         raise ValueError("No database URL specified in config file.")
-    init_db(config_db_url)
+    return init_db(config_db_url)
 
 
 setup_config()
-setup_db()
+aoget_db = setup_db()
 
 logger.info("Working dir: " + os.getcwd())
 logger.info("App config initialized with: " + str(AppConfig.app_config))
 app = QApplication(sys.argv)
-window = MainWindow()
+window = MainWindow(aoget_db)
 install_catch_all_exception_handler(window)
 app.exec()

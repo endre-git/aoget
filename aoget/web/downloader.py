@@ -99,11 +99,18 @@ def __downloader(
                 logger.info("Download cancelled.")
                 return STATUS_STOPPED
 
+    # there's an unlikely possibility that the file was resumed when already
+    # completed, so we emit a completed update progress signal, which might
+    # be redundant for proper downloads
+    if signals is not None:
+        signals.on_update_progress(total, total)
     logger.info("Downloaded %s", url)
     return STATUS_COMPLETED
 
 
-def download_file(url: str, local_path: str, signals: DownloadSignals = None) -> str:
+def download_file(
+    url: str, local_path: str, signals: DownloadSignals = None, file_size: int = -1
+) -> str:
     """Execute the correct download operation.
     Depending on the size of the file online and offline, resume the
     download if the file offline is smaller than online.
@@ -120,7 +127,10 @@ def download_file(url: str, local_path: str, signals: DownloadSignals = None) ->
     r = requests.head(url, timeout=TIMEOUT_SECONDS)
 
     # Get filesize of online and offline file
-    file_size_online = resolve_remote_file_size(url)
+    if file_size != -1:
+        file_size_online = file_size
+    else:
+        file_size_online = resolve_remote_file_size(url)
     server_resume_supported = r.headers.get("accept-ranges", None) is not None
     logger.info("Server supports resume for: %s", url)
     file = Path(local_path)
