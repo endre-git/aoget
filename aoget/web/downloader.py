@@ -8,6 +8,7 @@ from pathlib import Path
 import hashlib
 import logging
 import requests
+from util.aogetutil import human_filesize
 
 TIMEOUT_SECONDS = 5
 
@@ -45,6 +46,14 @@ class DownloadSignals(ABC):
         ----------
         status: str
             The new status of the file"""
+        pass
+
+    def on_event(self, event: str) -> None:
+        """When an event occurs.
+        Parameters:
+        ----------
+        event: str
+            The event that occurred"""
         pass
 
     def cancel(self) -> None:
@@ -141,7 +150,13 @@ def download_file(
         if file_size_online != file_size_offline:
             if server_resume_supported:
                 # resume download
+
                 logger.info("Resuming download of %s", url)
+                signals.on_event(
+                    "Resuming download at "
+                    + str(human_filesize(file_size_offline))
+                    + "."
+                )
                 return __downloader(
                     url,
                     local_path,
@@ -153,9 +168,12 @@ def download_file(
                     "Server does not support resume for %s, downloading from scratch.",
                     url,
                 )
+                signals.on_event("Server does not support resume, restarting download.")
                 return __downloader(url, local_path, signals=signals)
         else:
             logger.info("File %s already downloaded.", url)
+            signals.on_event("File was already on disk and complete.")
+            signals.on_update_progress(file_size_offline, file_size_offline)
             return STATUS_COMPLETED
     else:
         logger.info("Downloading %s from scratch.", url)

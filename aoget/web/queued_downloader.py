@@ -57,6 +57,12 @@ class FileProgressSignals(DownloadSignals):
             The status to listen to"""
         self.status_listeners[status] = event
 
+    def on_event(self, event: str) -> None:
+        """Report an event to the monitor daemon.
+        :param event:
+            The event to report"""
+        self.monitor.add_file_event(self.jobname, self.filename, event)
+
 
 class QueuedDownloader:
     """A thread-safe queue for downloading files in a job. Intended to be created per job."""
@@ -156,6 +162,8 @@ class QueuedDownloader:
             self.queue.put(None)
         for t in self.threads:
             t.join()
+        with self.download_thread_lock:
+            self.are_download_threads_running = False
 
     def __download_worker(self):
         """The worker thread that downloads files from the queue."""

@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
 from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
-from .main_window_controller import MainWindowController
+from controller.main_window_controller import MainWindowController
 
 from aoget.view.new_job_dialog import NewJobDialog
 from aoget.view.file_details_dialog import FileDetailsDialog
@@ -513,10 +513,15 @@ class MainWindow(QMainWindow):
         self.tblFiles.setItem(
             row, MainWindow.FILE_NAME_IDX, QTableWidgetItem(file.name)
         )
+        size_str = (
+            human_filesize(file.size_bytes)
+            if file.size_bytes is not None and file.size_bytes > -1
+            else ""
+        )
         self.tblFiles.setItem(
             row,
             MainWindow.FILE_SIZE_IDX,
-            QTableWidgetItem(human_filesize(file.size_bytes)),
+            QTableWidgetItem(size_str),
         )
         self.tblFiles.setItem(
             row, MainWindow.FILE_STATUS_IDX, QTableWidgetItem(file.status)

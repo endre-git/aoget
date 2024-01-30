@@ -56,7 +56,7 @@ class FileModelDAO:
         """Get a FileModel by its ID.
         :param file_model_id: The ID of the FileModel to get.
         :return: The requested FileModel object."""
-        return self.session.query(FileModel).get(file_model_id)
+        return self.session.get(FileModel, file_model_id)
 
     def get_all_file_models(self) -> list:
         """Get all FileModels.
@@ -70,7 +70,7 @@ class FileModelDAO:
         :param file_model_id: The ID of the FileModel to update.
         :param new_status: The new status of the FileModel
         :param commit: Whether to commit the transaction"""
-        file_model = self.session.query(FileModel).get(file_model_id)
+        file_model = self.session.get(FileModel, file_model_id)
         if file_model:
             file_model.status = new_status
             if commit:
@@ -80,7 +80,7 @@ class FileModelDAO:
         """Delete a FileModel.
         :param file_model_id: The ID of the FileModel to delete
         :param commit: Whether to commit the transaction"""
-        file_model = self.session.query(FileModel).get(file_model_id)
+        file_model = self.session.get(FileModel, file_model_id)
         if file_model:
             self.session.delete(file_model)
             if commit:

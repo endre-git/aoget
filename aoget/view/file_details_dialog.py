@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QDialog
 from PyQt6 import uic
 from PyQt6.QtWidgets import QTableWidgetItem
 from PyQt6.QtWidgets import QHeaderView
-from .file_details_controller import FileDetailsController
+from ..controller.file_details_controller import FileDetailsController
 from util.aogetutil import human_timestamp_from
 
 
@@ -10,15 +10,24 @@ class FileDetailsDialog(QDialog):
     """File details dialog box showing the static properties and the full event log
     of a file."""
 
-    def __init__(self, main_window_controller: any, job_name: str, file_name: str):
+    def __init__(
+        self,
+        main_window_controller: any,
+        job_name: str,
+        file_name: str,
+        controller: any = None,
+    ):
         """Create a new FileDetailsDialog."""
         super(FileDetailsDialog, self).__init__()
         uic.loadUi("aoget/qt/file_details.ui", self)
         self.setWindowTitle("Details of " + file_name)
         self.__setup_ui()
-        self.controller = FileDetailsController(
-            self, main_window_controller, job_name, file_name
-        )
+        if controller is not None:
+            self.controller = controller
+        else:
+            self.controller = FileDetailsController(
+                self, main_window_controller, job_name, file_name
+            )
         self.__populate()
 
     def __setup_ui(self):
@@ -56,5 +65,7 @@ class FileDetailsDialog(QDialog):
         """Populate the history table."""
         self.tblFileHistory.setRowCount(len(history_entries))
         for i, (key, value) in enumerate(history_entries.items()):
-            self.tblFileHistory.setItem(i, 0, QTableWidgetItem(human_timestamp_from(key)))
+            self.tblFileHistory.setItem(
+                i, 0, QTableWidgetItem(human_timestamp_from(key))
+            )
             self.tblFileHistory.setItem(i, 1, QTableWidgetItem(value))

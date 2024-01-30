@@ -2,7 +2,7 @@ import os
 import logging
 from typing import Any
 from threading import Event
-from .main_window_job_monitor import MainWindowJobMonitor
+from view.main_window_job_monitor import MainWindowJobMonitor
 from aoget.web.journal_daemon import JournalDaemon
 from web.queued_downloader import QueuedDownloader
 from db.aogetdb import get_job_dao, get_file_model_dao, get_file_event_dao
@@ -124,8 +124,9 @@ class MainWindowController:
 
     def add_job(self, job) -> None:
         """Add a job"""
-        get_job_dao().add_job(job)
-        self.__resolve_file_sizes(job.name)
+        with self.db_lock:
+            get_job_dao().add_job(job)
+            self.__resolve_file_sizes(job.name)
 
     def update_file_size(self, job_name, file_name, size):  # async
         """Update the size of a file"""
