@@ -5,7 +5,7 @@ from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 from model.dto.file_event_dto import FileEventDTO
 from model.file_model import FileModel
-from util.aogetutil import timestamp_str
+from util.aogetutil import timestamp_str, human_filesize
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +173,7 @@ class JobUpdates:
             self.file_model_updates[file_name] = FileModelDTO(
                 job_name=self.job_name, name=file_name, size_bytes=size
             )
+        self.add_file_event(file_name, "Resolved size: " + str(human_filesize(size)))
 
     def deselect_file(self, file_name: str) -> None:
         """Deselect a file.

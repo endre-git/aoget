@@ -91,6 +91,8 @@ class FileModelDTO:
             self.status = other.status
         if other.deleted:
             self.deleted = other.deleted
+        if other.percent_completed and other.percent_completed > -1:
+            self.percent_completed = other.percent_completed
         return self
 
     def merge_into_model(self, file_model):
@@ -101,7 +103,8 @@ class FileModelDTO:
         file_model.selected = self.selected
         file_model.url = self.url if self.url else file_model.url
         file_model.size_bytes = (
-            self.size_bytes if self.size_bytes is not None and self.size_bytes > -1
+            self.size_bytes
+            if self.size_bytes is not None and self.size_bytes > -1
             else file_model.size_bytes
         )
         file_model.downloaded_bytes = (
@@ -116,12 +119,13 @@ class FileModelDTO:
         self.extension = (
             file_model.extension if file_model.extension else self.extension
         )
-        self.selected = file_model.selected if not file_model.selected else self.selected
+        self.selected = (
+            file_model.selected if not file_model.selected else self.selected
+        )
         self.url = file_model.url if file_model.url else self.url
         self.size_bytes = (
             file_model.size_bytes
-            if file_model.size_bytes is not None
-            and file_model.size_bytes > -1
+            if file_model.size_bytes is not None and file_model.size_bytes > -1
             else self.size_bytes
         )
         self.downloaded_bytes = (
@@ -133,6 +137,13 @@ class FileModelDTO:
         self.status = file_model.status if file_model.status else self.status
         self.last_event_timestamp = file_model.get_latest_history_timestamp()
         self.last_event = file_model.get_latest_history_entry().event
+        if (
+            self.size_bytes is not None
+            and self.size_bytes > 0
+            and self.downloaded_bytes is not None
+            and self.downloaded_bytes > -1
+        ):
+            self.percent_completed = int(100 * self.downloaded_bytes / self.size_bytes)
 
     def __str__(self):
         return (

@@ -19,6 +19,13 @@ class FileEventDTO:
             file=file_model
         )
 
+    @classmethod
+    def from_model(cls, file_event: FileEvent):
+        return cls(
+            timestamp=file_event.timestamp,
+            event=file_event.event
+        )
+
     def __str__(self):
         return f"FileEventDTO(timestamp={self.timestamp}, event={self.event})"
 

@@ -85,10 +85,11 @@ class QueuedDownloader:
         self.signals = {}
         self.files_in_queue = []
         self.files_downloading = []
-        self.size_update_lock = threading.RLock()
-        self.resolved_all_file_sizes = False
+        self.size_resolver_lock = threading.RLock()
+        self.is_resolver_running = False
+        self.is_resolved_all_file_sizes = False
         self.resolved_file_sizes = {}
-        self.thread_management_lock = threading.Lock()
+        self.download_thread_lock = threading.Lock()
         self.are_download_threads_running = False
 
     def run(self) -> None:
@@ -100,11 +101,10 @@ class QueuedDownloader:
 
     def start_download_threads(self) -> None:
         """Start the download queue."""
-        with self.thread_management_lock:
-            if self.are_download_threads_running:
-                return
-            self.__start_workers()
-            self.are_download_threads_running = True
+        with self.download_thread_lock:
+            if not self.are_download_threads_running:
+                self.__start_workers()
+                self.are_download_threads_running = True
 
     def stop(self) -> None:
         """Stop the download queue."""
@@ -137,7 +137,11 @@ class QueuedDownloader:
         self.signals[filename].register_status_listener(event, status)
 
     def is_resolving_file_sizes(self) -> bool:
-        return False
+        """Determine whether the file sizes are still being resolved.
+        :return:
+            True if the file sizes are still being resolved, False otherwise"""
+        with self.size_resolver_lock:
+            return self.is_resolver_running
 
     def __start_workers(self, worker_pool=3):
         """Start the workers as per the worker pool size."""
@@ -189,7 +193,7 @@ class QueuedDownloader:
         signal = self.__create_download_signals_for(file_to_download.name)
         signal.on_update_status(FileModel.STATUS_DOWNLOADING)
         file_size = -1
-        with self.size_update_lock:
+        with self.size_resolver_lock:
             if file_to_download.name in self.resolved_file_sizes:
                 file_size = self.resolved_file_sizes[file_to_download.name]
         result_state = download_file(
@@ -235,8 +239,13 @@ class QueuedDownloader:
             The name of the job
         :param filemodels:
             The filemodels to resolve the file sizes for"""
+        if self.is_resolving_file_sizes() or self.is_resolved_all_file_sizes:
+            return
 
         def resolve_size_task():
+            with self.size_resolver_lock:
+                self.is_resolver_running = True
+
             logger.debug(
                 "Resolving file sizes in background for %d files", len(filemodels)
             )
@@ -246,7 +255,7 @@ class QueuedDownloader:
                     self.monitor.update_file_size(
                         job_name, filemodel.name, filemodel.size_bytes
                     )
-                    with self.size_update_lock:
+                    with self.size_resolver_lock:
                         self.resolved_file_sizes[filemodel.name] = filemodel.size_bytes
                 except Exception as e:
                     logger.error(
@@ -256,6 +265,8 @@ class QueuedDownloader:
                 "Finished resolving file sizes in background for %d files",
                 len(filemodels),
             )
-            self.resolved_all_file_sizes = True
+            with self.size_resolver_lock:
+                self.resolved_all_file_sizes = True
+                self.is_resolver_running = False
 
         threading.Thread(target=resolve_size_task).start()

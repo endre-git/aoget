@@ -8,13 +8,13 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QApplication,
 )
-from PyQt6.QtGui import QIcon
 from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
 from .main_window_controller import MainWindowController
 
 from aoget.view.new_job_dialog import NewJobDialog
+from aoget.view.file_details_dialog import FileDetailsDialog
 from util.aogetutil import human_timestamp_from, human_filesize, human_eta, human_rate
 from util.qt_util import confirmation_dialog
 from model.file_model import FileModel
@@ -217,7 +217,7 @@ class MainWindow(QMainWindow):
             return
         selected_job_name = self.tblJobs.selectedItems()[0].text()
         self.__show_files(selected_job_name)
-        # self.controller.job_post_select(selected_job_name)
+        self.controller.job_post_select(selected_job_name)
 
     def __on_job_table_double_clicked(self):
         """A job has been double clicked in the jobs table"""
@@ -387,31 +387,47 @@ class MainWindow(QMainWindow):
     def __on_file_remove(self):
         """Remove the selected file from the list and delete the local file"""
         if confirmation_dialog(
-            'Remove file from list and disk: "'
+            self,
+            'Remove file from list and disk: <b>"'
             + self.tblFiles.selectedItems()[0].text()
-            + '"?'
+            + '</b>"?',
         ):
             # immediately set the button to disabled, reset if an error occurs later
-            self.btnFileRemove.setEnabled(False)
+            self.btnFileRemoveFromList.setEnabled(False)
             if not self.__is_job_selected() or not self.__is_file_selected():
-                self.btnFileRemove.setEnabled(True)
+                self.btnFileRemoveFromList.setEnabled(True)
                 return
             job_name = self.tblJobs.selectedItems()[0].text()
             file_name = self.tblFiles.selectedItems()[0].text()
-            ok, message = self.controller.deselect_and_remove_file(job_name, file_name)
+            ok, message = self.controller.remove_file_from_job(
+                job_name, file_name, delete_from_disk=True
+            )
             if ok:
                 self.tblFiles.removeRow(self.tblFiles.currentRow())
             else:
                 self.__show_error_dialog("Failed to remove: " + message)
-                self.btnFileRemove.setEnabled(True)
+            self.btnFileRemoveFromList.setEnabled(True)
 
     def __on_file_details(self):
         """Show the details of the selected file"""
         if not self.__is_job_selected() or not self.__is_file_selected():
+            # show error that no files are selected
+            self.__show_error_dialog("No file selected")
             return
         job_name = self.tblJobs.selectedItems()[0].text()
         file_name = self.tblFiles.selectedItems()[0].text()
-        self.controller.show_file_details(job_name, file_name)
+        # if any of them is None, it means the job or file is not selected and we do nothing
+        if job_name is None or file_name is None:
+            return
+        dlg = FileDetailsDialog(self.controller, job_name, file_name)
+        val = dlg.exec()
+        if val == 1:
+            job = dlg.get_job()
+            logger.info("New job created: %s", job.name)
+            self.controller.add_job(job)
+            self.__update_jobs_table()
+        else:
+            logger.debug("New job creation cancelled")
 
     def __on_file_show_in_folder(self):
         """Show the selected file in the file explorer"""
@@ -509,7 +525,11 @@ class MainWindow(QMainWindow):
         if progress_bar is None:
             progress_bar = QProgressBar()
             self.tblFiles.setCellWidget(row, MainWindow.FILE_PROGRESS_IDX, progress_bar)
-        progress_bar.setValue(file.percent_completed)
+        progress_bar.setValue(
+            file.percent_completed
+            if file.percent_completed is not None and file.percent_completed > -1
+            else 0
+        )
         if (
             self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX).text()
             == FileModel.STATUS_DOWNLOADING

@@ -28,8 +28,8 @@ class FileModel(Base):
     extension: Mapped[str] = mapped_column(nullable=False)
     selected: Mapped[bool] = mapped_column(default=False, nullable=False)
     url: Mapped[str] = mapped_column(nullable=False)
-    size_bytes: Mapped[int] = mapped_column(nullable=True, default=0)
-    downloaded_bytes: Mapped[int] = mapped_column(nullable=True, default=0)
+    size_bytes: Mapped[int] = mapped_column(nullable=True, default=-1)
+    downloaded_bytes: Mapped[int] = mapped_column(nullable=True, default=-1)
     status: Mapped[str] = mapped_column(default=STATUS_NEW)
     history_entries: Mapped[List["FileEvent"]] = relationship(back_populates="file",
                                                               cascade="all, delete, delete-orphan")

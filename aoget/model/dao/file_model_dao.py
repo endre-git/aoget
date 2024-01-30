@@ -2,6 +2,7 @@ import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from aoget.model import FileModel, Job
+from sqlalchemy import and_, or_
 
 logger = logging.getLogger(__name__)
 
@@ -124,18 +125,17 @@ class FileModelDAO:
         :param job_id: The ID of the job to get the selected files for
         :return: A list of FileModel objects"""
         return (
-            self.session.query(FileModel)
-            .filter_by(job_id=job_id, selected=True)
-            .all()
+            self.session.query(FileModel).filter_by(job_id=job_id, selected=True).all()
         )
-    
+
     def get_selected_files_with_unknown_size(self, job_id: int) -> list:
         """Get the selected files of a job with unknown size.
         :param job_id: The ID of the job to get the selected files for
         :return: A list of FileModel objects"""
         return (
             self.session.query(FileModel)
-            .filter_by(job_id=job_id, selected=True, size_bytes=None)
+            .filter_by(job_id=job_id, selected=True)
+            .filter(FileModel.size_bytes.in_([None, -1]))
             .all()
         )
 

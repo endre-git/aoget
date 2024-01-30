@@ -10,6 +10,7 @@ from model.file_model import FileModel
 from model.job import Job
 from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
+from model.dto.file_event_dto import FileEventDTO
 from model.job_updates import JobUpdates
 from util.disk_util import get_local_file_size
 
@@ -74,15 +75,29 @@ class MainWindowController:
         """Get all selected files as DTOs by mapping each to a DTO and returning the list"""
         if job_name is None and job_id == -1:
             raise ValueError("Either job_name or job_id must be set.")
-        if job_id == -1:
+        with self.db_lock:
+            if job_id == -1:
+                job_id = get_job_dao().get_job_by_name(job_name).id
+            file_models = get_file_model_dao().get_selected_files_of_job(job_id)
+            file_dtos = list(
+                map(lambda file: FileModelDTO.from_model(file, job_name), file_models)
+            )
+            # sort by file name
+            file_dtos.sort(key=lambda file: file.name)
+            return file_dtos
+        
+    def get_file_event_dtos(self, job_name: str, file_name: str) -> list:
+        """Get all file events as DTOs by mapping each to a DTO and returning the list"""
+        with self.db_lock:
             job_id = get_job_dao().get_job_by_name(job_name).id
-        file_models = get_file_model_dao().get_selected_files_of_job(job_id)
-        file_dtos = list(
-            map(lambda file: FileModelDTO.from_model(file, job_name), file_models)
-        )
-        # sort by file name
-        file_dtos.sort(key=lambda file: file.name)
-        return file_dtos
+            file_id = get_file_model_dao().get_file_model_by_name(job_id, file_name).id
+            file_events = get_file_event_dao().get_file_events_by_file_id(file_id)
+            file_event_dtos = list(
+                map(lambda event: FileEventDTO.from_model(event), file_events)
+            )
+            # sort by timestamp
+            file_event_dtos.sort(key=lambda event: event.timestamp)
+            return file_event_dtos
 
     def job_count(self) -> int:
         """Get the number of jobs"""
@@ -248,11 +263,8 @@ class MainWindowController:
                     )
                 )
         if len(files_with_unknown_size) > 0:
-            self.__setup_downloader(
-                job_name,
-                start_downloads=False,
-                files_with_unknown_size=files_with_unknown_size,
-            )
+            self.__setup_downloader(job_name)
+            self.job_downloaders[job_name].resolve_file_sizes(job_name, files_with_unknown_size)
 
     def __validate_file_states(self, files_per_job) -> None:
         """Validate the file states"""
@@ -317,8 +329,6 @@ class MainWindowController:
             self.__setup_downloader(job_name)
 
         queue = self.job_downloaders[job_name]
-        queue.start_download_threads()
-
         if file_name in queue.files_in_queue:
             return False, "File is already downloading."
         if file_name in queue.files_downloading:
@@ -421,8 +431,6 @@ class MainWindowController:
     def __setup_downloader(
         self,
         job_name: str,
-        start_downloads: bool = False,
-        files_with_unknown_size: list = None,
     ) -> None:
         """Setup the downloader for the given job"""
         if job_name not in self.job_downloaders:
@@ -436,11 +444,7 @@ class MainWindowController:
             self.download_monitors[job_name] = download_monitor
             downloader = QueuedDownloader(job=job, monitor=self.monitor_daemon)
             self.job_downloaders[job_name] = downloader
-
-        if files_with_unknown_size is not None:
-            downloader.resolve_file_sizes(files_with_unknown_size)
-        if start_downloads:
-            downloader.start_download_threads()
+            downloader.start_download_threads()      
 
     # TODO refactor this out of there. There should be a central update cycle handler
     def update_tick(self, journal: dict):

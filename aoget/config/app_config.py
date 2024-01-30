@@ -11,6 +11,7 @@ class AppConfig:
     URL_HISTORY_FILE = "url-history-file"
     DATABASE_URL = "database-url"
     URL_CACHE_FOLDER = "url-cache-folder"
+    AUTO_RESOLVE_FILE_SIZES = "auto-resolve-file-sizes"
     app_config = {}
 
 

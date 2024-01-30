@@ -4,5 +4,6 @@
     "settings-folder" : "settings/",
     "target-folder-history-file": "settings/target-folder-history.lst",
     "url-history-file": "settings/url-history.lst",
-    "url-cache-folder" : "settings/url-cache"
+    "url-cache-folder" : "settings/url-cache",
+    "auto-resolve-file-sizes" : true
 }
