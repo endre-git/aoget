@@ -8,7 +8,7 @@ from model.dto.job_dto import JobDTO
 from .downloader import download_file, DownloadSignals, resolve_remote_file_size
 from model.dto.file_model_dto import FileModelDTO
 from model.file_model import FileModel
-from .journal_daemon import JournalDaemon
+from controller.journal_daemon import JournalDaemon
 
 logger = logging.getLogger(__name__)
 

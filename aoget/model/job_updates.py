@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class JobUpdates:
-    """This is a journal of changes to the database. It is used to update the database in a
-    single run instead of having plenty of small transactions. It also allows a drastically
-    simplified database session management."""
+    """This is a journal of changes. It is used to update the database in a single run
+    instead of having plenty of small transactions. It also allows a drastically
+    simplified database session management and the use of immutable objects in the app."""
 
     def __init__(self, job_name: str):
         self.job_name = job_name

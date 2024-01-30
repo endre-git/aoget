@@ -4,8 +4,7 @@ from unittest.mock import MagicMock, patch
 from aoget.model.dto.job_dto import JobDTO
 from aoget.model.dto.file_model_dto import FileModelDTO
 from aoget.web.queued_downloader import QueuedDownloader
-from aoget.web.journal_daemon import JournalDaemon
-import aoget
+from aoget.controller.journal_daemon import JournalDaemon
 
 @pytest.fixture
 def mock_journal_daemon():

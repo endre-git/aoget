@@ -2,8 +2,7 @@ import os
 import logging
 from typing import Any
 from threading import Event
-from view.main_window_job_monitor import MainWindowJobMonitor
-from aoget.web.journal_daemon import JournalDaemon
+from aoget.controller.journal_daemon import JournalDaemon
 from web.queued_downloader import QueuedDownloader
 from db.aogetdb import get_job_dao, get_file_model_dao, get_file_event_dao
 from model.file_model import FileModel
@@ -22,7 +21,6 @@ class MainWindowController:
     underlying models."""
 
     job_downloaders = {}
-    download_monitors = {}
     scoped_session_factory = None
     journal = {}
 
@@ -441,8 +439,6 @@ class MainWindowController:
                 job_dto = JobDTO.from_model(job)
             if job_dto is None:
                 raise ValueError("Unknown job: " + job_name)
-            download_monitor = MainWindowJobMonitor(self, job_dto)
-            self.download_monitors[job_name] = download_monitor
             downloader = QueuedDownloader(job=job, monitor=self.monitor_daemon)
             self.job_downloaders[job_name] = downloader
             downloader.start_download_threads()      

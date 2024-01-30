@@ -1,7 +1,7 @@
 import pytest
 import time
 from unittest.mock import Mock
-from aoget.web.journal_daemon import JournalDaemon
+from aoget.controller.journal_daemon import JournalDaemon
 
 
 class TestJournalDaemon:
