@@ -13,7 +13,7 @@ from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
 from controller.main_window_controller import MainWindowController
 
-from aoget.view.new_job_dialog import NewJobDialog
+from aoget.view.job_editor_dialog import JobEditorDialog
 from aoget.view.file_details_dialog import FileDetailsDialog
 from util.aogetutil import human_timestamp_from, human_filesize, human_eta, human_rate
 from util.qt_util import confirmation_dialog
@@ -225,7 +225,7 @@ class MainWindow(QMainWindow):
 
     def __on_create_new_job(self):
         """Create a new job"""
-        dlg = NewJobDialog()
+        dlg = JobEditorDialog(self.controller)
         val = dlg.exec()
         if val == 1:
             job = dlg.get_job()

@@ -4,30 +4,26 @@ import logging
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QDialog, QFileDialog
 from PyQt6 import uic
-from scrapy.crawler import CrawlerProcess
 from PyQt6.QtWidgets import QTreeWidgetItem
+from aoget.controller.job_editor_controller import JobEditorController
 
 import aogetsettings
-from model.job import Job
-from web.aospider import AoSpider
-from web.aopage import AoPage
-from util.aogetutil import is_valid_url
-from util.qt_util import error_dialog, qt_debounce
+
+from util.qt_util import error_dialog, qt_debounce, confirmation_dialog
 
 logger = logging.getLogger("NewJobDialog")
 
 
-class NewJobDialog(QDialog):
-    """New job dialog. Note that this is more a controller than a view. View was done in
-    Qt Designer and is loaded from a .ui file found under aoget/qt/new_job.ui"""
+class JobEditorDialog(QDialog):
+    """Dialog for editing a job. The QT design is defined in aoget/qt/job_editor.ui."""
 
-    job: Job = None
-
-    def __init__(self):
-        super(NewJobDialog, self).__init__()
-        uic.loadUi("aoget/qt/new_job.ui", self)
+    def __init__(self, main_window_controller: any):
+        super(JobEditorDialog, self).__init__()
+        uic.loadUi("aoget/qt/job_editor.ui", self)
+        self.app_controller = main_window_controller
         self.__setup_ui()
-        self.job = Job()
+        self.controller = JobEditorController(self, main_window_controller)
+        self.sort_preview_list = True
 
     def __setup_ui(self):
         """Setup the component post generation. This is called from the constructor."""
@@ -66,29 +62,43 @@ class NewJobDialog(QDialog):
 
     def __on_check_all_shown(self):
         """Button click on check all shown"""
+        if self.lstFilesetPreview.count() == 0:
+            self.sort_preview_list = False
         for i in range(self.treeFileSelector.topLevelItemCount()):
             extension_node = self.treeFileSelector.topLevelItem(i)
+            if not extension_node.isExpanded():
+                continue
             for j in range(extension_node.childCount()):
                 file_node = extension_node.child(j)
                 if not file_node.isHidden():
-                    self.job.set_file_selected(file_node.text(0))
                     file_node.setCheckState(0, QtCore.Qt.CheckState.Checked)
-        self.__update_preview_list()
+        self.sort_preview_list = True
 
     def __on_uncheck_all_shown(self):
         """Button click on uncheck all shown"""
         for i in range(self.treeFileSelector.topLevelItemCount()):
             extension_node = self.treeFileSelector.topLevelItem(i)
+            if not extension_node.isExpanded():
+                continue
             for j in range(extension_node.childCount()):
                 file_node = extension_node.child(j)
                 if not file_node.isHidden():
-                    self.job.set_file_unselected(file_node.text(0))
                     file_node.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
-        self.__update_preview_list()
 
     def __on_reset_selection(self):
         """Button click on reset selection"""
-        pass
+        if confirmation_dialog(
+            self,
+            "Are you sure you want to reset the selection?",
+            "Reset selection",
+        ):
+            self.txtSelectionFilter.clear()
+            self.lstFilesetPreview.clear()
+            for i in range(self.treeFileSelector.topLevelItemCount()):
+                extension_node = self.treeFileSelector.topLevelItem(i)
+                for j in range(extension_node.childCount()):
+                    file_node = extension_node.child(j)
+                    file_node.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
 
     def __on_filter_selection_text_changed(self):
         """Filter the selection based on the text in the filter box"""
@@ -105,16 +115,34 @@ class NewJobDialog(QDialog):
 
     def __on_file_selector_tree_check_changed(self, item, column):
         """When an item changed in the file selector tree"""
-        logger.info(
-            "Item check changed: %s %s", item.text(column), str(item.checkState(column))
-        )
         if item.checkState(column) == QtCore.Qt.CheckState.Checked:
-            self.job.set_file_selected(item.text(column))
+            self.controller.set_file_selected(item.text(column))
+            self.__add_to_preview_list(item.text(column))
         elif item.checkState(column) == QtCore.Qt.CheckState.Unchecked:
-            self.job.set_file_unselected(item.text(column))
+            self.controller.set_file_unselected(item.text(column))
+            self.__remove_from_preview_list(item.text(column))
         else:
-            logger.info("Partially checked")
-        self.__update_preview_list()
+            logger.error("Partially checked" + item.text(column))
+
+    def __add_to_preview_list(self, filename):
+        """Add the filename to the preview list, at its alphabetically correct place"""
+        if self.sort_preview_list:
+            index = 0
+            while (
+                index < self.lstFilesetPreview.count()
+                and filename.lower() > self.lstFilesetPreview.item(index).text().lower()
+            ):
+                index += 1
+            self.lstFilesetPreview.insertItem(index, filename)
+        else:
+            self.lstFilesetPreview.addItem(filename)
+
+    def __remove_from_preview_list(self, filename):
+        """Remove the filename from the preview list"""
+        for i in range(self.lstFilesetPreview.count()):
+            if self.lstFilesetPreview.item(i).text() == filename:
+                self.lstFilesetPreview.takeItem(i)
+                break
 
     def __update_preview_list(self):
         """Update the preview list"""
@@ -123,63 +151,35 @@ class NewJobDialog(QDialog):
             self.lstFilesetPreview.addItem(file)
 
     def __on_fetch_page(self):
-        """Fetch the page and update the preview list"""
+        url = self.cmbPageUrl.currentText()
+        try:
+            files_by_extension = self.controller.build_fileset(url)
+            aogetsettings.update_url_history(url)
+            self.lstFilesetPreview.clear()
+            nodes = []
+            sorted_extensions = sorted(files_by_extension.keys())
+            for extension in sorted_extensions:
+                if extension == "":
+                    displayed_extension = "(blank)"
+                else:
+                    displayed_extension = extension
+                extension_node = QTreeWidgetItem([displayed_extension])
+                for file in files_by_extension[extension]:
+                    child = QTreeWidgetItem([file.name])
+                    child.setFlags(
+                        child.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable
+                    )
+                    child.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
 
-        base_url = self.cmbPageUrl.currentText()
+                    extension_node.addChild(child)
+                nodes.append(extension_node)
 
-        if not is_valid_url(base_url):
-            error_dialog(
-                self,
-                "Invalid URL. Please enter a complete url, including http:// or https://",
-            )
-            return
-
-        aogetsettings.update_url_history(base_url)
-        job_name = base_url.split("/")[-1]
-        self.txtJobName.setText(job_name)
-        self.job.name = job_name
-        self.job.page_url = base_url
-        self.job.status = Job.STATUS_CREATED
-
-        logger.info("Fetching page: %s", base_url)
-        process = CrawlerProcess(
-            settings={
-                "FEEDS": {
-                    "items.json": {"format": "json"},
-                },
-                "REQUEST_FINGERPRINTER_IMPLEMENTATION": "2.7",
-                "HTTPCACHE_ENABLED": False,
-            }
-        )
-
-        ao_page = AoPage()
-        process.crawl(AoSpider,
-                      ao_page=ao_page,
-                      name="aoget",
-                      allowed_domains="archive.org",
-                      start_url=base_url)
-        process.start()  # the script will block here until the crawling is finished
-
-        self.job.ingest_links(ao_page)
-
-        nodes = []
-        for extension in self.job.get_sorted_extensions():
-            if extension == "":
-                displayed_extension = "(blank)"
-            else:
-                displayed_extension = extension
-            extension_node = QTreeWidgetItem([displayed_extension])
-            for file in self.job.get_sorted_filenames_by_extension(extension):
-                child = QTreeWidgetItem([file])
-                child.setFlags(child.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
-                child.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
-
-                extension_node.addChild(child)
-            nodes.append(extension_node)
-
-        self.treeFileSelector.insertTopLevelItems(0, nodes)
-        self.treeFileSelector.setEnabled(True)
-        self.treeFileSelector.show()
+            self.treeFileSelector.insertTopLevelItems(0, nodes)
+            self.treeFileSelector.setEnabled(True)
+            self.treeFileSelector.show()
+        except Exception as e:
+            logger.error(f"Error fetching links from page: {e}")
+            error_dialog(self, f"Can't get links from page: {e}")
 
     def get_job(self):
         """Get the job. The only public method."""

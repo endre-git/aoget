@@ -1,3 +1,6 @@
+from urllib.parse import unquote
+
+
 class FileModelDTO:
     """Data transfer object for file models. This is used to access the database models in a
     thread-safe manner. History entries are sorted by timestamp in descending order, no matter
@@ -45,6 +48,18 @@ class FileModelDTO:
         ):
             self.percent_completed = int(100 * self.downloaded_bytes / self.size_bytes)
         self.deleted = False
+
+    @classmethod
+    def from_url(cls, url):
+        name = unquote(url.split("/")[-1])
+        extension = name.split(".")[-1] if "." in name else ""
+        file_model_dto = cls(
+            name=name,
+            extension=extension,
+            job_name=None,
+            url=url,
+        )
+        return file_model_dto
 
     @classmethod
     def from_model(cls, file_model, job_name):
@@ -161,3 +176,27 @@ class FileModelDTO:
 
     def __repr__(self):
         return self.__str__()
+
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, FileModelDTO):
+            return False
+        return (
+            self.name == __value.name
+            and self.job_name == __value.job_name
+            and self.extension == __value.extension
+            and self.selected == __value.selected
+            and self.url == __value.url
+            and self.size_bytes == __value.size_bytes
+            and self.downloaded_bytes == __value.downloaded_bytes
+            and self.status == __value.status
+            and self.rate_bytes_per_sec == __value.rate_bytes_per_sec
+            and self.eta_seconds == __value.eta_seconds
+            and self.percent_completed == __value.percent_completed
+            and self.last_event_timestamp == __value.last_event_timestamp
+            and self.last_event == __value.last_event
+            and self.target_path == __value.target_path
+            and self.deleted == __value.deleted
+        )
+
+    def __lt__(self, other):
+        return self.name < other.name

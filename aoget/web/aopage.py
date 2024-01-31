@@ -5,8 +5,9 @@ import urllib.parse
 class AoPage:
     """Represents an archive.org page, as a collection of links do downloadable files."""
 
-    files_by_extension = defaultdict(list)
-    extension_counts = defaultdict(lambda: 0)
+    def __init__(self):
+        self.files_by_extension = defaultdict(list)
+        self.extension_counts = defaultdict(lambda: 0)
 
     def add_file_by_extension(self, extension, url):
         self.files_by_extension[extension].append(url)

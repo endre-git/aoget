@@ -13,6 +13,16 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "env": {"PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/aoget/:${workspaceFolder}/aoget/tests/"}
+        },
+        {
+            "name": "Python: Crawler sample",
+            "type": "python",
+            "request": "launch",
+            "program": "aoget/web/sample.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {"PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/aoget/:${workspaceFolder}/aoget/tests/"}
         }
+
     ]
 }
