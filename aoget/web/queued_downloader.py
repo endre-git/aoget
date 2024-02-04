@@ -149,6 +149,12 @@ class QueuedDownloader:
         with self.size_resolver_lock:
             return self.is_resolver_running
 
+    def is_downloading(self) -> bool:
+        """Determine whether the queue is still downloading files.
+        :return:
+            True if the queue is still downloading files, False otherwise"""
+        return len(self.files_downloading) > 0 or len(self.files_in_queue) > 0
+
     def __start_workers(self, worker_pool=3):
         """Start the workers as per the worker pool size."""
         for i in range(worker_pool):

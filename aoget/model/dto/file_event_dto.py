@@ -1,4 +1,4 @@
-from aoget.model.file_event import FileEvent
+from model.file_event import FileEvent
 
 
 class FileEventDTO:

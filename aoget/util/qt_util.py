@@ -52,12 +52,16 @@ def qt_debounce(component, wait_ms, function, *args, **kwargs):
             The function to call to start the debounce timer
     """
 
-    component.debounce = QTimer()
-    component.debounce.setInterval(wait_ms)
-    component.debounce.setSingleShot(True)
-    component.debounce.timeout.connect(lambda: function(*args, **kwargs))
+    # if the component has no debounced attribute, create it
+    if not hasattr(component, "debounced"):
+        component.debounced = []
+    debounce = QTimer()
+    debounce.setInterval(wait_ms)
+    debounce.setSingleShot(True)
+    debounce.timeout.connect(lambda: function(*args, **kwargs))
+    component.debounced.append(debounce)
 
-    return component.debounce.start
+    return debounce.start
 
 
 def install_catch_all_exception_handler(main_window):

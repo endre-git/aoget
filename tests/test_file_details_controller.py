@@ -37,7 +37,7 @@ def test_get_properties(file_details_controller):
     assert properties["Target Path"] == '/path/to/testfile'
     assert (
         properties["Size"] == '1.0KB'
-    ) 
+    )
 
 
 def test_get_history_entries(file_details_controller):

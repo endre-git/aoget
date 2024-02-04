@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 from PyQt6.QtWidgets import (
     QMainWindow,
@@ -13,8 +14,8 @@ from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
 from controller.main_window_controller import MainWindowController
 
-from aoget.view.job_editor_dialog import JobEditorDialog
-from aoget.view.file_details_dialog import FileDetailsDialog
+from view.job_editor_dialog import JobEditorDialog
+from view.file_details_dialog import FileDetailsDialog
 from util.aogetutil import human_timestamp_from, human_filesize, human_eta, human_rate
 from util.qt_util import confirmation_dialog
 from model.file_model import FileModel
@@ -105,7 +106,8 @@ class MainWindow(QMainWindow):
             self.tblJobs.setColumnWidth(i, width)
 
         # job control buttons
-        self.btnCreateNew.clicked.connect(self.__on_create_new_job)
+        self.btnJobCreate.clicked.connect(self.__on_create_new_job)
+        self.btnJobEdit.clicked.connect(self.__on_edit_job)
 
         # jobs table selection
         self.tblJobs.itemSelectionChanged.connect(self.__on_job_selected)
@@ -221,28 +223,56 @@ class MainWindow(QMainWindow):
 
     def __on_job_table_double_clicked(self):
         """A job has been double clicked in the jobs table"""
-        self.__show_files(self.jobs[self.tblJobs.item(0, 0).text()])
+        pass
 
     def __on_create_new_job(self):
         """Create a new job"""
+        selected_job_name = (
+            self.tblJobs.selectedItems()[0].text() if self.__is_job_selected() else None
+        )
         dlg = JobEditorDialog(self.controller)
         val = dlg.exec()
         if val == 1:
-            job = dlg.get_job()
-            logger.info("New job created: %s", job.name)
-            self.controller.add_job(job)
             self.__update_jobs_table()
-        else:
-            logger.debug("New job creation cancelled")
+            newly_selected_job = (
+                self.tblJobs.selectedItems()[0].text()
+                if self.__is_job_selected()
+                else None
+            )
+            if (
+                newly_selected_job is not None
+                and newly_selected_job != selected_job_name
+            ):
+                self.__show_files(newly_selected_job)
+                self.controller.job_post_select(newly_selected_job)
+
+    def __on_edit_job(self):
+        """Edit the selected job"""
+        if not self.__is_job_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        if self.controller.is_job_downloading(job_name):
+            self.__show_error_dialog(
+                "Job is running. Please stop all downloads before editing."
+            )
+            return
+        dlg = JobEditorDialog(self.controller, job_name)
+        val = dlg.exec()
+        if val == 1:
+            self.__show_files(job_name)
 
     def __show_files(self, job_name):
         """Show the files of the given job in the files table."""
         if job_name is None:
             return
+        t0 = time.time()
         selected_files = self.controller.get_selected_file_dtos(job_name)
+        print("DB query took ", time.time() - t0, " seconds")
+        t0 = time.time()
         self.tblFiles.setRowCount(len(selected_files))
         for i, file in enumerate(selected_files):
             self.__set_file_at_row(i, file)
+        print("Populating table took ", time.time() - t0, " seconds")
 
     def __is_job_selected(self):
         """Determine whether a job is selected"""

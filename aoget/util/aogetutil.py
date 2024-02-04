@@ -40,7 +40,11 @@ def human_filesize(file_size_bytes: int) -> str:
         The filesize in bytes
     :return:
         The human readable filesize"""
-    if file_size_bytes == 0 or file_size_bytes is None:
+    if (
+        not isinstance(file_size_bytes, int)
+        or file_size_bytes <= 0
+        or file_size_bytes is None
+    ):
         return ""
     suffixes = ["B", "KB", "MB", "GB", "TB"]
     suffix_index = 0

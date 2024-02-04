@@ -1,0 +1,1 @@
+pyinstaller --noconsole aoget.spec

@@ -6,345 +6,399 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1102</width>
-    <height>606</height>
+    <width>1003</width>
+    <height>622</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Job Editor</string>
   </property>
-  <widget class="QDialogButtonBox" name="buttonBox">
-   <property name="geometry">
-    <rect>
-     <x>460</x>
-     <y>560</y>
-     <width>621</width>
-     <height>32</height>
-    </rect>
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="10,0">
+   <property name="spacing">
+    <number>10</number>
    </property>
-   <property name="orientation">
-    <enum>Qt::Horizontal</enum>
+   <property name="leftMargin">
+    <number>9</number>
    </property>
-   <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   <property name="topMargin">
+    <number>9</number>
    </property>
-  </widget>
-  <widget class="QGroupBox" name="groupBox">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>20</y>
-     <width>601</width>
-     <height>71</height>
-    </rect>
+   <property name="rightMargin">
+    <number>15</number>
    </property>
-   <property name="title">
-    <string>1. Provide your URL and click on the button. This will get all links non-recursively</string>
+   <property name="bottomMargin">
+    <number>15</number>
    </property>
-   <layout class="QGridLayout" name="gridLayout" columnstretch="1,0">
-    <item row="0" column="1">
-     <widget class="QPushButton" name="btnFetchPage">
-      <property name="toolTip">
-       <string>Get download links</string>
+   <item>
+    <widget class="QFrame" name="windowFrame">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout" stretch="65,35">
+      <property name="spacing">
+       <number>10</number>
       </property>
-      <property name="text">
-       <string/>
+      <property name="leftMargin">
+       <number>0</number>
       </property>
-      <property name="icon">
-       <iconset>
-        <normaloff>../resources/icons/download-cloud.svg</normaloff>../resources/icons/download-cloud.svg</iconset>
+      <property name="topMargin">
+       <number>0</number>
       </property>
-      <property name="iconSize">
-       <size>
-        <width>40</width>
-        <height>22</height>
-       </size>
+      <property name="rightMargin">
+       <number>0</number>
       </property>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QComboBox" name="cmbPageUrl">
-      <property name="editable">
-       <bool>true</bool>
+      <property name="bottomMargin">
+       <number>0</number>
       </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QGroupBox" name="groupBox_2">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>100</y>
-     <width>601</width>
-     <height>291</height>
-    </rect>
-   </property>
-   <property name="title">
-    <string>2. Select files to get</string>
-   </property>
-   <layout class="QGridLayout" name="gridLayout_2" columnstretch="1,1,0">
-    <item row="2" column="2">
-     <widget class="QPushButton" name="btnDeselectDiskDuplicates">
-      <property name="toolTip">
-       <string>Uncheck files that are already on disk (in the target folder)</string>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="icon">
-       <iconset>
-        <normaloff>../resources/icons/folder-minus.svg</normaloff>../resources/icons/folder-minus.svg</iconset>
-      </property>
-      <property name="iconSize">
-       <size>
-        <width>40</width>
-        <height>22</height>
-       </size>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="2">
-     <widget class="QPushButton" name="btnUncheckAllShown">
-      <property name="toolTip">
-       <string>Uncheck all shown</string>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="icon">
-       <iconset>
-        <normaloff>../resources/icons/minus.svg</normaloff>../resources/icons/minus.svg</iconset>
-      </property>
-      <property name="iconSize">
-       <size>
-        <width>40</width>
-        <height>22</height>
-       </size>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0" rowspan="7" colspan="2">
-     <widget class="QTreeWidget" name="treeFileSelector">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="frameShape">
-       <enum>QFrame::Panel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Plain</enum>
-      </property>
-      <property name="midLineWidth">
-       <number>1</number>
-      </property>
-      <attribute name="headerVisible">
-       <bool>false</bool>
-      </attribute>
-      <column>
-       <property name="text">
-        <string notr="true">1</string>
-       </property>
-      </column>
-     </widget>
-    </item>
-    <item row="0" column="2">
-     <widget class="QPushButton" name="btnCheckAllShown">
-      <property name="toolTip">
-       <string>Check all shown</string>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="icon">
-       <iconset>
-        <normaloff>../resources/icons/plus.svg</normaloff>../resources/icons/plus.svg</iconset>
-      </property>
-      <property name="iconSize">
-       <size>
-        <width>40</width>
-        <height>22</height>
-       </size>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="2">
-     <widget class="QPushButton" name="btnResetSelection">
-      <property name="toolTip">
-       <string>Start all over</string>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="icon">
-       <iconset>
-        <normaloff>../resources/icons/refresh-ccw.svg</normaloff>../resources/icons/refresh-ccw.svg</iconset>
-      </property>
-      <property name="iconSize">
-       <size>
-        <width>40</width>
-        <height>22</height>
-       </size>
-      </property>
-     </widget>
-    </item>
-    <item row="7" column="0" colspan="2">
-     <widget class="QLineEdit" name="txtSelectionFilter">
-      <property name="placeholderText">
-       <string>Filter the selector tree</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="2">
-     <widget class="QPushButton" name="btnDeselectJobDuplicates">
-      <property name="toolTip">
-       <string>Uncheck files that are already selected in other jobs</string>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="icon">
-       <iconset>
-        <normaloff>../resources/icons/copy.svg</normaloff>../resources/icons/copy.svg</iconset>
-      </property>
-      <property name="iconSize">
-       <size>
-        <width>40</width>
-        <height>22</height>
-       </size>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QGroupBox" name="groupBox_4">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>400</y>
-     <width>601</width>
-     <height>71</height>
-    </rect>
-   </property>
-   <property name="title">
-    <string>3. Set target local folder</string>
-   </property>
-   <layout class="QGridLayout" name="gridLayout_4" columnstretch="1,0">
-    <item row="0" column="0">
-     <widget class="QComboBox" name="cmbLocalTarget">
-      <property name="editable">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="1">
-     <widget class="QPushButton" name="btnBrowseLocalTarget">
-      <property name="toolTip">
-       <string>Browse...</string>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="icon">
-       <iconset>
-        <normaloff>../resources/icons/more-horizontal.svg</normaloff>../resources/icons/more-horizontal.svg</iconset>
-      </property>
-      <property name="iconSize">
-       <size>
-        <width>40</width>
-        <height>22</height>
-       </size>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QGroupBox" name="groupBox_5">
-   <property name="geometry">
-    <rect>
-     <x>630</x>
-     <y>20</y>
-     <width>461</width>
-     <height>531</height>
-    </rect>
-   </property>
-   <property name="title">
-    <string>5. Preview download list</string>
-   </property>
-   <widget class="QListWidget" name="lstFilesetPreview">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>23</y>
-      <width>441</width>
-      <height>461</height>
-     </rect>
-    </property>
-    <property name="frameShape">
-     <enum>QFrame::Panel</enum>
-    </property>
-    <property name="frameShadow">
-     <enum>QFrame::Plain</enum>
-    </property>
-    <property name="midLineWidth">
-     <number>1</number>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="txtPreviewFilter">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>490</y>
-      <width>441</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="placeholderText">
-     <string>Filter the preview list</string>
-    </property>
-   </widget>
-  </widget>
-  <widget class="QGroupBox" name="groupBox_7">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>480</y>
-     <width>601</width>
-     <height>71</height>
-    </rect>
-   </property>
-   <property name="title">
-    <string>4. Name your job</string>
-   </property>
-   <layout class="QGridLayout" name="gridLayout_6">
-    <item row="0" column="0">
-     <widget class="QLineEdit" name="txtJobName">
-      <property name="placeholderText">
-       <string>Will be auto-populated based on the page URL</string>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
+      <item>
+       <widget class="QFrame" name="leftFrame">
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1,0,0">
+         <property name="spacing">
+          <number>5</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QGroupBox" name="groupBoxStep1">
+           <property name="title">
+            <string>1. Provide your URL and click on the button. This will get all links non-recursively</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout" columnstretch="1,0">
+            <property name="horizontalSpacing">
+             <number>10</number>
+            </property>
+            <item row="0" column="1">
+             <widget class="QPushButton" name="btnFetchPage">
+              <property name="toolTip">
+               <string>Get download links</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../resources/icons/download-cloud.svg</normaloff>../resources/icons/download-cloud.svg</iconset>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>40</width>
+                <height>22</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QComboBox" name="cmbPageUrl">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBoxStep2">
+           <property name="title">
+            <string>2. Select files to get</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_2" columnstretch="1,1,0">
+            <property name="horizontalSpacing">
+             <number>10</number>
+            </property>
+            <item row="2" column="2">
+             <widget class="QPushButton" name="btnDeselectDiskDuplicates">
+              <property name="toolTip">
+               <string>Uncheck files that are already on disk (in the target folder)</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../resources/icons/folder-minus.svg</normaloff>../resources/icons/folder-minus.svg</iconset>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>40</width>
+                <height>22</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="2">
+             <widget class="QPushButton" name="btnUncheckAllShown">
+              <property name="toolTip">
+               <string>Uncheck all shown</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../resources/icons/minus.svg</normaloff>../resources/icons/minus.svg</iconset>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>40</width>
+                <height>22</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0" rowspan="7" colspan="2">
+             <widget class="QTreeWidget" name="treeFileSelector">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="frameShape">
+               <enum>QFrame::Panel</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Plain</enum>
+              </property>
+              <property name="midLineWidth">
+               <number>1</number>
+              </property>
+              <attribute name="headerVisible">
+               <bool>false</bool>
+              </attribute>
+              <column>
+               <property name="text">
+                <string notr="true">1</string>
+               </property>
+              </column>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QPushButton" name="btnCheckAllShown">
+              <property name="toolTip">
+               <string>Check all shown</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../resources/icons/plus.svg</normaloff>../resources/icons/plus.svg</iconset>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>40</width>
+                <height>22</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="2">
+             <widget class="QPushButton" name="btnResetSelection">
+              <property name="toolTip">
+               <string>Start all over</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../resources/icons/refresh-ccw.svg</normaloff>../resources/icons/refresh-ccw.svg</iconset>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>40</width>
+                <height>22</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="0" colspan="2">
+             <widget class="QLineEdit" name="txtSelectionFilter">
+              <property name="placeholderText">
+               <string>Filter the selector tree</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="2">
+             <widget class="QPushButton" name="btnDeselectJobDuplicates">
+              <property name="toolTip">
+               <string>Uncheck files that are already selected in other jobs</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../resources/icons/copy.svg</normaloff>../resources/icons/copy.svg</iconset>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>40</width>
+                <height>22</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBoxStep3">
+           <property name="title">
+            <string>3. Set target local folder</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_4" columnstretch="10,0">
+            <property name="horizontalSpacing">
+             <number>10</number>
+            </property>
+            <item row="0" column="0">
+             <widget class="QComboBox" name="cmbLocalTarget">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QPushButton" name="btnBrowseLocalTarget">
+              <property name="toolTip">
+               <string>Browse...</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset>
+                <normaloff>../resources/icons/more-horizontal.svg</normaloff>../resources/icons/more-horizontal.svg</iconset>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>40</width>
+                <height>22</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBoxStep4">
+           <property name="title">
+            <string>4. Name your job</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_6">
+            <item row="0" column="0">
+             <widget class="QLineEdit" name="txtJobName">
+              <property name="placeholderText">
+               <string>Will be auto-populated based on the page URL</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QFrame" name="rightFrame">
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="spacing">
+          <number>5</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QGroupBox" name="groupBoxStep5">
+           <property name="title">
+            <string>5. Preview download list</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <item>
+             <widget class="QListWidget" name="lstFilesetPreview">
+              <property name="frameShape">
+               <enum>QFrame::Panel</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Plain</enum>
+              </property>
+              <property name="midLineWidth">
+               <number>1</number>
+              </property>
+              <property name="selectionMode">
+               <enum>QAbstractItemView::ExtendedSelection</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="txtPreviewFilter">
+              <property name="placeholderText">
+               <string>Filter the preview list</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>Dialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>

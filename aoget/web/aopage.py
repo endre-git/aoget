@@ -8,6 +8,7 @@ class AoPage:
     def __init__(self):
         self.files_by_extension = defaultdict(list)
         self.extension_counts = defaultdict(lambda: 0)
+        self.page_title = ""
 
     def add_file_by_extension(self, extension, url):
         self.files_by_extension[extension].append(url)
@@ -30,3 +31,4 @@ class AoPage:
                 sorted_stripped_filenames,
             )
         )
+    

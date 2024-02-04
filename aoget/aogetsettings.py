@@ -11,6 +11,7 @@ def get_url_history():
     with open(url_history_rel_path, "r") as f:
         for line in f:
             url_history.append(line.strip())
+    url_history.reverse()
     return url_history
 
 
@@ -25,6 +26,7 @@ def get_target_folder_history():
     with open(target_folder_history_rel_path, "r") as f:
         for line in f:
             target_folder_history.append(line.strip())
+    target_folder_history.reverse()
     return target_folder_history
 
 

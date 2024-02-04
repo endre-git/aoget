@@ -1,9 +1,11 @@
 import scrapy
-from web.aopage import AoPage
 from pathlib import Path
 
 
 class AoSpider(scrapy.Spider):
+    """Scrapy spider to parse the links from a webpage. It will extract the title of the page and
+    the links to downloadable files. It will group the files by extension fore more convenient
+    use."""
     extension_counts = {}
     files_by_extension = {}
 
@@ -17,6 +19,7 @@ class AoSpider(scrapy.Spider):
 
     def parse(self, response):
         hxs = scrapy.Selector(response)
+        self.extract_title(response)
         # extract all links from page
         for url in hxs.xpath('*//a/@href').extract():
             # make it a valid url
@@ -27,8 +30,12 @@ class AoSpider(scrapy.Spider):
             # recusively parse each url
             ##yield scrapy.http.Request(url=url, callback=self.parse)
 
+    def extract_title(self, response):
+        title = response.xpath('//title/text()').extract_first()
+        self.ao_page.page_title = title
+
     def handle(self, url):
         if self.ao_page is not None:
             extension = Path(url).suffix
-            if not url.endswith('/') and not '?' in extension and not '&' in extension:
+            if not url.endswith('/') and '?' not in extension and '&' not in extension:
                 self.ao_page.add_file_by_extension(extension, url)

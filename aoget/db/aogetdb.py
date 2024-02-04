@@ -1,13 +1,11 @@
 import logging
 from sqlalchemy.orm import Session
-from aoget.model.dao.job_dao import JobDAO
-from aoget.model.dao.file_model_dao import FileModelDAO
-from aoget.model.dao.file_event_dao import FileEventDAO
+from model.dao.job_dao import JobDAO
+from model.dao.file_model_dao import FileModelDAO
+from model.dao.file_event_dao import FileEventDAO
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-from aoget.model import initialize_sql
-from .db_update_queue import DbUpdateQueue
-from .db_write import DbWrite
+from model import initialize_sql
 from threading import RLock
 
 logger = logging.getLogger(__name__)
@@ -24,7 +22,6 @@ class AogetDb:
     job_dao = None
     file_model_dao = None
     file_event_dao = None
-    write_queue = DbUpdateQueue()
     state_lock = RLock()
 
 
@@ -69,9 +66,3 @@ def get_session() -> Session:
     """Get the SQLAlchemy session.
     :return: The SQLAlchemy session."""
     return AogetDb.shared_session
-
-
-def db_write(func_call, *args, **kwargs):
-    """Write to the database.
-    :param db_write: The callable that performs the write operation."""
-    AogetDb.write_queue.put(DbWrite(func_call, args, kwargs))

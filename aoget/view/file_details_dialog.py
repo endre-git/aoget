@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QDialog
 from PyQt6 import uic
 from PyQt6.QtWidgets import QTableWidgetItem
 from PyQt6.QtWidgets import QHeaderView
-from ..controller.file_details_controller import FileDetailsController
+from controller.file_details_controller import FileDetailsController
 from util.aogetutil import human_timestamp_from
 
 

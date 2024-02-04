@@ -2,11 +2,10 @@ import os
 import logging
 from typing import Any
 from threading import Event
-from aoget.controller.journal_daemon import JournalDaemon
+from controller.journal_daemon import JournalDaemon
 from web.queued_downloader import QueuedDownloader
 from db.aogetdb import get_job_dao, get_file_model_dao, get_file_event_dao
 from model.file_model import FileModel
-from model.job import Job
 from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 from model.dto.file_event_dto import FileEventDTO
@@ -80,10 +79,8 @@ class MainWindowController:
             file_dtos = list(
                 map(lambda file: FileModelDTO.from_model(file, job_name), file_models)
             )
-            # sort by file name
-            file_dtos.sort(key=lambda file: file.name)
             return file_dtos
-        
+
     def get_file_event_dtos(self, job_name: str, file_name: str) -> list:
         """Get all file events as DTOs by mapping each to a DTO and returning the list"""
         with self.db_lock:
@@ -97,17 +94,11 @@ class MainWindowController:
             file_event_dtos.sort(key=lambda event: event.timestamp)
             return file_event_dtos
 
-    def job_count(self) -> int:
-        """Get the number of jobs"""
-        return len(self.jobs)
-
-    def get_job_by_name(self, name) -> Job:
-        """Get a job by its name"""
-        return self.jobs[name] or None
-
     def get_job_dto_by_name(self, name) -> JobDTO:
         """Get a job DTO by its name"""
-        return JobDTO.from_model(self.jobs[name]) or None
+        with self.db_lock:
+            job = get_job_dao().get_job_by_name(name)
+            return JobDTO.from_model(job)
 
     def get_file_dto(self, job_name, file_name) -> FileModelDTO:
         """Get a file DTO by its name"""
@@ -115,6 +106,19 @@ class MainWindowController:
             job_id = get_job_dao().get_job_by_name(job_name).id
             file_model = get_file_model_dao().get_file_model_by_name(job_id, file_name)
             return FileModelDTO.from_model(file_model, job_name)
+
+    def get_file_dtos_by_job_id(self, job_id: int) -> list:
+        """Get all file DTOs by job id"""
+        with self.db_lock:
+            job_name = get_job_dao().get_job_by_id(job_id).name
+            file_models = get_file_model_dao().get_files_by_job_id(job_id)
+            file_dtos = list(
+                map(
+                    lambda file: FileModelDTO.from_model(file, job_name=job_name),
+                    file_models,
+                )
+            )
+            return file_dtos
 
     def job_post_select(self, job_name: str) -> None:
         """Called after a job has been selected"""
@@ -263,7 +267,9 @@ class MainWindowController:
                 )
         if len(files_with_unknown_size) > 0:
             self.__setup_downloader(job_name)
-            self.job_downloaders[job_name].resolve_file_sizes(job_name, files_with_unknown_size)
+            self.job_downloaders[job_name].resolve_file_sizes(
+                job_name, files_with_unknown_size
+            )
 
     def __validate_file_states(self, files_per_job) -> None:
         """Validate the file states"""
@@ -313,6 +319,45 @@ class MainWindowController:
     def on_resolver_finished(self, job_name: str) -> None:
         """Called when a resolver has finished"""
         self.active_resolvers.pop(job_name)
+
+    def create_job_from_dto(self, job_dto: JobDTO) -> int:
+        """Add a job from a DTO"""
+        with self.db_lock:
+            job = get_job_dao().create_job(
+                job_dto.name, job_dto.page_url, job_dto.target_folder, commit=False
+            )
+            job_dto.merge_into_model(job)
+            get_job_dao().save_job(job)
+            return job.id
+        
+    def update_job_from_dto(self, job_dto: JobDTO) -> None:
+        """Update a job from a DTO"""
+        with self.db_lock:
+            job = get_job_dao().get_job_by_name(job_dto.name)
+            job_dto.merge_into_model(job)
+            get_job_dao().save_job(job)
+
+    def add_files_to_job(self, job_id: int, file_dtos: list) -> None:
+        """Add files to a job"""
+        with self.db_lock:
+            job = get_job_dao().get_job_by_id(job_id)
+            for file_dto in file_dtos:
+                file_model = get_file_model_dao().create_file_model(
+                    url=file_dto.url, job=job, commit=False
+                )
+                file_dto.merge_into_model(file_model)
+                job.add_file(file_model)
+            get_job_dao().save_job(job)
+
+    def update_selected_files(self, job_id: int, file_dtos_by_name: dict) -> None:
+        """Update selected files"""
+        with self.db_lock:
+            job = get_job_dao().get_job_by_id(job_id)
+            for file in job.files:
+                file_dto = file_dtos_by_name[file.name]
+                if file_dto is not None:
+                    file.selected = file_dto.selected
+            get_job_dao().save_job(job)
 
     def start_download(self, job_name: str, file_name: str) -> (bool, str):
         """Start downloading the given file
@@ -427,6 +472,15 @@ class MainWindowController:
             self.journal[job_name] = JobUpdates(job_name)
         return self.journal[job_name]
 
+    def is_job_downloading(self, job_name: str) -> bool:
+        """Check if the given job had active downloads."""
+        return job_name in self.job_downloaders and self.job_downloaders[job_name].is_downloading()
+
+    def job_exists(self, job_name: str) -> bool:
+        """Check if a job exists"""
+        with self.db_lock:
+            return get_job_dao().get_job_by_name(job_name) is not None
+
     def __setup_downloader(
         self,
         job_name: str,
@@ -441,7 +495,7 @@ class MainWindowController:
                 raise ValueError("Unknown job: " + job_name)
             downloader = QueuedDownloader(job=job, monitor=self.monitor_daemon)
             self.job_downloaders[job_name] = downloader
-            downloader.start_download_threads()      
+            downloader.start_download_threads()
 
     # TODO refactor this out of there. There should be a central update cycle handler
     def update_tick(self, journal: dict):
@@ -520,9 +574,9 @@ class MainWindowController:
                     event = event_dto.build_model(file_model_of_event)
                     get_file_event_dao().add_file_event(event, commit=False)
                     if file_name in job_updates.file_model_updates:
-                        job_updates.file_model_updates[
-                            file_name
-                        ].last_event = event.event
+                        job_updates.file_model_updates[file_name].last_event = (
+                            event.event
+                        )
                         job_updates.file_model_updates[
                             file_name
                         ].last_event_timestamp = event.timestamp
