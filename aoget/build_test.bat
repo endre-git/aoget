@@ -1,4 +1,4 @@
-pyinstaller aoget.spec
+pyinstaller aoget_test.spec
 xcopy /E ..\config.json dist
 md dist\aoget\aoget
 xcopy qt dist\aoget\aoget\qt /E /I /H
