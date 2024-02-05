@@ -1,5 +1,6 @@
 from typing import Dict
 from model.dto.file_model_dto import FileModelDTO
+from model.dto.job_dto import JobDTO
 from model.job_updates import JobUpdates
 
 
@@ -33,17 +34,21 @@ class DerivedFieldCalculator(object):
                 DerivedFieldCalculator.__patch_file(
                     current_file, job_update_snapshot.file_model_updates[filename]
                 )
+        if current_job_update.job_update is None:
+            current_job_update.job_update = JobDTO(
+                id=-1, name=current_job_update.job_name
+            )
+        total_rate = 0
+        for filename, current_file in current_job_update.file_model_updates.items():
+            total_rate += current_file.rate_bytes_per_sec
+        current_job_update.job_update.rate_bytes_per_sec = total_rate
 
     def __patch_file(current_file: FileModelDTO, file_snapshot: FileModelDTO):
         """Update the current_file with the derived fields calculated using the
         file_snapshot. Does this in-place, updating the current_file."""
         total = current_file.size_bytes or 0
         written = current_file.downloaded_bytes or 0
-        percent_completed = (
-            0
-            if total == 0
-            else int(100 * written / total)
-        )
+        percent_completed = 0 if total == 0 else int(100 * written / total)
         snapshot_downloaded_bytes = file_snapshot.downloaded_bytes or 0
         delta = written - snapshot_downloaded_bytes
         eta_seconds = int((total - written) / delta) if delta > 0 else 0

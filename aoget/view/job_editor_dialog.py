@@ -399,8 +399,8 @@ Downloaded files will fail the consistency check. Partially downloaded files wil
         self.treeFileSelector.setEnabled(True)
         self.loader_overlay.hide()
         self.treeFileSelector.show()
-        if self.is_editor:
-            self.btnFetchPage.setEnabled(False)
+        if not self.is_editor:
+            self.btnFetchPage.setEnabled(True)
 
     def __populate(self, job):
         """Populate the form with the given job. Invoked only in editor mode."""

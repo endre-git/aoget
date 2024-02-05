@@ -29,7 +29,7 @@ class JournalDaemon:
 
     def __append_journal(self) -> None:
         """Update the observers with the current progress."""
-        logger.info('Monitor daemon started.')
+        logger.info('Journal daemon started.')
         while not self.__stopped:
             if self.__journal_processor is not None:
                 with self.__lock:
@@ -44,7 +44,7 @@ class JournalDaemon:
                     self.__journal_processor.update_tick(self.__journal)
                     self.__journal.clear()
             time.sleep(self.update_interval_seconds)
-        logger.info('Monitor daemon stopped.')
+        logger.info('Journal daemon stopped.')
 
     def update_download_progress(
         self, jobname: str, filename: str, written: int, total: int

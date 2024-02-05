@@ -21,6 +21,7 @@ from util.qt_util import confirmation_dialog
 from model.file_model import FileModel
 from db.aogetdb import AogetDb
 
+from model.job import Job
 from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 
@@ -63,6 +64,16 @@ class MainWindow(QMainWindow):
     FILE_LAST_UPDATED_IDX = 6
     FILE_LAST_EVENT_IDX = 7
 
+    JOB_NAME_IDX = 0
+    JOB_SIZE_IDX = 1
+    JOB_STATUS_IDX = 2
+    JOB_RATE_IDX = 3
+    JOB_THREADS_IDX = 4
+    JOB_FILES_IDX = 5
+    JOB_PROGRESS_IDX = 6
+    JOB_ETA_IDX = 7
+    JOB_TARGET_FOLDER_IDX = 8
+
     update_job_signal = pyqtSignal(JobDTO)
     update_file_signal = pyqtSignal(FileModelDTO)
 
@@ -88,26 +99,84 @@ class MainWindow(QMainWindow):
 
     def __setup_jobs_table(self):
         """Setup the jobs table and controls around it"""
-        self.tblJobs.setColumnCount(6)
-        self.tblJobs.setHorizontalHeaderLabels(
-            ["Name", "Status", "File Count", "Progress", "Page URL", "Target Folder"]
-        )
+
+        labels = [
+            "Name",
+            "Size",
+            "Status",
+            "Rate",
+            "Threads",
+            "Files",
+            "Progress",
+            "ETA",
+            "Target Folder",
+        ]
+        self.tblJobs.setColumnCount(len(labels))
+        self.tblJobs.setHorizontalHeaderLabels(labels)
         header = self.tblJobs.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(
+            MainWindow.JOB_NAME_IDX, QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(
+            MainWindow.JOB_SIZE_IDX, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            MainWindow.JOB_STATUS_IDX, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            MainWindow.JOB_RATE_IDX, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            MainWindow.JOB_THREADS_IDX, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            MainWindow.JOB_FILES_IDX, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            MainWindow.JOB_PROGRESS_IDX, QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(
+            MainWindow.JOB_TARGET_FOLDER_IDX, QHeaderView.ResizeMode.Stretch
+        )
+        self.tblJobs.horizontalHeaderItem(MainWindow.JOB_NAME_IDX).setToolTip(
+            "Name of the job"
+        )
+        self.tblJobs.horizontalHeaderItem(MainWindow.JOB_SIZE_IDX).setToolTip(
+            "Total size of the job, calculated from file sizes. If still being resolved, will be shown as >X."
+        )
+        self.tblJobs.horizontalHeaderItem(MainWindow.JOB_STATUS_IDX).setToolTip(
+            "Status of the job"
+        )
+        self.tblJobs.horizontalHeaderItem(MainWindow.JOB_RATE_IDX).setToolTip(
+            "Download rate of the job"
+        )
+        self.tblJobs.horizontalHeaderItem(MainWindow.JOB_THREADS_IDX).setToolTip(
+            "Number of active download threads / allocated download threads"
+        )
+        self.tblJobs.horizontalHeaderItem(MainWindow.JOB_FILES_IDX).setToolTip(
+            "Number of downloaded files / total files in the job"
+        )
+        self.tblJobs.horizontalHeaderItem(MainWindow.JOB_PROGRESS_IDX).setToolTip(
+            "Progress of the job based on size, not shown if the size is not fully resolved."
+        )
+        self.tblJobs.horizontalHeaderItem(MainWindow.JOB_ETA_IDX).setToolTip(
+            "ETA for the job to complete. Not shown if the size is not fully resolved. Might be way off with poor server bandwidth."
+        )
+        self.tblJobs.horizontalHeaderItem(MainWindow.JOB_TARGET_FOLDER_IDX).setToolTip(
+            "Target folder for the job, where the downloaded files are saved."
+        )
+
         self.tblJobs.setSelectionBehavior(QHeaderView.SelectionBehavior.SelectRows)
         self.tblJobs.setSelectionMode(QHeaderView.SelectionMode.SingleSelection)
-        column_widths = [200, 100, 100, 100, 200, 200]
+        column_widths = [200, 70, 100, 70, 70, 70, 250, 70, 200]
         for i, width in enumerate(column_widths):
             self.tblJobs.setColumnWidth(i, width)
 
         # job control buttons
         self.btnJobCreate.clicked.connect(self.__on_create_new_job)
         self.btnJobEdit.clicked.connect(self.__on_edit_job)
+        self.btnJobRemoveFromList.clicked.connect(self.__on_job_remove_from_list)
+        self.btnJobRemove.clicked.connect(self.__on_job_remove_from_disk)
 
         # jobs table selection
         self.tblJobs.itemSelectionChanged.connect(self.__on_job_selected)
@@ -206,12 +275,7 @@ class MainWindow(QMainWindow):
         self.tblJobs.setRowCount(len(jobs))
 
         for i, job in enumerate(jobs):
-            self.tblJobs.setItem(i, 0, QTableWidgetItem(job.name))
-            self.tblJobs.setItem(i, 1, QTableWidgetItem(""))
-            self.tblJobs.setItem(i, 2, QTableWidgetItem(""))
-            self.tblJobs.setItem(i, 3, QTableWidgetItem(""))
-            self.tblJobs.setItem(i, 4, QTableWidgetItem(job.page_url))
-            self.tblJobs.setItem(i, 5, QTableWidgetItem(job.target_folder))
+            self.__set_job_at_row(i, job)
 
     def __on_job_selected(self):
         """A job has been selected in the jobs table"""
@@ -261,18 +325,50 @@ class MainWindow(QMainWindow):
         if val == 1:
             self.__show_files(job_name)
 
+    def __on_job_remove_from_list(self):
+        """Remove the selected job from the list"""
+        if not self.__is_job_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        if confirmation_dialog(
+            self,
+            f"""Remove job: <b>{job_name}</b>?
+            <p>Running downloads will be stopped.<br>
+            Files will not be deleted.</p>""",
+        ):
+            self.controller.delete_job(job_name)
+            self.__update_jobs_table()
+            # deselect table
+            self.tblJobs.clearSelection()
+            self.__show_files(None)
+
+    def __on_job_remove_from_disk(self):
+        """Remove the selected job from the list and delete the local files"""
+        if not self.__is_job_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        if confirmation_dialog(
+            self,
+            f"""Remove job and delete the corresponding files: <b>{job_name}</b>?
+            <p>Running downloads will be stopped.<br>
+            Files <b>will</b> be deleted.</p>""",
+        ):
+            self.controller.delete_job(job_name, delete_from_disk=True)
+            self.__update_jobs_table()
+
     def __show_files(self, job_name):
         """Show the files of the given job in the files table."""
         if job_name is None:
+            for i in range(0, self.tblFiles.rowCount()):
+                self.tblFiles.setRowHidden(i, True)
             return
-        t0 = time.time()
         selected_files = self.controller.get_selected_file_dtos(job_name)
-        print("DB query took ", time.time() - t0, " seconds")
-        t0 = time.time()
-        self.tblFiles.setRowCount(len(selected_files))
+        self.tblFiles.setRowCount(self.controller.get_largest_fileset_length())
         for i, file in enumerate(selected_files):
             self.__set_file_at_row(i, file)
-        print("Populating table took ", time.time() - t0, " seconds")
+            self.tblFiles.setRowHidden(i, False)
+        for i in range(len(selected_files), self.tblFiles.rowCount()):
+            self.tblFiles.setRowHidden(i, True)
 
     def __is_job_selected(self):
         """Determine whether a job is selected"""
@@ -498,7 +594,8 @@ class MainWindow(QMainWindow):
     def __restyleFileProgressBar(self, row, style):
         """Disable the given cell in the files table"""
         progress_bar = self.tblFiles.cellWidget(row, MainWindow.FILE_PROGRESS_IDX)
-        progress_bar.setStyleSheet(style)
+        if progress_bar:
+            progress_bar.setStyleSheet(style)
 
     def __reset_rate_and_eta_for_file(self, filename):
         """Reset the rate and ETA for the given file"""
@@ -508,8 +605,13 @@ class MainWindow(QMainWindow):
                 break
 
     def __reset_rate_and_eta_for_row(self, row):
-        self.tblFiles.setItem(row, MainWindow.FILE_RATE_IDX, QTableWidgetItem(""))
-        self.tblFiles.setItem(row, MainWindow.FILE_ETA_IDX, QTableWidgetItem(""))
+        """Reset the rate and ETA for the given row"""
+        rate_item = self.tblFiles.item(row, MainWindow.FILE_RATE_IDX)
+        if rate_item is not None:
+            rate_item.setText("")
+        eta_item = self.tblFiles.item(row, MainWindow.FILE_ETA_IDX)
+        if eta_item is not None:
+            eta_item.setText("")
 
     def __update_file_toolbar_buttons(self, status):
         """Update the file toolbar buttons based on the given status"""
@@ -535,27 +637,134 @@ class MainWindow(QMainWindow):
             self.btnFileStartDownload.setEnabled(True)
             self.btnFileStopDownload.setEnabled(False)
 
+    def __job_size_str(self, job):
+        """Return the size string for the given job"""
+        if job.is_size_not_resolved():
+            size = human_filesize(job.total_size_bytes)
+            if size != "":
+                return ">" + size
+            else:
+                return ""
+        return human_filesize(job.total_size_bytes)
+
+    def __set_job_progress_item(self, row, job):
+        """Set the progress cell for the given job based on the current state of the job"""
+        if job.is_size_not_resolved():
+            self.tblJobs.removeCellWidget(row, MainWindow.JOB_PROGRESS_IDX)
+            self.tblJobs.setItem(
+                row,
+                MainWindow.JOB_PROGRESS_IDX,
+                QTableWidgetItem("Resolving size..."),
+            )
+            return
+        if job.total_size_bytes is None or job.total_size_bytes == 0:
+            self.tblJobs.setItem(
+                row,
+                MainWindow.JOB_PROGRESS_IDX,
+                QTableWidgetItem("Unknown size"),
+            )
+            return
+
+        progress_bar = self.tblJobs.cellWidget(row, MainWindow.JOB_PROGRESS_IDX)
+        if progress_bar is None:
+            progress_bar = QProgressBar()
+            self.tblJobs.setCellWidget(row, MainWindow.JOB_PROGRESS_IDX, progress_bar)
+        completion = int(100 * (job.downloaded_bytes or 0) / job.total_size_bytes)
+        progress_bar.setValue(completion)
+        progress_bar.setStyleSheet(
+            MainWindow.PROGRESS_BAR_ACTIVE_STYLE
+            if job.status == Job.STATUS_RUNNING
+            else MainWindow.PROGRESS_BAR_PASSIVE_STYLE
+        )
+
     def update_job(self, job: JobDTO):
-        pass
+        """Update the job in the table. Called by the cycle ticker."""
+        for row in range(self.tblJobs.rowCount()):
+            if job.name == self.tblJobs.item(row, MainWindow.JOB_NAME_IDX).text():
+                self.__set_job_at_row(row, job)
+                break
+
+    def __set_job_at_row(self, row, job: JobDTO):
+        """Set the job at the given row in the jobs table"""
+        self.tblJobs.setItem(row, MainWindow.JOB_NAME_IDX, QTableWidgetItem(job.name))
+        self.tblJobs.setItem(
+            row, MainWindow.JOB_SIZE_IDX, QTableWidgetItem(self.__job_size_str(job))
+        )
+        self.tblJobs.setItem(
+            row, MainWindow.JOB_STATUS_IDX, QTableWidgetItem(job.status)
+        )
+        self.tblJobs.setItem(
+            row,
+            MainWindow.JOB_RATE_IDX,
+            QTableWidgetItem(
+                human_rate(job.rate_bytes_per_sec)
+                if job.status == Job.STATUS_RUNNING
+                else ""
+            ),
+        )
+        self.tblJobs.setItem(
+            row,
+            MainWindow.JOB_THREADS_IDX,
+            QTableWidgetItem(f"{job.threads_active or 0}/{job.threads_allocated or 0}"),
+        )
+        self.tblJobs.setItem(
+            row,
+            MainWindow.JOB_FILES_IDX,
+            QTableWidgetItem(f"{job.files_done or 0}/{job.selected_files_count or 0}"),
+        )
+        self.__set_job_progress_item(row, job)
+        self.tblJobs.setItem(
+            row,
+            MainWindow.JOB_ETA_IDX,
+            QTableWidgetItem(
+                human_eta(
+                    int(
+                        (job.total_size_bytes - job.downloaded_bytes)
+                        / job.rate_bytes_per_sec
+                    )
+                    if job.rate_bytes_per_sec and job.rate_bytes_per_sec > 0
+                    else 0
+                )
+                if job.status == Job.STATUS_RUNNING
+                else ""
+            ),
+        )
+        self.tblJobs.setItem(
+            row, MainWindow.JOB_TARGET_FOLDER_IDX, QTableWidgetItem(job.target_folder)
+        )
 
     def __set_file_at_row(self, row, file: FileModelDTO):
-        """Set the file at the given row in the files table"""
-        self.tblFiles.setItem(
-            row, MainWindow.FILE_NAME_IDX, QTableWidgetItem(file.name)
-        )
+        """Set the file at the given row in the files table. Reuses the existing widgets
+        in the table if applicable, because creating new widgets is slow."""
+        # NAME
+        name_table_item = self.tblFiles.item(row, MainWindow.FILE_NAME_IDX)
+        if name_table_item is None:
+            self.tblFiles.setItem(
+                row, MainWindow.FILE_NAME_IDX, QTableWidgetItem(file.name)
+            )
+        else:
+            name_table_item.setText(file.name)
+        # SIZE
         size_str = (
             human_filesize(file.size_bytes)
             if file.size_bytes is not None and file.size_bytes > -1
             else ""
         )
-        self.tblFiles.setItem(
-            row,
-            MainWindow.FILE_SIZE_IDX,
-            QTableWidgetItem(size_str),
-        )
-        self.tblFiles.setItem(
-            row, MainWindow.FILE_STATUS_IDX, QTableWidgetItem(file.status)
-        )
+        size_table_item = self.tblFiles.item(row, MainWindow.FILE_SIZE_IDX)
+        if size_table_item is None:
+            self.tblFiles.setItem(
+                row, MainWindow.FILE_SIZE_IDX, QTableWidgetItem(size_str)
+            )
+        else:
+            size_table_item.setText(size_str)
+        # STATUS
+        status_table_item = self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX)
+        if status_table_item is None:
+            status_table_item = QTableWidgetItem(file.status)
+            self.tblFiles.setItem(row, MainWindow.FILE_STATUS_IDX, status_table_item)
+        else:
+            status_table_item.setText(file.status)
+        # PROGRESS
         progress_bar = self.tblFiles.cellWidget(row, MainWindow.FILE_PROGRESS_IDX)
         if progress_bar is None:
             progress_bar = QProgressBar()
@@ -565,40 +774,64 @@ class MainWindow(QMainWindow):
             if file.percent_completed is not None and file.percent_completed > -1
             else 0
         )
-        if (
-            self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX).text()
-            == FileModel.STATUS_DOWNLOADING
-        ):
-            self.tblFiles.setItem(
-                row,
-                MainWindow.FILE_RATE_IDX,
-                QTableWidgetItem(human_rate(file.rate_bytes_per_sec)),
-            )
-            self.tblFiles.setItem(
-                row,
-                MainWindow.FILE_ETA_IDX,
-                QTableWidgetItem(human_eta(file.eta_seconds)),
-            )
+        if file.status == FileModel.STATUS_DOWNLOADING:
+            # ETA
+            eta_str = human_eta(file.eta_seconds)
+            eta_table_item = self.tblFiles.item(row, MainWindow.FILE_ETA_IDX)
+            if eta_table_item is None:
+                eta_table_item = QTableWidgetItem(eta_str)
+                self.tblFiles.setItem(
+                    row,
+                    MainWindow.FILE_ETA_IDX,
+                    eta_table_item,
+                )
+            else:
+                eta_table_item.setText(eta_str)
+            # RATE
+            rate_str = human_rate(file.rate_bytes_per_sec)
+            rate_table_item = self.tblFiles.item(row, MainWindow.FILE_RATE_IDX)
+            if rate_table_item is None:
+                rate_table_item = QTableWidgetItem(rate_str)
+                self.tblFiles.setItem(
+                    row,
+                    MainWindow.FILE_RATE_IDX,
+                    rate_table_item,
+                )
+            else:
+                rate_table_item.setText(rate_str)
             self.__restyleFileProgressBar(row, MainWindow.PROGRESS_BAR_ACTIVE_STYLE)
         else:
-            self.__reset_rate_and_eta_for_file(file.name)
             self.__reset_rate_and_eta_for_row(row)
             self.__restyleFileProgressBar(row, MainWindow.PROGRESS_BAR_PASSIVE_STYLE)
 
-        self.tblFiles.setItem(
-            row,
-            MainWindow.FILE_LAST_UPDATED_IDX,
-            QTableWidgetItem(
-                human_timestamp_from(file.last_event_timestamp)
-                if file.last_event_timestamp is not None
-                else ""
-            ),
+        # LAST UPDATED
+        last_updated_timestamp_str = (
+            human_timestamp_from(file.last_event_timestamp)
+            if file.last_event_timestamp is not None
+            else ""
         )
-        self.tblFiles.setItem(
-            row,
-            MainWindow.FILE_LAST_EVENT_IDX,
-            QTableWidgetItem(file.last_event if file.last_event is not None else ""),
+        last_updated_table_item = self.tblFiles.item(
+            row, MainWindow.FILE_LAST_UPDATED_IDX
         )
+        if last_updated_table_item is None:
+            last_updated_table_item = QTableWidgetItem(last_updated_timestamp_str)
+            self.tblFiles.setItem(
+                row,
+                MainWindow.FILE_LAST_UPDATED_IDX,
+                QTableWidgetItem(last_updated_timestamp_str),
+            )
+        else:
+            last_updated_table_item.setText(last_updated_timestamp_str)
+        # LAST EVENT
+        last_event_str = file.last_event or ""
+        last_event_table_item = self.tblFiles.item(row, MainWindow.FILE_LAST_EVENT_IDX)
+        if last_event_table_item is None:
+            last_event_table_item = QTableWidgetItem(last_event_str)
+            self.tblFiles.setItem(
+                row, MainWindow.FILE_LAST_EVENT_IDX, last_event_table_item
+            )
+        else:
+            last_event_table_item.setText(last_event_str)
 
     def update_file(self, file: FileModelDTO):
         """Update the file progress of the given file if the right job is selected"""

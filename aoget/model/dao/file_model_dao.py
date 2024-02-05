@@ -1,4 +1,5 @@
 import logging
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from model import FileModel, Job
@@ -128,6 +129,25 @@ class FileModelDAO:
             .filter_by(job_id=job_id, selected=True)
             .order_by(FileModel.name)
             .all()
+        )
+
+    def get_total_downloaded_bytes_for_job(self, job_id: int) -> int:
+        """Get the total number of downloaded bytes for a job.
+        :param job_id: The ID of the job to get the total downloaded bytes for
+        :return: The total number of downloaded bytes"""
+        return (
+            self.session.query(func.sum(FileModel.downloaded_bytes))
+            .filter_by(job_id=job_id, selected=True).scalar()
+        )
+
+    def get_completed_file_count_for_job_id(self, job_id: int) -> int:
+        """Get the number of completed files for a job.
+        :param job_id: The ID of the job to get the completed file count for
+        :return: The number of completed files"""
+        return (
+            self.session.query(func.count(FileModel.id))
+            .filter_by(job_id=job_id, selected=True, status=FileModel.STATUS_COMPLETED)
+            .scalar()
         )
 
     def get_files_by_job_id(self, job_id: int) -> list:

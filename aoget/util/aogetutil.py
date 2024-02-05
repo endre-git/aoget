@@ -60,8 +60,8 @@ def human_rate(rate_bytes_per_second: float) -> str:
         The rate in bytes per second
     :return:
         The human readable rate"""
-    if rate_bytes_per_second <= 0 or rate_bytes_per_second is None:
-        return "0B/s"
+    if rate_bytes_per_second is None or rate_bytes_per_second <= 0:
+        return ""
     suffixes = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"]
     suffix_index = 0
     while rate_bytes_per_second >= 1024:

@@ -96,6 +96,9 @@ def __downloader(
     mode = "ab" if initial_pos else "wb"
     file = Path(local_path)
 
+    # create folder if it doesn't exist
+    file.parent.mkdir(parents=True, exist_ok=True)
+
     with open(file, mode) as f:
         total = file_size
         written = initial_pos

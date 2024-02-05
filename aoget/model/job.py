@@ -11,6 +11,9 @@ class Job(Base):
     __tablename__ = "job"
 
     STATUS_CREATED = "Created"
+    STATUS_RUNNING = "Running"
+    STATUS_NOT_RUNNING = "Not Running"
+    STATUS_COMPLETED = "Completed"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
@@ -18,6 +21,12 @@ class Job(Base):
     page_url: Mapped[str] = mapped_column(nullable=False)
     total_size_bytes: Mapped[int] = mapped_column(default=0)
     target_folder: Mapped[str] = mapped_column(nullable=True)
+    # cache field to speed things up
+    selected_files_with_known_size: Mapped[int] = mapped_column(default=0)
+    # cache field to speed things up
+    selected_files_count: Mapped[int] = mapped_column(default=0)
+    # cache field to speed things up
+    downloaded_bytes: Mapped[int] = mapped_column(default=0)
     files: Mapped[List["FileModel"]] = relationship(back_populates="job",
                                                     cascade="all, delete, delete-orphan")
 
@@ -101,7 +110,7 @@ class Job(Base):
         :return:
             A list of filenames"""
         return sorted(filemodel.name for filemodel in self.files if filemodel.selected)
-    
+
     def get_selected_filemodels(self):
         """Get the filemodels of the selected files.
         :return:

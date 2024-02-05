@@ -85,7 +85,6 @@ class QueuedDownloader:
         self.monitor = monitor
         self.worker_pool_size = worker_pool_size
         self.monitor = monitor
-        self.worker_pool_size = worker_pool_size
         self.queue = queue.Queue()
         self.threads = []
         self.signals = {}
@@ -97,13 +96,14 @@ class QueuedDownloader:
         self.resolved_file_sizes = {}
         self.download_thread_lock = threading.Lock()
         self.are_download_threads_running = False
+        self.active_thread_count = 0
 
     def run(self) -> None:
         """Run the download queue. Blocks until all files are downloaded."""
         self.__start_workers()
         self.__populate_queue()
         self.queue.join()
-        self.__stop_workers()
+        self.__stop_workers(sync=True)
 
     def start_download_threads(self) -> None:
         """Start the download queue."""
@@ -114,7 +114,22 @@ class QueuedDownloader:
 
     def stop(self) -> None:
         """Stop the download queue."""
+        self.__stop_workers(sync=True)
+
+    def kill(self) -> None:
+        """Kill the download queue, stop running downloads, forget queued downloads."""
         self.__stop_workers()
+        self.files_in_queue.clear()
+        if len(self.files_downloading) > 0:
+            wait_events = []
+            signals = self.signals.values()
+            for signal in signals:
+                wait_event = threading.Event()
+                signal.register_status_listener(wait_event, FileModel.STATUS_STOPPED)
+                signal.cancel()
+                wait_events.append(wait_event)
+            for event in wait_events:
+                event.wait(2)
 
     def download_file(self, file: FileModelDTO) -> None:
         """Download the given file.
@@ -162,12 +177,13 @@ class QueuedDownloader:
             t.start()
             self.threads.insert(i, t)
 
-    def __stop_workers(self) -> None:
+    def __stop_workers(self, sync=False) -> None:
         """Stop the workers by putting None (poison pill) on the queue and joining the threads"""
         for i in self.threads:
             self.queue.put(None)
-        for t in self.threads:
-            t.join()
+        if sync:
+            for t in self.threads:
+                t.join()
         with self.download_thread_lock:
             self.are_download_threads_running = False
 
@@ -178,6 +194,8 @@ class QueuedDownloader:
                 file_to_download = self.queue.get()
                 if file_to_download is None:
                     break
+                with self.download_thread_lock:
+                    self.active_thread_count += 1
                 logger.info("Worker took file: %s", file_to_download.name)
                 if file_to_download.name not in self.files_in_queue:
                     logger.info("File was cancelled before download started, not doing anything.")
@@ -196,9 +214,20 @@ class QueuedDownloader:
                     )
                 self.files_downloading.remove(file_to_download.name)
                 self.queue.task_done()
+                with self.download_thread_lock:
+                    self.active_thread_count -= 1
             except Exception as e:
                 # This is a catch-all exception handler to prevent the worker from dying
                 logger.error("Unexpected error in worker: %s", e)
+                with self.download_thread_lock:
+                    self.active_thread_count -= 1
+
+    def get_active_thread_count(self) -> int:
+        """Get the number of active threads.
+        :return:
+            The number of active threads"""
+        with self.download_thread_lock:
+            return self.active_thread_count
 
     def __start_download(self, file_to_download: FileModel) -> None:
         """Start the download of a file.

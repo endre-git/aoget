@@ -37,7 +37,7 @@
     <item>
      <widget class="QGroupBox" name="groupBox_Jobs">
       <property name="toolTip">
-       <string>A job is a collection of links</string>
+       <string/>
       </property>
       <property name="title">
        <string>Jobs</string>
@@ -119,7 +119,7 @@
           <item>
            <widget class="QToolButton" name="btnJobImport_3">
             <property name="toolTip">
-             <string>More download threads</string>
+             <string>Increment download threads for the selected job</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -139,7 +139,7 @@
           <item>
            <widget class="QToolButton" name="btnJobImport_4">
             <property name="toolTip">
-             <string>Less download threads</string>
+             <string>Decrement download threads for the selected job</string>
             </property>
             <property name="text">
              <string>...</string>
