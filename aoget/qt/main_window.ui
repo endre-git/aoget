@@ -77,9 +77,9 @@
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="QToolButton" name="btnJobImport_5">
+           <widget class="QToolButton" name="btnJobStart">
             <property name="toolTip">
-             <string>More download threads</string>
+             <string>Start / resume downloading all files</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -97,9 +97,9 @@
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="btnJobImport_6">
+           <widget class="QToolButton" name="btnJobStop">
             <property name="toolTip">
-             <string>More download threads</string>
+             <string>Stop downloading all files</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -117,7 +117,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="btnJobImport_3">
+           <widget class="QToolButton" name="btnJobThreadsPlus">
             <property name="toolTip">
              <string>Increment download threads for the selected job</string>
             </property>
@@ -137,7 +137,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="btnJobImport_4">
+           <widget class="QToolButton" name="btnJobThreadsMinus">
             <property name="toolTip">
              <string>Decrement download threads for the selected job</string>
             </property>
@@ -233,7 +233,7 @@
           <item>
            <widget class="QToolButton" name="btnJobRemoveFromList">
             <property name="toolTip">
-             <string>Delete job...</string>
+             <string>Delete job</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -305,9 +305,29 @@
            </widget>
           </item>
           <item>
+           <widget class="QToolButton" name="btnJobOpenLink">
+            <property name="toolTip">
+             <string>Open page in browser from which links were taken...</string>
+            </property>
+            <property name="text">
+             <string>...</string>
+            </property>
+            <property name="icon">
+             <iconset>
+              <normaloff>../resources/icons/external-link.svg</normaloff>../resources/icons/external-link.svg</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>40</width>
+              <height>22</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QToolButton" name="btnJobHealthCheck">
             <property name="toolTip">
-             <string>Export a job...</string>
+             <string>Run disk integrity check. Will cross-check local file-size with remote file-size if the remote size was determined already.</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -345,7 +365,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="btnJobImport_2">
+           <widget class="QToolButton" name="btnJobExport">
             <property name="toolTip">
              <string>Export a job...</string>
             </property>
@@ -390,7 +410,7 @@
     <item>
      <widget class="QGroupBox" name="groupBox_Files">
       <property name="title">
-       <string>Files in current job</string>
+       <string>Files in selected job</string>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout" stretch="2,10">
        <property name="sizeConstraint">
@@ -454,7 +474,7 @@
           <item>
            <widget class="QToolButton" name="btnFileRedownload">
             <property name="toolTip">
-             <string>Restart download (deletes local file)</string>
+             <string>Remove from list, don't touch disk</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -657,6 +677,7 @@
     <addaction name="actionOpen_GitHub_page"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
+    <addaction name="actionBuy_the_dev_a_Coffee"/>
    </widget>
    <widget class="QMenu" name="menuJobs">
     <property name="title">
@@ -692,12 +713,12 @@
   </action>
   <action name="actionOpen_GitHub_page">
    <property name="text">
-    <string>Open GitHub Page</string>
+    <string>Visit the GitHub Page</string>
    </property>
   </action>
   <action name="actionExit">
    <property name="text">
-    <string>Donate</string>
+    <string>Donate to archive.org</string>
    </property>
   </action>
   <action name="actionPause_all">
@@ -746,6 +767,11 @@
   <action name="actionSearch_for">
    <property name="text">
     <string>Search for...</string>
+   </property>
+  </action>
+  <action name="actionBuy_the_dev_a_Coffee">
+   <property name="text">
+    <string>Buy the Developer a Coffee</string>
    </property>
   </action>
  </widget>

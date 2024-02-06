@@ -9,6 +9,8 @@ from PyQt6.QtWidgets import QAbstractItemView
 from PyQt6.QtWidgets import QDialogButtonBox
 from controller.job_editor_controller import JobEditorController
 from view.translucent_widget import TranslucentWidget
+from model.dto.job_dto import JobDTO
+from view import JobEditorMode
 
 import aogetsettings
 
@@ -64,27 +66,43 @@ class JobEditorDialog(QDialog):
             background-color: #ffaa99;
         }"""
 
-    def __init__(self, main_window_controller: any, job_name: str = None):
+    def __init__(
+        self,
+        main_window_controller: any,
+        job_name: str = None,
+        job_dto: JobDTO = None,
+        file_dtos: list = None,
+    ):
         super(JobEditorDialog, self).__init__()
         uic.loadUi("aoget/qt/job_editor.ui", self)
         self.job_name_unique = True
         self.app_controller = main_window_controller
-        self.is_editor = job_name is not None
+        self.mode = JobEditorMode.JOB_NEW
+        if job_name is not None:
+            self.mode = JobEditorMode.JOB_EDITED
+        elif job_dto is not None and file_dtos is not None:
+            self.mode = JobEditorMode.JOB_IMPORTED
+
         self.original_name = job_name
+        if self.original_name is None and job_dto:
+            self.original_name = job_dto.name
         self.__setup_ui()
         self.controller = JobEditorController(
-            self, main_window_controller, is_editor=job_name is not None
+            self, main_window_controller, mode=self.mode
         )
         self.sort_preview_list = True
-        if self.is_editor:
+        if self.mode == JobEditorMode.JOB_EDITED:
             self.loader_overlay.show()
             self.controller.load_job(job_name)
             self.sort_preview_list = False
-            self.__populate(self.controller.job)
+            self.__populate()
             self.sort_preview_list = True
             self.loader_overlay.hide()
+        elif self.mode == JobEditorMode.JOB_IMPORTED:
+            self.controller.job = job_dto
+            self.controller.use_files(file_dtos)
+            self.__populate()
         else:
-            self.is_editor = False
             self.__disable_selector_buttons()
         self.__update_ok_status()
 
@@ -139,7 +157,12 @@ class JobEditorDialog(QDialog):
         self.fetch_page_worker.page_fetch_failed.connect(self.__on_fetch_page_failed)
 
         self.loader_overlay = TranslucentWidget(
-            self, "Loading..." if self.is_editor else "Fetching links..."
+            self,
+            (
+                "Loading..."
+                if self.mode in [JobEditorMode.JOB_EDITED, JobEditorMode.JOB_IMPORTED]
+                else "Fetching links..."
+            ),
         )
         self.loader_overlay.resize(self.width(), self.height())
         self.loader_overlay.hide()
@@ -231,17 +254,15 @@ class JobEditorDialog(QDialog):
         """When the job name is changed"""
         job_name = self.txtJobName.text()
         if (
-            job_name
-            and job_name != self.original_name
-            and self.app_controller.job_exists(job_name)
-        ):
-            self.txtJobName.setStyleSheet(JobEditorDialog.ERROR_TEXT_STYLE)
-            self.txtJobName.setToolTip("A job with this name already exists.")
-            self.job_name_unique = False
-        else:
+            self.mode == JobEditorMode.JOB_EDITED and job_name == self.original_name
+        ) or not self.app_controller.job_exists(job_name):
             self.txtJobName.setStyleSheet(JobEditorDialog.DEFAULT_TEXT_STYLE)
             self.txtJobName.setToolTip("")
             self.job_name_unique = True
+        else:
+            self.txtJobName.setStyleSheet(JobEditorDialog.ERROR_TEXT_STYLE)
+            self.txtJobName.setToolTip("A job with this name already exists.")
+            self.job_name_unique = False
 
         self.__update_ok_status()
 
@@ -369,7 +390,7 @@ class JobEditorDialog(QDialog):
             )
             self.cmbLocalTarget.setToolTip("Please select a target folder.")
         elif (
-            self.is_editor
+            self.mode == JobEditorMode.JOB_EDITED
             and self.cmbLocalTarget.currentText() != self.controller.job.target_folder
             and not self.controller.is_new_job()
         ):
@@ -385,6 +406,7 @@ Downloaded files will fail the consistency check. Partially downloaded files wil
                 JobEditorDialog.DEFAULT_TEXT_STYLE
             )
             self.cmbLocalTarget.setToolTip("")
+        self.__update_ok_status()
 
     def __to_loading_state(self):
         """Switch the UI to the loading state"""
@@ -399,11 +421,12 @@ Downloaded files will fail the consistency check. Partially downloaded files wil
         self.treeFileSelector.setEnabled(True)
         self.loader_overlay.hide()
         self.treeFileSelector.show()
-        if not self.is_editor:
+        if self.mode == JobEditorMode.JOB_NEW:
             self.btnFetchPage.setEnabled(True)
 
-    def __populate(self, job):
+    def __populate(self):
         """Populate the form with the given job. Invoked only in editor mode."""
+        job = self.controller.job
         self.txtJobName.setText(job.name)
         self.cmbPageUrl.setCurrentText(job.page_url)
         self.cmbLocalTarget.setCurrentText(job.target_folder)
@@ -464,8 +487,11 @@ Downloaded files will fail the consistency check. Partially downloaded files wil
         if not self.job_name_unique:
             error_dialog(self, "The job name is not unique.")
             return
+        if self.cmbLocalTarget.currentText() == "":
+            error_dialog(self, "Please select a target folder.")
+            return
         if (
-            self.is_editor
+            self.mode == JobEditorMode.JOB_EDITED
             and self.cmbLocalTarget.currentText() != self.controller.job.target_folder
             and not self.controller.is_new_job()
         ):

@@ -1,3 +1,4 @@
+import os
 import urllib.parse
 from datetime import datetime
 from datetime import timedelta
@@ -79,3 +80,51 @@ def human_eta(eta_seconds: int) -> str:
     if eta_seconds <= 0 or eta_seconds is None:
         return ""
     return str(timedelta(seconds=eta_seconds))
+
+
+def human_duration(duration_seconds: float) -> str:
+    """Get a human readable duration from the given duration as milliseconds, seconds, minutes
+    or hours, depending on the length of time.
+    :param duration_seconds:
+        The duration in seconds
+    :return:
+        The human readable duration"""
+    if duration_seconds is None or duration_seconds <= 0:
+        return ""
+    if duration_seconds < 1:
+        return f"{(duration_seconds * 1000):.3f} milliseconds"
+    if duration_seconds < 60:
+        return f"{duration_seconds:.1f} seconds"
+    if duration_seconds < 3600:
+        return f"{(duration_seconds // 60):.1f} minutes"
+    return f"{(duration_seconds // 3600):.1f} hours"
+
+
+def get_last_log_lines(log_file: str, num_lines: int) -> list:
+    """Get the last num_lines of the log file.
+    :param log_file:
+        The log file to get the last lines of
+    :param num_lines:
+        The number of lines to get
+    :return:
+        The last num_lines of the log file"""
+    if not os.path.exists(log_file):
+        return []
+    with open(log_file, "r") as file:
+        lines = file.readlines()
+        return lines[-num_lines:]
+
+
+def get_crash_report(crash_log_path: str) -> str:
+    """Get the crash report from the given crash log file.
+    :param crash_log_path:
+        The path to the crash log file
+    :return:
+        The crash report"""
+    if not os.path.exists(crash_log_path):
+        return None
+    # crash log path without file extension
+    renamed = os.path.splitext(crash_log_path)[0] + "-" + timestamp_str() + ".html"
+    os.rename(crash_log_path, renamed)
+    with open(renamed, "r") as file:
+        return file.read()

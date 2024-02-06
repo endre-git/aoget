@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>Job Editor</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>../resources/icons/download.svg</normaloff>../resources/icons/download.svg</iconset>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="10,0">
    <property name="spacing">
     <number>10</number>

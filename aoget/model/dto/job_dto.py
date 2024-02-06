@@ -100,6 +100,21 @@ class JobDTO:
         job_model.target_folder = (
             self.target_folder if self.target_folder else job_model.target_folder
         )
+        job_model.downloaded_bytes = (
+            self.downloaded_bytes
+            if self.downloaded_bytes
+            else job_model.downloaded_bytes
+        )
+        job_model.selected_files_count = (
+            self.selected_files_count
+            if self.selected_files_count
+            else job_model.selected_files_count
+        )
+        job_model.selected_files_with_known_size = (
+            self.selected_files_with_known_size
+            if self.selected_files_with_known_size
+            else job_model.selected_files_with_known_size
+        )
 
     def update_from_model(self, job_model):
         self.id = job_model.id
@@ -113,6 +128,21 @@ class JobDTO:
         )
         self.target_folder = (
             job_model.target_folder if job_model.target_folder else self.target_folder
+        )
+        self.downloaded_bytes = (
+            job_model.downloaded_bytes
+            if job_model.downloaded_bytes
+            else self.downloaded_bytes
+        )
+        self.selected_files_count = (
+            job_model.selected_files_count
+            if job_model.selected_files_count
+            else self.selected_files_count
+        )
+        self.selected_files_with_known_size = (
+            job_model.selected_files_with_known_size
+            if job_model.selected_files_with_known_size
+            else self.selected_files_with_known_size
         )
         return self
 

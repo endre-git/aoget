@@ -3,8 +3,14 @@ import os.path
 import traceback
 
 import PyQt6.QtWidgets as QtWidgets
+from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer
 from PyQt6 import QtGui
+from util.aogetutil import get_last_log_lines
+from config.app_config import get_app_version
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def error_dialog(parent, message: str, header="Error") -> None:
@@ -18,6 +24,18 @@ def error_dialog(parent, message: str, header="Error") -> None:
     msg.showMessage(message)
 
 
+def message_dialog(parent, message: str, header="Message") -> None:
+    """Show a message dialog with the given message
+    :param parent:
+        The parent window
+    :param message:
+        The message to show in the dialog"""
+    msg = QtWidgets.QMessageBox(parent)
+    msg.setWindowTitle(header)
+    msg.setText(message)
+    msg.exec()
+
+
 def confirmation_dialog(parent, message: str, header="Please confirm") -> bool:
     """Show a confirmation dialog with the given message
     :param parent:
@@ -29,9 +47,30 @@ def confirmation_dialog(parent, message: str, header="Please confirm") -> bool:
     msg = QtWidgets.QMessageBox(parent)
     msg.setWindowTitle(header)
     msg.setText(message)
-    msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
+    msg.setStandardButtons(
+        QtWidgets.QMessageBox.StandardButton.Yes
+        | QtWidgets.QMessageBox.StandardButton.No
+    )
     msg.setDefaultButton(QtWidgets.QMessageBox.StandardButton.No)
     return msg.exec() == QtWidgets.QMessageBox.StandardButton.Yes
+
+
+def show_warnings(parent, brief: str, messages: list, header="Warning") -> bool:
+    """Show a confirmation dialog with the given message
+    :param parent:
+        The parent window
+    :param message:
+        The message to show in the dialog
+    :return:
+        True if the user confirmed, False otherwise"""
+    msg = QtWidgets.QMessageBox(parent)
+    msg.setWindowTitle(header)
+    brief = f"<p>{brief}</p>"
+    html_message = "<br/>".join(messages)
+    msg.setText(f"{brief}<p>{html_message}</p>")
+    msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+    msg.setDefaultButton(QtWidgets.QMessageBox.StandardButton.Ok)
+    return msg.exec()
 
 
 def qt_debounce(component, wait_ms, function, *args, **kwargs):
@@ -64,7 +103,7 @@ def qt_debounce(component, wait_ms, function, *args, **kwargs):
     return debounce.start
 
 
-def install_catch_all_exception_handler(main_window):
+def install_catch_all_exception_handler(log_path, error_path):
     """Install a catch all exception handler that will show an error dialog with the exception
     message and stack trace"""
 
@@ -74,23 +113,37 @@ def install_catch_all_exception_handler(main_window):
         if issubclass(exc_type, KeyboardInterrupt):
             if QtGui.qApp:
                 QtGui.qApp.quit()
-                return
 
-        filename, line, dummy, dummy = traceback.extract_tb(exc_traceback).pop()
-        filename = os.path.basename(filename)
-        error = "%s: %s" % (exc_type.__name__, exc_value)
+        try:
+            logger.error("App crash due to unhandled error:")
+            logger.error("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
+            filename, line, dummy, dummy = traceback.extract_tb(exc_traceback).pop()
+            filename = os.path.basename(filename)
+            error = "%s: %s" % (exc_type.__name__, exc_value)
 
-        error_dialog(
-            main_window,
-            "<html>A critical error has occured.<br/> "
-            + "<b>%s</b><br/><br/>" % error
-            + "It occurred at <b>line %d</b> of file <b>%s</b>.<br/>" % (line, filename)
-            + "</html>",
-        )
-        print("Closed due to an error. This is the full error report:")
-        print()
-        print("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
-        sys.exit(1)
+            last_50_lines = "".join(get_last_log_lines(log_path, 20))
+            monospaced_last_50_lines = f"<pre>{last_50_lines}</pre>"
+
+            msg = f"""<html><h4>AOGet Crash Report</h4><p>A critical error killed the application. 
+                It might be a bug or an unexpected system condition. Error message was: 
+                <b>{error}</b><br/><br/>
+                It occurred at <b>line {line}</b> of file <b>{filename}</b>.<br/>
+                App version is <b>{get_app_version()}</b>.<br/>
+                <p>The last 50 lines of app log were:</br>
+                {monospaced_last_50_lines}</p>
+                </html>"""
+
+            with open(error_path, "w") as f:
+                f.write(msg)
+
+            QApplication.quit()
+            os._exit(1)
+        except Exception as e:
+            print("An error occurred while handling an error. This is the error:")
+            print(e)
+            print("This is the original error:")
+            print("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
+            os._exit(1)
 
     # install handler for exceptions
     sys.excepthook = handle_exception

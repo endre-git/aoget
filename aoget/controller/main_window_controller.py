@@ -8,11 +8,15 @@ from web.queued_downloader import QueuedDownloader
 from db.aogetdb import get_job_dao, get_file_model_dao, get_file_event_dao
 from model.file_model import FileModel
 from model.job import Job
+import model.yaml.job_yaml as job_yaml
 from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 from model.dto.file_event_dto import FileEventDTO
 from model.job_updates import JobUpdates
 from util.disk_util import get_local_file_size
+from util.aogetutil import get_crash_report
+from config.app_config import get_config_value, AppConfig
+from controller.derived_field_calculator import DerivedFieldCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +46,12 @@ class MainWindowController:
         return self.jobs[job_name].get_file_by_name(file_name).has_history()
 
     def resume_state(self) -> None:
+
+        # if had a crash, show the dialog
+        crash_report = get_crash_report(get_config_value(AppConfig.CRASH_LOG_FILE_PATH))
+        if crash_report:
+            self.main_window.show_crash_report(crash_report)
+
         files_per_job = {}
         with self.db_lock:
             jobs = get_job_dao().get_all_jobs()
@@ -55,14 +65,14 @@ class MainWindowController:
                         filter(
                             lambda file: file.size_bytes is not None
                             and file.size_bytes > -1,
-                            files_per_job[job.name],
+                            files_per_job[job.name].values(),
                         )
                     )
                 )
                 job.selected_files_count = len(files_per_job[job.name])
                 job.downloaded_bytes = (
                     get_file_model_dao().get_total_downloaded_bytes_for_job(job.id)
-                )
+                ) or 0
                 if job.downloaded_bytes == job.total_size_bytes:
                     job.status = Job.STATUS_COMPLETED
                 get_job_dao().save_job(job)
@@ -72,6 +82,7 @@ class MainWindowController:
             self.journal[job_name] = JobUpdates(job_name)
 
         self.file_dto_cache = files_per_job
+
         self.__validate_file_states(files_per_job=files_per_job)
 
     def get_job_dtos(self) -> list:
@@ -89,7 +100,7 @@ class MainWindowController:
         """Get the length of the largest fileset"""
         return max(map(lambda fileset: len(fileset), self.file_dto_cache.values()))
 
-    def get_selected_file_dtos(self, job_name: str = None, job_id: int = -1) -> list:
+    def get_selected_file_dtos(self, job_name: str = None, job_id: int = -1) -> dict:
         """Get all selected files as DTOs by mapping each to a DTO and returning the list"""
         if job_name is None and job_id == -1:
             raise ValueError("Either job_name or job_id must be set.")
@@ -101,8 +112,11 @@ class MainWindowController:
             if job_id == -1:
                 job_id = get_job_dao().get_job_by_name(job_name).id
             file_models = get_file_model_dao().get_selected_files_of_job(job_id)
-            file_dtos = list(
-                map(lambda file: FileModelDTO.from_model(file, job_name), file_models)
+            file_dtos = dict(
+                map(
+                    lambda file: (file.name, FileModelDTO.from_model(file, job_name)),
+                    file_models,
+                )
             )
             return file_dtos
 
@@ -136,8 +150,6 @@ class MainWindowController:
         """Get all file DTOs by job id"""
         with self.db_lock:
             job_name = get_job_dao().get_job_by_id(job_id).name
-            if job_name in self.file_dto_cache:
-                return self.file_dto_cache[job_name]
             file_models = get_file_model_dao().get_files_by_job_id(job_id)
             file_dtos = list(
                 map(
@@ -187,7 +199,7 @@ class MainWindowController:
         if self.job_downloaders.get(job_name) is None:
             return self.start_download(job_name, file_name)
         if file_name in self.job_downloaders[job_name].files_in_queue:
-            return True, "File is already downloading or queued."
+            return True, FileModel.STATUS_QUEUED
         if file_name in self.job_downloaders[job_name].files_downloading:
             stopped_event = Event()
             # stop the current download and wait for it to conclude
@@ -231,7 +243,7 @@ class MainWindowController:
                 files_with_unknown_size = list(
                     filter(
                         lambda file: file.size_bytes is None or file.size_bytes == -1,
-                        self.file_dto_cache[job_name],
+                        self.file_dto_cache[job_name].values(),
                     )
                 )
             else:
@@ -255,7 +267,7 @@ class MainWindowController:
     def __validate_file_states(self, files_per_job) -> None:
         """Validate the file states"""
         for job_name, files in files_per_job.items():
-            for file in files:
+            for file in files.values():
                 if file.status == FileModel.STATUS_DOWNLOADING:
                     logger.info(
                         "File %s was downloaded at last app run, will resume now.",
@@ -266,7 +278,7 @@ class MainWindowController:
                     )
                     self.start_download(job_name, file.name)
 
-            for file in files:
+            for file in files.values():
                 if file.status == FileModel.STATUS_QUEUED:
                     logger.info(
                         "File %s was queued at last app run, will re-queue now.",
@@ -277,7 +289,7 @@ class MainWindowController:
                     )
                     self.start_download(job_name, file.name)
 
-            for file in files:
+            for file in files.values():
                 if file.status == FileModel.STATUS_COMPLETED:
                     local_size = get_local_file_size(file.target_path)
                     if file.downloaded_bytes is None:
@@ -323,18 +335,25 @@ class MainWindowController:
         with self.db_lock:
             job = get_job_dao().get_job_by_id(job_id)
             selected_count = 0
+            known_size_count = 0
             for file_dto in file_dtos:
                 file_model = get_file_model_dao().create_file_model(
                     url=file_dto.url, job=job, commit=False
                 )
                 if file_dto.selected:
                     selected_count += 1
+                if file_dto.size_bytes is not None and file_dto.size_bytes > -1:
+                    known_size_count += 1
                 file_dto.merge_into_model(file_model)
                 job.add_file(file_model)
             job.selected_files_count = selected_count
+            job.selected_files_with_known_size = known_size_count
             get_job_dao().save_job(job)
 
-            selected_files = list(filter(lambda file: file.selected, job.files))
+            selected_file_list = list(filter(lambda file: file.selected, file_dtos))
+            selected_files = dict(
+                map(lambda file: (file.name, file), selected_file_list)
+            )
             self.file_dto_cache[job.name] = selected_files
 
     def update_selected_files(self, job_id: int, file_dtos_by_name: dict) -> None:
@@ -347,11 +366,24 @@ class MainWindowController:
                     file.selected = file_dto.selected
                 else:
                     file.selected = False
-            selected_files = list(filter(lambda file: file.selected, job.files))
+            selected_file_list = list(
+                filter(lambda file: file.selected, file_dtos_by_name.values())
+            )
+            selected_files = dict(
+                map(lambda file: (file.name, file), selected_file_list)
+            )
             job.selected_files_count = len(selected_files)
             self.file_dto_cache[job.name] = selected_files
 
             get_job_dao().save_job(job)
+
+    def health_check(self, job_name: str, callback: any) -> None:
+        """Perform a health check"""
+        if job_name not in self.job_downloaders:
+            self.__setup_downloader(job_name)
+        self.job_downloaders[job_name].health_check(
+            self.get_selected_file_dtos(job_name).values(), callback
+        )
 
     def start_download(self, job_name: str, file_name: str) -> (bool, str):
         """Start downloading the given file
@@ -412,12 +444,98 @@ class MainWindowController:
             )
         return True, "Stopped"
 
-    def delete_job(self, job_name: str, delete_from_disk=False) -> None:
+    def start_job(self, job_name: str) -> None:
+        """Start the given job"""
+        self.__setup_downloader(job_name)
+        for file_dto in self.get_selected_file_dtos(job_name).values():
+            if file_dto.status not in [
+                FileModel.STATUS_DOWNLOADING,
+                FileModel.STATUS_COMPLETED,
+                FileModel.STATUS_QUEUED,
+            ]:
+                self.job_downloaders[job_name].download_file(file_dto)
+                self.__journal_of_job(job_name).update_file_status(
+                    file_name=file_dto.name, status=FileModel.STATUS_QUEUED
+                )
+
+    def start_downloads(self, job_name: str, file_names: list) -> None:
+        """Start the given downloads for multiple files"""
+        self.__setup_downloader(job_name)
+        relevant_file_dtos = list(
+            filter(
+                lambda file: file.name in file_names,
+                self.get_selected_file_dtos(job_name).values(),
+            )
+        )
+        for file_dto in relevant_file_dtos:
+            if file_dto.status not in [
+                FileModel.STATUS_DOWNLOADING,
+                FileModel.STATUS_COMPLETED,
+                FileModel.STATUS_QUEUED,
+            ]:
+                self.job_downloaders[job_name].download_file(file_dto)
+                self.__journal_of_job(job_name).update_file_status(
+                    file_name=file_dto.name, status=FileModel.STATUS_QUEUED
+                )
+
+    def stop_downloads(self, job_name: str, file_names: list) -> None:
+        """Stop the given downloads for multiple files"""
+        relevant_file_dtos = list(
+            filter(
+                lambda file: file.name in file_names,
+                self.get_selected_file_dtos(job_name).values(),
+            )
+        )
+        if job_name in self.job_downloaders:
+            for file_dto in relevant_file_dtos:
+                if file_dto.status == FileModel.STATUS_DOWNLOADING:
+                    self.stop_download(job_name, file_dto.name, add_to_journal=False)
+                elif file_dto.status == FileModel.STATUS_QUEUED:
+                    self.stop_download(job_name, file_dto.name, add_to_journal=True)
+
+    def stop_job(self, job_name: str) -> None:
+        """Stop the given job"""
+        if job_name in self.job_downloaders:
+            for file_dto in self.get_selected_file_dtos(job_name).values():
+                if file_dto.status == FileModel.STATUS_DOWNLOADING:
+                    self.stop_download(job_name, file_dto.name, add_to_journal=False)
+                elif file_dto.status == FileModel.STATUS_QUEUED:
+                    self.stop_download(job_name, file_dto.name, add_to_journal=True)
+
+    def remove_files_from_job(
+        self, job_name: str, file_names: list, delete_from_disk: bool = False
+    ) -> list:
+        """Remove the given files from the given job
+        :param job_name:
+            The name of the job
+        :param file_names:
+            The names of the files
+        :param delete_from_disk:
+            Whether to delete the files from disk
+        :return:
+            A list of messages, empty if no errors occurred"""
+        messages = []
+        relevant_file_dtos = list(
+            filter(
+                lambda file: file.name in file_names,
+                self.get_selected_file_dtos(job_name).values(),
+            )
+        )
+        for file_dto in relevant_file_dtos:
+            could_remove, msg = self.remove_file_from_job(
+                job_name, file_dto.name, delete_from_disk
+            )
+            if not could_remove:
+                messages.append(msg)
+        return messages if len(messages) > 0 else None
+
+    def delete_job(self, job_name: str, delete_from_disk=False) -> list:
         """Delete the given job
         :param job_name:
             The name of the job
         :param delete_from_disk:
             Whether to delete the files from disk"""
+        messages = []
         t0 = time.time()
         if job_name in self.job_downloaders:
             self.job_downloaders[job_name].kill()
@@ -426,9 +544,21 @@ class MainWindowController:
         t0 = time.time()
 
         if delete_from_disk:
-            for file in self.get_selected_file_dtos(job_name):
-                # TODO delete from disk
-                pass
+            target_folder = self.get_job_dto_by_name(job_name).target_folder
+            for file in self.get_selected_file_dtos(job_name).values():
+                try:
+                    file_path = os.path.join(target_folder, file.name)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        logger.info("Deleted file from disk: %s", file_path)
+                    elif (
+                        file.status == FileModel.STATUS_COMPLETED
+                        or file.status == FileModel.STATUS_STOPPED
+                    ):
+                        logger.error("File was not on disk: %s", file_path)
+                except Exception as e:
+                    messages.append(f"Could not delete file from disk: {e}")
+                    logger.error("Could not delete file from disk: %s", e)
         logger.info("Deleting files from disk took %s seconds.", time.time() - t0)
         t0 = time.time()
 
@@ -436,12 +566,26 @@ class MainWindowController:
             self.journal.pop(job_name)
         if job_name in self.file_dto_cache:
             self.file_dto_cache.pop(job_name)
-        logger.info("Deleting journal and file cache took %s seconds.", time.time() - t0)
+        logger.info(
+            "Deleting journal and file cache took %s seconds.", time.time() - t0
+        )
         t0 = time.time()
         with self.db_lock:
             job = get_job_dao().get_job_by_name(job_name)
             get_job_dao().delete_job(job)
         logger.info("Deleting job from db took %s seconds.", time.time() - t0)
+        return messages if len(messages) > 0 else None
+
+    def export_job(self, job_name: str, target_file: str) -> None:
+        """Export the given job to the given folder"""
+        with self.db_lock:
+            job = get_job_dao().get_job_by_name(job_name)
+            job_yaml.write_job_yaml(job, target_file)
+        logger.info("Exporting job %s to %s", job_name, target_file)
+
+    def import_job(self, source_file: str) -> (JobDTO, list):
+        """Import a job from the given file"""
+        return job_yaml.read_from_yaml(source_file)
 
     def remove_file_from_job(
         self, job_name: str, file_name: str, delete_from_disk=False
@@ -481,7 +625,7 @@ class MainWindowController:
                     os.remove(file_path)
             except Exception as e:
                 logger.error("Could not delete file from disk: %s", e)
-                return False, "Could not delete file from disk."
+                return False, f"Could not delete {file_name} from disk."
 
         # set unselected
         self.__journal_of_job(job_name).deselect_file(file_name)
@@ -664,6 +808,19 @@ class MainWindowController:
                     )
                     continue
                 file_model_dto.update_from_model(file_model)
+
+                # sync up the local cache state
+                if (
+                    not file_model_dto.selected
+                    and file_model_dto.name in self.file_dto_cache[job_name]
+                ):
+                    del self.file_dto_cache[job_name][file_model_dto.name]
+                    DerivedFieldCalculator.file_deselected_in_job(
+                        job_updates.job_update, file_model_dto
+                    )
+                    job_updates.job_update.merge_into_model(job)
+                else:
+                    self.file_dto_cache[job_name][file_model_dto.name] = file_model_dto
 
             # update the job-level size fields
             job.total_size_bytes += job_size_bytes_increment

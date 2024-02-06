@@ -5,6 +5,7 @@ from model.job import Job
 from web.page_crawler import PageCrawler
 from model.dto.file_model_dto import FileModelDTO
 from model.file_model import FileModel
+from view import JobEditorMode
 
 logger = logging.getLogger("JobEditorController")
 
@@ -16,16 +17,17 @@ class JobEditorController:
         self,
         job_editor_dialog: any,
         main_window_controller: any,
-        is_editor: bool = False,
+        mode: int
     ):
         """Create a new JobEditorController."""
         self.job_editor_dialog = job_editor_dialog
         self.app_controller = main_window_controller
         self.job = None
         self.files_by_name = {}
+        self.files_by_extension = defaultdict(list)
         self.crawler = None
         self.page_url = ""
-        self.is_editor = is_editor
+        self.mode = mode
 
     def build_fileset(self, page_url: str) -> list:
         """Fetch the links from the given page url."""
@@ -71,18 +73,25 @@ class JobEditorController:
             target_folder=self.job_editor_dialog.get_target_folder(),
         )
 
+    def use_files(self, files: list) -> None:
+        """Use the given files instead of loading them from the DB. Used on the import path."""
+        for file in files:
+            self.files_by_name[file.name] = file
+            self.files_by_extension[file.extension].append(file)
+
     def __load_files(self, job_id: int):
-        """Load the files for the given job id."""
-        self.job.files = self.app_controller.get_file_dtos_by_job_id(job_id)
+        """Load the files for the given job id. All, not just selected ones."""
+        files = self.app_controller.get_file_dtos_by_job_id(job_id)
         self.files_by_extension = defaultdict(list)
-        for file in self.job.files:
+        for file in files:
             self.files_by_name[file.name] = file
             self.files_by_extension[file.extension].append(file)
 
     def is_new_job(self):
         """Return True if the job is new, False otherwise. A job is
-        considered new if it has no files or if all of its files has STATUS_NEW."""
-        if not self.job_editor_dialog.is_editor:
+        considered new if it has no files or if all of its files has STATUS_NEW.
+        For newly created and imported jobs, this is trivially True."""
+        if self.mode in [JobEditorMode.JOB_NEW, JobEditorMode.JOB_IMPORTED]:
             return True
         for file in self.files_by_name.values():
             if file.status != FileModel.STATUS_NEW:
@@ -91,7 +100,7 @@ class JobEditorController:
 
     def build_job(self):
         """Build a job from the given page url."""
-        if self.is_editor:
+        if self.mode == JobEditorMode.JOB_EDITED:
             self.update_job()
             return
 

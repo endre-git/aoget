@@ -3,6 +3,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+VERSION = "0.9.0"
+
 
 class AppConfig:
     DEBUG = "debug"
@@ -12,7 +14,13 @@ class AppConfig:
     DATABASE_URL = "database-url"
     URL_CACHE_FOLDER = "url-cache-folder"
     AUTO_RESOLVE_FILE_SIZES = "auto-resolve-file-sizes"
+    LOG_FILE_PATH = "log-file-path"
+    CRASH_LOG_FILE_PATH = "crash-log-file-path"
     app_config = {}
+
+
+def get_app_version() -> str:
+    return VERSION
 
 
 def get_config_value(key: str) -> str:

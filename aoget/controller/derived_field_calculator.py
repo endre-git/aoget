@@ -16,6 +16,7 @@ class DerivedFieldCalculator(object):
     ) -> None:
         """Update the current_job_updates with the derived fields calculated using the
         job_updates_snapshot. Does this in-place, updating the current_job_updates."""
+        global_rate = 0
         for jobname in current_job_updates:
             if jobname in job_updates_snapshot:
                 current_job_update = current_job_updates[jobname]
@@ -23,6 +24,7 @@ class DerivedFieldCalculator(object):
                 DerivedFieldCalculator.__patch_job(
                     current_job_update, job_update_snapshot
                 )
+                global_rate += current_job_update.job_update.rate_bytes_per_sec
 
     def __patch_job(
         current_job_update: JobUpdates, job_update_snapshot: JobUpdates
@@ -55,3 +57,11 @@ class DerivedFieldCalculator(object):
         current_file.rate_bytes_per_sec = delta
         current_file.eta_seconds = eta_seconds
         current_file.percent_completed = percent_completed
+
+    def file_deselected_in_job(job_dto, file_model):
+        job_dto.selected_files_count -= 1
+        if file_model.size_bytes and file_model.size_bytes > 0:
+            job_dto.selected_files_with_known_size -= 1
+            job_dto.total_size_bytes -= file_model.size_bytes
+        if file_model.downloaded_bytes and file_model.downloaded_bytes > 0:
+            job_dto.downloaded_bytes -= file_model.downloaded_bytes

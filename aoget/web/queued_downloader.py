@@ -1,5 +1,6 @@
 """A queue for downloading files in a job. """
 
+import time
 import os
 import logging
 import queue
@@ -9,6 +10,7 @@ from .downloader import download_file, DownloadSignals, resolve_remote_file_size
 from model.dto.file_model_dto import FileModelDTO
 from model.file_model import FileModel
 from controller.journal_daemon import JournalDaemon
+from util.aogetutil import human_duration
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +86,6 @@ class QueuedDownloader:
         self.job = job
         self.monitor = monitor
         self.worker_pool_size = worker_pool_size
-        self.monitor = monitor
         self.queue = queue.Queue()
         self.threads = []
         self.signals = {}
@@ -97,6 +98,8 @@ class QueuedDownloader:
         self.download_thread_lock = threading.Lock()
         self.are_download_threads_running = False
         self.active_thread_count = 0
+        self.health_check_lock = threading.RLock()
+        self.is_health_check_running = False
 
     def run(self) -> None:
         """Run the download queue. Blocks until all files are downloaded."""
@@ -164,6 +167,13 @@ class QueuedDownloader:
         with self.size_resolver_lock:
             return self.is_resolver_running
 
+    def is_checking_health(self) -> bool:
+        """Determine whether the health check is still running.
+        :return:
+            True if the health check is still running, False otherwise"""
+        with self.health_check_lock:
+            return self.is_health_check_running
+
     def is_downloading(self) -> bool:
         """Determine whether the queue is still downloading files.
         :return:
@@ -198,7 +208,9 @@ class QueuedDownloader:
                     self.active_thread_count += 1
                 logger.info("Worker took file: %s", file_to_download.name)
                 if file_to_download.name not in self.files_in_queue:
-                    logger.info("File was cancelled before download started, not doing anything.")
+                    logger.info(
+                        "File was cancelled before download started, not doing anything."
+                    )
                     self.queue.task_done()
                     continue
                 self.files_in_queue.remove(file_to_download.name)
@@ -243,10 +255,17 @@ class QueuedDownloader:
             file_to_download.url,
             os.path.join(self.job.target_folder, file_to_download.name),
             signal,
-            file_size
+            file_size,
         )
         logger.info("Worker finished with file: %s", file_to_download.name)
         self.__post_download(file_to_download, new_status=result_state)
+
+    def __target_path_of_file(self, file_model_dto):
+        if self.job is None:
+            raise ValueError(
+                f"Job is not set, can't determine file target path for {file_model_dto.name}"
+            )
+        return os.path.join(self.job.target_folder, file_model_dto.name)
 
     def __post_download(
         self, file: FileModel, new_status: str, err: str = None
@@ -276,6 +295,109 @@ class QueuedDownloader:
             self.signals[filename] = signal
         return signal
 
+    def health_check(self, filemodels: list, callback: any) -> None:
+        """Check the health of the given filemodels.
+        :param job_name:
+            The name of the job
+        :param filemodels:
+            The filemodels to check the health for"""
+        if self.is_checking_health():
+            return
+
+        def health_check_task():
+            t0 = time.time()
+            with self.health_check_lock:
+                self.is_health_check_running = True
+
+            job_name = self.job.name
+            logger.debug("Checking health in background for %d files", len(filemodels))
+            success = 0
+            failure = 0
+            skipped = 0
+            crashed = 0
+            for filemodel in filemodels:
+                try:
+                    local_path = self.__target_path_of_file(filemodel)
+                    local_size = (
+                        os.path.getsize(local_path) if os.path.isfile(local_path) else 0
+                    )
+                    # if completed, assumed size must match size on disk
+                    if filemodel.status == FileModel.STATUS_COMPLETED:
+                        if filemodel.size_bytes != local_size:
+                            self.monitor.update_file_status(
+                                job_name,
+                                filemodel.name,
+                                FileModel.STATUS_INVALID,
+                                err="Size mismatch despite Completed state.",
+                            )
+                            self.monitor.update_download_progress(
+                                job_name,
+                                filemodel.name,
+                                local_size,
+                                filemodel.size_bytes,
+                            )
+                            failure += 1
+                        else:
+                            success += 1
+                    # if has downloaded bytes, disk should match
+                    elif (
+                        filemodel.status != FileModel.STATUS_DOWNLOADING
+                        and filemodel.downloaded_bytes
+                        and filemodel.downloaded_bytes > 0
+                    ):
+                        if filemodel.downloaded_bytes != local_size:
+                            self.monitor.update_file_status(
+                                job_name,
+                                filemodel.name,
+                                FileModel.STATUS_INVALID,
+                                err="Size mismatch for ongoing download.",
+                            )
+                            if filemodel.size_bytes > 0:
+                                self.monitor.update_download_progress(
+                                    job_name,
+                                    filemodel.name,
+                                    local_size,
+                                    filemodel.size_bytes,
+                                )
+                            failure += 1
+                        else:
+                            success += 1
+                    else:
+                        skipped += 1
+                except Exception as e:
+                    logger.error(
+                        "Failed to do an integrity check for %s",
+                        filemodel.name,
+                        exc_info=e,
+                    )
+                    self.monitor.update_file_status(
+                        job_name,
+                        filemodel.name,
+                        FileModel.STATUS_FAILED,
+                        err="Failed integrity check: " + str(e),
+                    )
+                    crashed += 1
+
+            logger.debug(
+                "Finished checking health in background for %d files",
+                len(filemodels),
+            )
+            with self.health_check_lock:
+                self.is_health_check_running = False
+
+            report = ""
+            report += f"Finished integrity check for job {job_name} in {human_duration(time.time() - t0)}.<br/>"
+            report += f"<b>{success} file(s) passed, {failure} failed, {skipped} skipped.</b><br/>"
+            report += "(Active downloads and files not yet started are skipped by design.)<br/>"
+            if crashed > 0:
+                report += f"For {crashed} file(s) the integrity checking process crashed.<br/>"
+            report += """</p><p>Individual results are available in the files table,
+                         filter for <b>Failed</b> or <b>Invalid</b> status.</p>"""
+
+            callback.emit("Integrity Check Complete", report)
+
+        threading.Thread(target=health_check_task).start()
+
     def resolve_file_sizes(self, job_name: str, filemodels: list) -> None:
         """Resolve the file sizes of the given filemodels.
         :param job_name:
@@ -303,6 +425,12 @@ class QueuedDownloader:
                 except Exception as e:
                     logger.error(
                         "Failed to resolve file size for %s", filemodel.name, exc_info=e
+                    )
+                    self.monitor.update_file_status(
+                        job_name,
+                        filemodel.name,
+                        FileModel.STATUS_FAILED,
+                        err="Size resolver failed: " + str(e),
                     )
             logger.debug(
                 "Finished resolving file sizes in background for %d files",
