@@ -17,6 +17,7 @@ from util.disk_util import get_local_file_size
 from util.aogetutil import get_crash_report
 from config.app_config import get_config_value, AppConfig
 from controller.derived_field_calculator import DerivedFieldCalculator
+from web.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +37,8 @@ class MainWindowController:
         self.journal = {}
         self.job_downloaders = {}
         self.file_dto_cache = {}
-
-    def get_selected_filenames(self, job_name: str) -> list:
-        """Get the names of all selected files"""
-        return self.jobs[job_name].get_selected_filenames()
-
-    def is_file_has_history(self, job_name: str, file_name: str) -> bool:
-        """Check if the file has history"""
-        return self.jobs[job_name].get_file_by_name(file_name).has_history()
+        self.rate_limiter = RateLimiter()
+        self.rate_limiter.set_global_rate_limit(1024*128)  # 128kB/s
 
     def resume_state(self) -> None:
 
@@ -84,6 +79,10 @@ class MainWindowController:
         self.file_dto_cache = files_per_job
 
         self.__validate_file_states(files_per_job=files_per_job)
+
+    def set_global_bandwidth_limit(self, rate_limit_bps: int) -> None:
+        """Set the global bandwidth limit"""
+        self.rate_limiter.set_global_rate_limit(rate_limit_bps)
 
     def get_job_dtos(self) -> list:
         """Get all jobs as DTOs by mapping each to a DTO and returning the list"""
@@ -669,9 +668,21 @@ class MainWindowController:
             self.job_downloaders[job_name] = downloader
             downloader.start_download_threads()
 
+    def __update_rate_limits(self) -> None:
+        """Update the rate limits"""
+        total_thread_count = 0
+        for job in self.job_downloaders.keys():
+            total_thread_count += self.job_downloaders[job].get_active_thread_count()
+        if total_thread_count == 0:
+            return
+        per_thread_limit = self.rate_limiter.get_per_thread_limit(total_thread_count)
+        for job in self.job_downloaders.keys():
+            self.job_downloaders[job].set_rate_limit(per_thread_limit)
+
     # TODO refactor this out of there. There should be a central update cycle handler
     def update_tick(self, journal: dict):
         """Called by the ticker to process the updates"""
+
         # join the keysets of the journal and the current job updates
         all_job_names = set(journal.keys()).union(set(self.journal.keys()))
         for jobname in all_job_names:
@@ -682,6 +693,7 @@ class MainWindowController:
             else:
                 self.process_job_updates(journal[jobname], merge=True)
         self.journal.clear()
+        self.__update_rate_limits()
 
     # TODO refactor this out of here. There should be a central update cycle handler
     def process_job_updates(self, cycle_job_updates: JobUpdates, merge=True) -> None:

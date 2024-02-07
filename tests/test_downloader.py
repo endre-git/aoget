@@ -1,4 +1,5 @@
 import unittest
+import math
 from unittest.mock import MagicMock, patch
 from pathlib import Path
 from aoget.web.downloader import DownloadSignals, download_file, validate_file
@@ -82,6 +83,75 @@ class TestDownloader(unittest.TestCase):
 
         result = validate_file(self.local_path, expected_hash)
         self.assertFalse(result)
+
+    def test_cycle_timings_1(self):
+        written = 100
+        chunk_size = 32
+        time_to_sleep = 2
+        cycles = time_to_sleep  # 2
+        remaining_time = time_to_sleep
+        expected_fake_written = [84, 100]
+        expected_sleep_times = [0.5, 0.5]
+        fake_written = []
+        sleep_times = []
+        for i in range(math.ceil(cycles)):
+            fake_delta = (
+                (i + 1) * (chunk_size / cycles)
+                if cycles > 1
+                else (i + 1) * (chunk_size * cycles)
+            )
+            fake_written.append(int(written - chunk_size + fake_delta))
+            sleep_times.append(min(remaining_time, 1 / cycles))
+            remaining_time -= 1 / cycles
+
+        self.assertEqual(fake_written, expected_fake_written)
+        self.assertEqual(sleep_times, expected_sleep_times)
+
+    def test_cycle_timings_2(self):
+        written = 100
+        chunk_size = 32
+        time_to_sleep = 3
+        cycles = time_to_sleep  # 2
+        remaining_time = time_to_sleep
+        expected_fake_written = [78, 89, 100]
+        expected_sleep_times = [1 / 3, 1 / 3, 1 / 3]
+        fake_written = []
+        sleep_times = []
+        for i in range(math.ceil(cycles)):
+            fake_delta = (
+                (i + 1) * (chunk_size / cycles)
+                if cycles > 1
+                else (i + 1) * (chunk_size * cycles)
+            )
+            fake_written.append(int(written - chunk_size + fake_delta))
+            sleep_times.append(min(remaining_time, 1 / cycles))
+            remaining_time -= 1 / cycles
+
+        self.assertEqual(fake_written, expected_fake_written)
+        self.assertEqual(sleep_times, expected_sleep_times)
+
+    def test_cycle_timings_3(self):
+        written = 100
+        chunk_size = 32
+        time_to_sleep = 0.8
+        cycles = time_to_sleep  # 2
+        remaining_time = time_to_sleep
+        expected_fake_written = [93]
+        expected_sleep_times = [0.8]
+        fake_written = []
+        sleep_times = []
+        for i in range(math.ceil(cycles)):
+            fake_delta = (
+                (i + 1) * (chunk_size / cycles)
+                if cycles > 1
+                else (i + 1) * (chunk_size * cycles)
+            )
+            fake_written.append(int(written - chunk_size + fake_delta))
+            sleep_times.append(min(remaining_time, 1 / cycles))
+            remaining_time -= 1 / cycles
+
+        self.assertEqual(fake_written, expected_fake_written)
+        self.assertEqual(sleep_times, expected_sleep_times)
 
 
 if __name__ == "__main__":

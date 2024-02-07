@@ -240,6 +240,13 @@ class QueuedDownloader:
             The number of active threads"""
         with self.download_thread_lock:
             return self.active_thread_count
+        
+    def set_rate_limit(self, rate_limit_bps: int) -> None:
+        """Set the rate limit for the downloaders.
+        :param rate_limit_bps:
+            The rate limit in bytes per second"""
+        for signal in self.signals.values():
+            signal.set_rate_limit(rate_limit_bps)
 
     def __start_download(self, file_to_download: FileModel) -> None:
         """Start the download of a file.

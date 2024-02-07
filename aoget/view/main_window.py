@@ -97,10 +97,68 @@ class MainWindow(QMainWindow):
         self.update_file_signal.connect(self.update_file)
         self.message_signal.connect(self.show_message)
 
-        # jobs table header
+        self.__setup_bandwidth_limit_menu()
         self.__setup_jobs_table()
         self.__setup_files_table()
         self.__populate()
+        self.__on_bandwidth_unlimited()
+
+    def __setup_bandwidth_limit_menu(self):
+        """Setup the bandwidth limit menu"""
+        self.menuSet_global_bandwidth_limit.clear()
+        self.menuSet_global_bandwidth_limit.addAction("Unlimited").triggered.connect(
+            self.__on_bandwidth_unlimited
+        )
+        self.menuSet_global_bandwidth_limit.addAction("5 MB/s").triggered.connect(
+            self.__on_bandwidth_high
+        )
+        self.menuSet_global_bandwidth_limit.addAction("1 MB/s").triggered.connect(
+            self.__on_bandwidth_medium
+        )
+        self.menuSet_global_bandwidth_limit.addAction("100 KB/s").triggered.connect(
+            self.__on_bandwidth_low
+        )
+        # set them checkable
+        for action in self.menuSet_global_bandwidth_limit.actions():
+            action.setCheckable(True)
+
+    def __on_bandwidth_unlimited(self):
+        self.controller.set_global_bandwidth_limit(0)
+        # tick the menu item
+        self.menuSet_global_bandwidth_limit.actions()[0].setChecked(True)
+        # untick all other menu items
+        for action in self.menuSet_global_bandwidth_limit.actions()[1:]:
+            action.setChecked(False)
+
+    def __on_bandwidth_high(self):
+        self.controller.set_global_bandwidth_limit(5 * 1024 * 1024)
+        # tick the menu item
+        self.menuSet_global_bandwidth_limit.actions()[1].setChecked(True)
+        # untick all other menu items
+        for action in (
+            self.menuSet_global_bandwidth_limit.actions()[0:1]
+            + self.menuSet_global_bandwidth_limit.actions()[2:]
+        ):
+            action.setChecked(False)
+
+    def __on_bandwidth_medium(self):
+        self.controller.set_global_bandwidth_limit(1 * 1024 * 1024)
+        # tick the menu item
+        self.menuSet_global_bandwidth_limit.actions()[2].setChecked(True)
+        # untick all other menu items
+        for action in (
+            self.menuSet_global_bandwidth_limit.actions()[0:2]
+            + self.menuSet_global_bandwidth_limit.actions()[3:]
+        ):
+            action.setChecked(False)
+
+    def __on_bandwidth_low(self):
+        self.controller.set_global_bandwidth_limit(100 * 1024)
+        # tick the menu item
+        self.menuSet_global_bandwidth_limit.actions()[3].setChecked(True)
+        # untick all other menu items
+        for action in self.menuSet_global_bandwidth_limit.actions()[0:3]:
+            action.setChecked(False)
 
     def __setup_jobs_table(self):
         """Setup the jobs table and controls around it"""
@@ -305,7 +363,6 @@ class MainWindow(QMainWindow):
         pass
 
     def __on_job_start(self):
-        raise ValueError("I'm dead")
         """Start the selected job"""
         if not self.__is_job_selected():
             return
@@ -566,7 +623,7 @@ class MainWindow(QMainWindow):
             return 0
         unique_rows = {item.row() for item in selected_items}
         return len(unique_rows)
-    
+
     def __selected_file_names(self):
         selected_items = self.tblFiles.selectedItems()
         unique_rows = set()
@@ -730,7 +787,9 @@ class MainWindow(QMainWindow):
             self.btnFileRemoveFromList.setEnabled(False)
             selected_job_name = self.tblJobs.selectedItems()[0].text()
             selected_files = self.__selected_file_names()
-            messages = self.controller.remove_files_from_job(selected_job_name, selected_files)
+            messages = self.controller.remove_files_from_job(
+                selected_job_name, selected_files
+            )
             self.__show_files(selected_job_name)
             with self.file_table_lock:
                 selected_row_indexes = self.tblFiles.selectionModel().selectedRows()
@@ -738,7 +797,9 @@ class MainWindow(QMainWindow):
                     self.tblFiles.setRowHidden(row_index.row(), True)
             self.btnFileRemoveFromList.setEnabled(True)
             if messages:
-                show_warnings(self, "Removed files with the following warnings:", messages)
+                show_warnings(
+                    self, "Removed files with the following warnings:", messages
+                )
 
     def __on_file_remove(self):
         """Remove the selected file from the list and delete the local file"""
@@ -792,7 +853,9 @@ class MainWindow(QMainWindow):
                     self.tblFiles.setRowHidden(row_index.row(), True)
             self.btnFileRemoveFromList.setEnabled(True)
             if messages:
-                show_warnings(self, "Removed files with the following warnings:", messages)
+                show_warnings(
+                    self, "Removed files with the following warnings:", messages
+                )
 
     def __on_file_details(self):
         """Show the details of the selected file"""
@@ -1022,14 +1085,18 @@ class MainWindow(QMainWindow):
             status_table_item = self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX)
             if status_table_item is None:
                 status_table_item = QTableWidgetItem(file.status)
-                self.tblFiles.setItem(row, MainWindow.FILE_STATUS_IDX, status_table_item)
+                self.tblFiles.setItem(
+                    row, MainWindow.FILE_STATUS_IDX, status_table_item
+                )
             else:
                 status_table_item.setText(file.status)
             # PROGRESS
             progress_bar = self.tblFiles.cellWidget(row, MainWindow.FILE_PROGRESS_IDX)
             if progress_bar is None:
                 progress_bar = QProgressBar()
-                self.tblFiles.setCellWidget(row, MainWindow.FILE_PROGRESS_IDX, progress_bar)
+                self.tblFiles.setCellWidget(
+                    row, MainWindow.FILE_PROGRESS_IDX, progress_bar
+                )
             progress_bar.setValue(
                 file.percent_completed
                 if file.percent_completed is not None and file.percent_completed > -1
@@ -1063,7 +1130,9 @@ class MainWindow(QMainWindow):
                 self.__restyleFileProgressBar(row, MainWindow.PROGRESS_BAR_ACTIVE_STYLE)
             else:
                 self.__reset_rate_and_eta_for_row(row)
-                self.__restyleFileProgressBar(row, MainWindow.PROGRESS_BAR_PASSIVE_STYLE)
+                self.__restyleFileProgressBar(
+                    row, MainWindow.PROGRESS_BAR_PASSIVE_STYLE
+                )
 
             # LAST UPDATED
             last_updated_timestamp_str = (
@@ -1085,7 +1154,9 @@ class MainWindow(QMainWindow):
                 last_updated_table_item.setText(last_updated_timestamp_str)
             # LAST EVENT
             last_event_str = file.last_event or ""
-            last_event_table_item = self.tblFiles.item(row, MainWindow.FILE_LAST_EVENT_IDX)
+            last_event_table_item = self.tblFiles.item(
+                row, MainWindow.FILE_LAST_EVENT_IDX
+            )
             if last_event_table_item is None:
                 last_event_table_item = QTableWidgetItem(last_event_str)
                 self.tblFiles.setItem(

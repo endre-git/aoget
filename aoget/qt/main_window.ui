@@ -683,27 +683,21 @@
     <property name="title">
      <string>Downloads</string>
     </property>
+    <widget class="QMenu" name="menuSet_global_bandwidth_limit">
+     <property name="title">
+      <string>Set global bandwidth limit</string>
+     </property>
+     <addaction name="action128KB_s"/>
+    </widget>
     <addaction name="actionPause_all"/>
     <addaction name="actionResume_all"/>
     <addaction name="separator"/>
-    <addaction name="actionSnail_mode"/>
-    <addaction name="actionSet_global_bandwidth_limit"/>
-    <addaction name="actionScheduled_download"/>
-    <addaction name="separator"/>
-    <addaction name="actionLoad_set"/>
-    <addaction name="actionSave_this_set_as"/>
+    <addaction name="menuSet_global_bandwidth_limit"/>
     <addaction name="separator"/>
     <addaction name="actionExit_2"/>
    </widget>
-   <widget class="QMenu" name="menuSearch">
-    <property name="title">
-     <string>Search</string>
-    </property>
-    <addaction name="actionSearch_for"/>
-   </widget>
    <addaction name="menuJobs"/>
    <addaction name="menuApplication"/>
-   <addaction name="menuSearch"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSettings">
@@ -729,11 +723,6 @@
   <action name="actionResume_all">
    <property name="text">
     <string>Resume all</string>
-   </property>
-  </action>
-  <action name="actionSet_global_bandwidth_limit">
-   <property name="text">
-    <string>Set global bandwidth limit</string>
    </property>
   </action>
   <action name="actionSnail_mode">
@@ -772,6 +761,11 @@
   <action name="actionBuy_the_dev_a_Coffee">
    <property name="text">
     <string>Buy the Developer a Coffee</string>
+   </property>
+  </action>
+  <action name="action128KB_s">
+   <property name="text">
+    <string>128KB/ s</string>
    </property>
   </action>
  </widget>
