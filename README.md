@@ -12,6 +12,8 @@ AOGet is a download manager for easy fileset downloads from archive.org, or any 
 * You can set global bandwidth limits, but not on a per-file basis.
 * The app does not explore directories recursively, it's limited to the flat set of files on a page.
 * There is no support for page logins, CAPTCHAs or any other non-trivial downloads.
+* As of 0.9.0 the rate display will be unreliable with very slow servers (<4KB/s) or many threads + bandwidth limit.
+* The target filenames are not temporaray as is the good practice with download managers (.filepart etc.)
 
 # Contribute
 ## Give feedback
