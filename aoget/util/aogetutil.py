@@ -100,6 +100,21 @@ def human_duration(duration_seconds: float) -> str:
     return f"{(duration_seconds // 3600):.1f} hours"
 
 
+def human_priority(priority: int) -> str:
+    """Get a human readable priority from the given priority.
+    :param priority:
+        The priority
+    :return:
+        The human readable priority"""
+    if priority == 3:
+        return "Low"
+    if priority == 2:
+        return "Normal"
+    if priority == 1:
+        return "High"
+    return "Unknown"
+
+
 def get_last_log_lines(log_file: str, num_lines: int) -> list:
     """Get the last num_lines of the log file.
     :param log_file:

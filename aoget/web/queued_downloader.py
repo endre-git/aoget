@@ -187,6 +187,13 @@ class QueuedDownloader:
             True if the queue is still downloading files, False otherwise"""
         return len(self.files_downloading) > 0 or len(self.files_in_queue) > 0
 
+    def update_priority(self, file: FileModelDTO) -> None:
+        """Update the priority of the given file.
+        :param file:
+            The file to update the priority for"""
+        if file.name in self.files_in_queue:
+            self.queue.put_file(file)
+
     def __start_workers(self, worker_pool=3):
         """Start the workers as per the worker pool size."""
         for i in range(worker_pool):

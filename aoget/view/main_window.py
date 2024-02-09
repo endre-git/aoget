@@ -60,12 +60,13 @@ class MainWindow(QMainWindow):
 
     FILE_NAME_IDX = 0
     FILE_SIZE_IDX = 1
-    FILE_STATUS_IDX = 2
-    FILE_PROGRESS_IDX = 3
-    FILE_RATE_IDX = 4
-    FILE_ETA_IDX = 5
-    FILE_LAST_UPDATED_IDX = 6
-    FILE_LAST_EVENT_IDX = 7
+    FILE_PRIORITY_IDX = 2
+    FILE_STATUS_IDX = 3
+    FILE_PROGRESS_IDX = 4
+    FILE_RATE_IDX = 5
+    FILE_ETA_IDX = 6
+    FILE_LAST_UPDATED_IDX = 7
+    FILE_LAST_EVENT_IDX = 8
 
     JOB_NAME_IDX = 0
     JOB_SIZE_IDX = 1
@@ -273,13 +274,10 @@ class MainWindow(QMainWindow):
 
     def __setup_files_table(self):
         """Setup the files table and controls around it"""
-        self.tblFiles.setColumnCount(
-            8
-        )  # Increase column count to accommodate the new "Rate" column
-        self.tblFiles.setHorizontalHeaderLabels(
-            [
+        header_labels = [
                 "Name",
                 "Size",
+                "Priority",
                 "Status",
                 "Progress",
                 "Rate",
@@ -287,13 +285,18 @@ class MainWindow(QMainWindow):
                 "Last Updated",
                 "Last Event",
             ]
-        )
+
+        self.tblFiles.setColumnCount(len(header_labels))
+        self.tblFiles.setHorizontalHeaderLabels(header_labels)
         header = self.tblFiles.horizontalHeader()
         header.setSectionResizeMode(
             MainWindow.FILE_NAME_IDX, QHeaderView.ResizeMode.Stretch
         )
         header.setSectionResizeMode(
             MainWindow.FILE_SIZE_IDX, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            MainWindow.FILE_PRIORITY_IDX, QHeaderView.ResizeMode.Fixed
         )
         header.setSectionResizeMode(
             MainWindow.FILE_STATUS_IDX, QHeaderView.ResizeMode.Fixed
@@ -316,7 +319,7 @@ class MainWindow(QMainWindow):
         )
         self.tblFiles.setSelectionBehavior(QHeaderView.SelectionBehavior.SelectRows)
         self.tblFiles.setSelectionMode(QHeaderView.SelectionMode.ExtendedSelection)
-        column_widths = [200, 70, 100, 300, 70, 100, 150, 300]
+        column_widths = [200, 70, 100, 100, 300, 70, 100, 150, 300]
         for i, width in enumerate(column_widths):
             self.tblFiles.setColumnWidth(i, width)
 
@@ -338,6 +341,8 @@ class MainWindow(QMainWindow):
         self.btnFileShowInFolder.clicked.connect(self.__on_file_show_in_folder)
         self.btnFileCopyURL.clicked.connect(self.__on_file_copy_url)
         self.btnFileOpenLink.clicked.connect(self.__on_file_open_link)
+        self.btnFilePriorityPlus.clicked.connect(self.__on_file_priority_plus)
+        self.btnFilePriorityMinus.clicked.connect(self.__on_file_priority_minus)
 
         # disable all file toolbar buttons
         self.btnFileStartDownload.setEnabled(False)
@@ -349,6 +354,8 @@ class MainWindow(QMainWindow):
         self.btnFileShowInFolder.setEnabled(False)
         self.btnFileCopyURL.setEnabled(False)
         self.btnFileOpenLink.setEnabled(False)
+        self.btnFilePriorityPlus.setEnabled(False)
+        self.btnFilePriorityMinus.setEnabled(False)
 
     def __populate(self):
         """Populate the UI with data from the database"""
@@ -599,6 +606,8 @@ class MainWindow(QMainWindow):
             self.btnFileShowInFolder.setEnabled(False)
             self.btnFileCopyURL.setEnabled(False)
             self.btnFileOpenLink.setEnabled(False)
+            self.btnFilePriorityPlus.setEnabled(False)
+            self.btnFilePriorityMinus.setEnabled(False)
 
         elif self.__selected_file_count() == 1:
             self.btnFileRedownload.setEnabled(True)
@@ -608,6 +617,8 @@ class MainWindow(QMainWindow):
             self.btnFileShowInFolder.setEnabled(True)
             self.btnFileCopyURL.setEnabled(True)
             self.btnFileOpenLink.setEnabled(True)
+            self.btnFilePriorityPlus.setEnabled(True)
+            self.btnFilePriorityMinus.setEnabled(True)
             file_status = self.tblFiles.item(
                 self.tblFiles.currentRow(), MainWindow.FILE_STATUS_IDX
             ).text()
@@ -623,6 +634,8 @@ class MainWindow(QMainWindow):
             self.btnFileShowInFolder.setEnabled(False)
             self.btnFileCopyURL.setEnabled(False)
             self.btnFileOpenLink.setEnabled(False)
+            self.btnFilePriorityPlus.setEnabled(True)
+            self.btnFilePriorityMinus.setEnabled(True)
 
     def __is_file_selected(self, filename=None):
         """Determine whether a file is selected"""
@@ -928,6 +941,22 @@ class MainWindow(QMainWindow):
         url = self.controller.resolve_file_url(job_name, file_name)
         QDesktopServices.openUrl(QUrl(url))
 
+    def __on_file_priority_plus(self):
+        """Increase the priority of the selected file"""
+        if not self.__is_job_selected() or not self.__is_file_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        selected_files = self.__selected_file_names()
+        self.controller.increase_file_priorities(job_name, selected_files)
+
+    def __on_file_priority_minus(self):
+        """Decrease the priority of the selected file"""
+        if not self.__is_job_selected() or not self.__is_file_selected():
+            return
+        job_name = self.tblJobs.selectedItems()[0].text()
+        selected_files = self.__selected_file_names()
+        self.controller.decrease_file_priorities(job_name, selected_files)
+
     def __show_error_dialog(
         self, message, title="Error", icon=QMessageBox.Icon.Critical
     ):
@@ -1078,6 +1107,16 @@ class MainWindow(QMainWindow):
             row, MainWindow.JOB_TARGET_FOLDER_IDX, QTableWidgetItem(job.target_folder)
         )
 
+    def __priority_str(self, priority):
+        """Return the priority string for the given priority"""
+        if priority == FileModel.PRIORITY_HIGH:
+            return "High"
+        if priority == FileModel.PRIORITY_NORMAL:
+            return "Normal"
+        if priority == FileModel.PRIORITY_LOW:
+            return "Low"
+        return "Unknown"
+
     def __set_file_at_row(self, row, file: FileModelDTO):
         """Set the file at the given row in the files table. Reuses the existing widgets
         in the table if applicable, because creating new widgets is slow."""
@@ -1103,6 +1142,16 @@ class MainWindow(QMainWindow):
                 )
             else:
                 size_table_item.setText(size_str)
+            # PRIORITY
+            priority_str = self.__priority_str(file.priority)
+            priority_table_item = self.tblFiles.item(row, MainWindow.FILE_PRIORITY_IDX)
+            if priority_table_item is None:
+                priority_table_item = QTableWidgetItem(priority_str)
+                self.tblFiles.setItem(
+                    row, MainWindow.FILE_PRIORITY_IDX, priority_table_item
+                )
+            else:
+                priority_table_item.setText(priority_str)
             # STATUS
             status_table_item = self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX)
             if status_table_item is None:
