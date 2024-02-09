@@ -38,7 +38,6 @@ class MainWindowController:
         self.job_downloaders = {}
         self.file_dto_cache = {}
         self.rate_limiter = RateLimiter()
-        self.rate_limiter.set_global_rate_limit(1024 * 128)  # 128kB/s
 
     def resume_state(self) -> None:
 
@@ -159,9 +158,11 @@ class MainWindowController:
             self.file_dto_cache[job_name] = file_dtos
             return file_dtos
 
-    def job_post_select(self, job_name: str) -> None:
+    def job_post_select(self, job_name: str, is_new=False) -> None:
         """Called after a job has been selected"""
         self.__resolve_file_sizes(job_name)
+        if is_new and get_config_value(AppConfig.AUTO_START_JOBS):
+            self.start_job(job_name)
 
     def add_job(self, job) -> None:
         """Add a job"""
@@ -702,7 +703,10 @@ class MainWindowController:
                 job_dto = JobDTO.from_model(job)
             if job_dto is None:
                 raise ValueError("Unknown job: " + job_name)
-            downloader = QueuedDownloader(job=job, monitor=self.journal_daemon)
+            worker_pool_size = get_config_value(AppConfig.PER_JOB_DEFAULT_THREAD_COUNT)
+            downloader = QueuedDownloader(
+                job=job, monitor=self.journal_daemon, worker_pool_size=worker_pool_size
+            )
             self.job_downloaders[job_name] = downloader
             downloader.start_download_threads()
 

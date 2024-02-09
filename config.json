@@ -1,11 +1,21 @@
 {
-    "debug" : true,
-    "database-url" : "sqlite:///settings/aoget.db",
-    "settings-folder" : "settings/",
+    "debug": true,
+    "database-url": "sqlite:///settings/aoget.db",
+    "settings-folder": "settings/",
     "target-folder-history-file": "settings/target-folder-history.lst",
     "url-history-file": "settings/url-history.lst",
-    "url-cache-folder" : "settings/url-cache",
-    "auto-resolve-file-sizes" : true,
-    "log-file-path" : "aoget.log",
-    "crash-log-file-path" : "aoget-crash-log.html"
+    "url-cache-folder": "settings/url-cache",
+    "auto-resolve-file-sizes": true,
+    "log-file-path": "aoget.log",
+    "crash-log-file-path": "aoget-crash-log.html",
+    "default-download-folder": "C:\\AoGet",
+    "low-bandwidth-limit": 100,
+    "medium-bandwidth-limit": 1500,
+    "high-bandwidth-limit": 4096,
+    "job-autonaming-pattern": "title",
+    "job-subfolder-policy": "per-job",
+    "per-job-default-thread-count": 5,
+    "auto-start-jobs": true,
+    "overwrite-existing-files": true,
+    "url-cache-enabled": true
 }

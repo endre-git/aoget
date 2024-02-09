@@ -1,5 +1,6 @@
 """Module implementing the job editor dialog"""
 
+import os
 import logging
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QDialog, QFileDialog
@@ -11,6 +12,8 @@ from controller.job_editor_controller import JobEditorController
 from view.translucent_widget import TranslucentWidget
 from model.dto.job_dto import JobDTO
 from view import JobEditorMode
+from config.app_config import get_config_value, AppConfig
+from util.disk_util import to_filesystem_friendly_string
 
 import aogetsettings
 
@@ -106,6 +109,9 @@ class JobEditorDialog(QDialog):
             self.__disable_selector_buttons()
         self.__update_ok_status()
 
+        self.naming_strategy = get_config_value(AppConfig.JOB_AUTONAMING_PATTERN)
+        self.folder_strategy = get_config_value(AppConfig.JOB_SUBFOLDER_POLICY)
+
     def __setup_ui(self):
         """Setup the component post generation. This is called from the constructor."""
         # load previously used values from config into combo boxes
@@ -150,6 +156,7 @@ class JobEditorDialog(QDialog):
 
         # set placeholder texts for combo boxes (not possible from Qt Designer)
         self.cmbPageUrl.lineEdit().setPlaceholderText("Enter or paste URL")
+        self.cmbLocalTarget.lineEdit().setText(get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER))
         self.cmbLocalTarget.lineEdit().setPlaceholderText("Select target folder")
 
         self.lstFilesetPreview.keyPressEvent = self.__on_preview_list_key_press
@@ -398,7 +405,19 @@ class JobEditorDialog(QDialog):
         self.treeFileSelector.setEnabled(True)
         self.treeFileSelector.show()
         self.__on_filter_selection_text_changed()
-        self.txtJobName.setText(self.controller.get_page_title())
+        name = ""
+        if self.naming_strategy == "title":
+            name = self.controller.get_page_title()
+        elif self.naming_strategy == "url":
+            page_url = self.cmbPageUrl.currentText()
+            name = page_url.split("/")[-1]
+        self.txtJobName.setText(name)
+
+        target_folder = self.cmbLocalTarget.currentText()
+        if self.folder_strategy == "per-job" and len(target_folder) > 0 and name != "":
+            target_folder = os.path.join(target_folder, to_filesystem_friendly_string(name))
+        self.cmbLocalTarget.setCurrentText(target_folder)
+
         self.__update_target_folder()
         self.__to_normal_state()
         self.__enable_selector_buttons()

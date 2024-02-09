@@ -18,9 +18,11 @@ from controller.main_window_controller import MainWindowController
 from view.job_editor_dialog import JobEditorDialog
 from view.file_details_dialog import FileDetailsDialog
 from view.crash_report_dialog import CrashReportDialog
+from view.app_settings_dialog import AppSettingsDialog
 from view.translucent_widget import TranslucentWidget
 from util.aogetutil import human_timestamp_from, human_filesize, human_eta, human_rate
 from util.qt_util import confirmation_dialog, show_warnings, message_dialog
+from config.app_config import AppConfig, get_config_value
 from model.file_model import FileModel
 from db.aogetdb import AogetDb
 
@@ -99,6 +101,8 @@ class MainWindow(QMainWindow):
         self.update_job_signal.connect(self.update_job)
         self.update_file_signal.connect(self.update_file)
         self.message_signal.connect(self.show_message)
+        self.actionOpen_GitHub_page.triggered.connect(self.open_github_page)
+        self.actionSettings.triggered.connect(self.open_settings)
         self.actionExit.triggered.connect(self.close_app)
         self.actionPause_all.triggered.connect(self.pause_all)
         self.actionResume_all.triggered.connect(self.resume_all)
@@ -116,25 +120,27 @@ class MainWindow(QMainWindow):
         self.menuSet_global_bandwidth_limit.addAction("Unlimited").triggered.connect(
             self.__on_bandwidth_unlimited
         )
-        self.menuSet_global_bandwidth_limit.addAction("5 MB/s").triggered.connect(
-            self.__on_bandwidth_high
-        )
-        self.menuSet_global_bandwidth_limit.addAction("1 MB/s").triggered.connect(
-            self.__on_bandwidth_medium
-        )
-        self.menuSet_global_bandwidth_limit.addAction("100 KB/s").triggered.connect(
-            self.__on_bandwidth_low
-        )
+        high_bandwidth_value = get_config_value(AppConfig.HIGH_BANDWIDTH_LIMIT) * 1024
+        self.menuSet_global_bandwidth_limit.addAction(
+            human_rate(high_bandwidth_value)
+        ).triggered.connect(self.__on_bandwidth_high)
+        medium_bandwidth_value = get_config_value(AppConfig.MEDIUM_BANDWIDTH_LIMIT) * 1024
+        self.menuSet_global_bandwidth_limit.addAction(
+            human_rate(medium_bandwidth_value)
+        ).triggered.connect(self.__on_bandwidth_medium)
+        low_bandwidth_value = get_config_value(AppConfig.LOW_BANDWIDTH_LIMIT) * 1024
+        self.menuSet_global_bandwidth_limit.addAction(
+            human_rate(low_bandwidth_value)
+        ).triggered.connect(self.__on_bandwidth_low)
         # set them checkable
         for action in self.menuSet_global_bandwidth_limit.actions():
             action.setCheckable(True)
+            action.setToolTip("Youn can adjust these limits in the application settings.")
 
     def __setup_overlays(self):
         self.shutdown_overlay = TranslucentWidget(
             self,
-            (
-                "Shutting down..."
-            ),
+            ("Shutting down..."),
         )
         self.shutdown_overlay.resize(self.width(), self.height())
         self.shutdown_overlay.hide()
@@ -148,7 +154,8 @@ class MainWindow(QMainWindow):
             action.setChecked(False)
 
     def __on_bandwidth_high(self):
-        self.controller.set_global_bandwidth_limit(5 * 1024 * 1024)
+        limit = get_config_value(AppConfig.HIGH_BANDWIDTH_LIMIT) * 1024
+        self.controller.set_global_bandwidth_limit(limit)
         # tick the menu item
         self.menuSet_global_bandwidth_limit.actions()[1].setChecked(True)
         # untick all other menu items
@@ -159,7 +166,8 @@ class MainWindow(QMainWindow):
             action.setChecked(False)
 
     def __on_bandwidth_medium(self):
-        self.controller.set_global_bandwidth_limit(1 * 1024 * 1024)
+        limit = get_config_value(AppConfig.MEDIUM_BANDWIDTH_LIMIT) * 1024
+        self.controller.set_global_bandwidth_limit(limit)
         # tick the menu item
         self.menuSet_global_bandwidth_limit.actions()[2].setChecked(True)
         # untick all other menu items
@@ -170,7 +178,8 @@ class MainWindow(QMainWindow):
             action.setChecked(False)
 
     def __on_bandwidth_low(self):
-        self.controller.set_global_bandwidth_limit(100 * 1024)
+        limit = get_config_value(AppConfig.LOW_BANDWIDTH_LIMIT) * 1024
+        self.controller.set_global_bandwidth_limit(limit)
         # tick the menu item
         self.menuSet_global_bandwidth_limit.actions()[3].setChecked(True)
         # untick all other menu items
@@ -270,21 +279,20 @@ class MainWindow(QMainWindow):
 
         # jobs table selection
         self.tblJobs.itemSelectionChanged.connect(self.__on_job_selected)
-        self.tblJobs.doubleClicked.connect(self.__on_job_table_double_clicked)
 
     def __setup_files_table(self):
         """Setup the files table and controls around it"""
         header_labels = [
-                "Name",
-                "Size",
-                "Priority",
-                "Status",
-                "Progress",
-                "Rate",
-                "ETA",
-                "Last Updated",
-                "Last Event",
-            ]
+            "Name",
+            "Size",
+            "Priority",
+            "Status",
+            "Progress",
+            "Rate",
+            "ETA",
+            "Last Updated",
+            "Last Event",
+        ]
 
         self.tblFiles.setColumnCount(len(header_labels))
         self.tblFiles.setHorizontalHeaderLabels(header_labels)
@@ -328,7 +336,6 @@ class MainWindow(QMainWindow):
         header.sectionClicked.connect(self.__sort_files_table)
 
         # jobs table selection
-        # self.tblFiles.doubleClicked.connect(self.__on_file_table_double_clicked)
         self.tblFiles.itemSelectionChanged.connect(self.__on_file_selected)
 
         # file toolbar buttons
@@ -381,10 +388,6 @@ class MainWindow(QMainWindow):
         self.__show_files(selected_job_name)
         self.controller.job_post_select(selected_job_name)
 
-    def __on_job_table_double_clicked(self):
-        """A job has been double clicked in the jobs table"""
-        pass
-
     def __on_job_start(self):
         """Start the selected job"""
         if not self.__is_job_selected():
@@ -429,7 +432,9 @@ class MainWindow(QMainWindow):
                 and newly_selected_job != selected_job_name
             ):
                 self.__show_files(newly_selected_job)
-                self.controller.job_post_select(newly_selected_job)
+                self.controller.job_post_select(newly_selected_job, is_new=True)
+            elif get_config_value(AppConfig.AUTO_START_JOBS):
+                self.controller.start_job(dlg.controller.job.name)
 
     def __on_edit_job(self):
         """Edit the selected job"""
@@ -539,7 +544,9 @@ class MainWindow(QMainWindow):
                         and newly_selected_job != selected_job_name
                     ):
                         self.__show_files(newly_selected_job)
-                        self.controller.job_post_select(newly_selected_job)
+                        self.controller.job_post_select(newly_selected_job, is_new=True)
+                    elif get_config_value(AppConfig.AUTO_START_JOBS):
+                        self.controller.start_job(dlg.controller.job.name)
             except Exception as e:
                 self.__show_error_dialog("Failed to import job: " + str(e))
 
@@ -1274,7 +1281,7 @@ class MainWindow(QMainWindow):
         if confirmation_dialog(
             self,
             "Are you sure you want to quit? All downloads will be stopped.",
-            "Quit?"
+            "Quit?",
         ):
             self.shutdown_overlay.show()
             self.controller.shutdown()
@@ -1288,9 +1295,17 @@ class MainWindow(QMainWindow):
         if confirmation_dialog(
             self,
             "All jobs will be stopped. Are you sure you want to pause all?",
-            "Pause?"
+            "Pause?",
         ):
             self.controller.stop_all_jobs()
 
     def resume_all(self):
         self.controller.resume_all_jobs()
+
+    def open_settings(self):
+        dlg = AppSettingsDialog()
+        dlg.exec()
+        self.__setup_bandwidth_limit_menu()
+
+    def open_github_page(self):
+        QDesktopServices.openUrl(QUrl("https://github.com/kosaendre/aoget/"))

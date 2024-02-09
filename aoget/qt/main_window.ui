@@ -747,6 +747,7 @@
     <addaction name="actionDonateArchiveOrg"/>
     <addaction name="actionBuy_the_dev_a_Coffee"/>
     <addaction name="separator"/>
+    <addaction name="actionAbout"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuJobs">
@@ -839,6 +840,11 @@
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
    </property>
   </action>
  </widget>
