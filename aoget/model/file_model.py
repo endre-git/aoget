@@ -23,6 +23,10 @@ class FileModel(Base):
     STATUS_STOPPED = "Stopped"
     STATUS_INVALID = "Invalid"
 
+    PRIORITY_HIGH = 1
+    PRIORITY_NORMAL = 2
+    PRIORITY_LOW = 3
+
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
     extension: Mapped[str] = mapped_column(nullable=False)
@@ -31,6 +35,7 @@ class FileModel(Base):
     size_bytes: Mapped[int] = mapped_column(nullable=True, default=-1)
     downloaded_bytes: Mapped[int] = mapped_column(nullable=True, default=-1)
     status: Mapped[str] = mapped_column(default=STATUS_NEW)
+    priority: Mapped[int] = mapped_column(default=2, nullable=False)
     history_entries: Mapped[List["FileEvent"]] = relationship(back_populates="file",
                                                               cascade="all, delete, delete-orphan")
     job_id: Mapped[int] = mapped_column(ForeignKey("job.id"))

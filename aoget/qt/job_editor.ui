@@ -138,7 +138,7 @@
             <item row="2" column="2">
              <widget class="QPushButton" name="btnDeselectDiskDuplicates">
               <property name="toolTip">
-               <string>Uncheck files that are already on disk (in the target folder)</string>
+               <string>Uncheck files that are already on disk (in any job's target folder)</string>
               </property>
               <property name="text">
                <string/>

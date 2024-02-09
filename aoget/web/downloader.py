@@ -233,10 +233,10 @@ def resolve_remote_file_size(url: str) -> int:
         Remote resource (file) url"""
     r = requests.head(url, timeout=TIMEOUT_SECONDS)
     content_length = int(r.headers.get("content-length", 0))
-    logger.info("Length of %s is %d", url, content_length)
+    logger.debug("Length of %s is %d", url, content_length)
     actual_location = r.headers.get("location", None)
     if content_length == 0 and actual_location is not None:
-        logger.info("Resolving redirect to %s from URL %s", actual_location, url)
+        logger.debug("Resolving redirect to %s from URL %s", actual_location, url)
         return resolve_remote_file_size(actual_location)
     return content_length
 

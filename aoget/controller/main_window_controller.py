@@ -13,7 +13,7 @@ from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 from model.dto.file_event_dto import FileEventDTO
 from model.job_updates import JobUpdates
-from util.disk_util import get_local_file_size
+from util.disk_util import get_local_file_size, get_all_file_names_from_folders
 from util.aogetutil import get_crash_report
 from config.app_config import get_config_value, AppConfig
 from controller.derived_field_calculator import DerivedFieldCalculator
@@ -30,7 +30,7 @@ class MainWindowController:
 
     def __init__(self, main_window: Any, aoget_db: Any):
         self.main_window = main_window
-        self.monitor_daemon = JournalDaemon(
+        self.journal_daemon = JournalDaemon(
             update_interval_seconds=1, journal_processor=self
         )
         self.db_lock = aoget_db.state_lock
@@ -38,7 +38,7 @@ class MainWindowController:
         self.job_downloaders = {}
         self.file_dto_cache = {}
         self.rate_limiter = RateLimiter()
-        self.rate_limiter.set_global_rate_limit(1024*128)  # 128kB/s
+        self.rate_limiter.set_global_rate_limit(1024 * 128)  # 128kB/s
 
     def resume_state(self) -> None:
 
@@ -404,9 +404,6 @@ class MainWindowController:
             return False, "File is already queued."
         file_dto = self.get_file_dto(job_name, file_name)
         self.job_downloaders[job_name].download_file(file_dto)
-        self.__journal_of_job(job_name).update_file_status(
-            file_name=file_name, status=FileModel.STATUS_QUEUED
-        )
         return True, FileModel.STATUS_QUEUED
 
     def stop_download(
@@ -457,6 +454,11 @@ class MainWindowController:
                     file_name=file_dto.name, status=FileModel.STATUS_QUEUED
                 )
 
+    def resume_all_jobs(self) -> None:
+        """Resume all jobs"""
+        for job_dto in self.get_job_dtos():
+            self.start_job(job_dto.name)
+
     def start_downloads(self, job_name: str, file_names: list) -> None:
         """Start the given downloads for multiple files"""
         self.__setup_downloader(job_name)
@@ -500,6 +502,11 @@ class MainWindowController:
                     self.stop_download(job_name, file_dto.name, add_to_journal=False)
                 elif file_dto.status == FileModel.STATUS_QUEUED:
                     self.stop_download(job_name, file_dto.name, add_to_journal=True)
+
+    def stop_all_jobs(self) -> None:
+        """Stop all jobs"""
+        for job_name in self.job_downloaders.keys():
+            self.stop_job(job_name)
 
     def remove_files_from_job(
         self, job_name: str, file_names: list, delete_from_disk: bool = False
@@ -652,6 +659,37 @@ class MainWindowController:
         with self.db_lock:
             return get_job_dao().get_job_by_name(job_name) is not None
 
+    def shutdown(self) -> None:
+        """Shutdown the controller"""
+        for job_name in self.job_downloaders.keys():
+            self.job_downloaders[job_name].kill()
+        self.journal_daemon.stop()
+
+    def all_files_in_job_folders(self) -> list:
+        """Get all file names from all job folders"""
+        job_folders = []
+        with self.db_lock:
+            jobs = get_job_dao().get_all_jobs()
+            job_folders = list(map(lambda job: job.target_folder, jobs))
+        if len(job_folders) > 0:
+            return get_all_file_names_from_folders(job_folders)
+        else:
+            return []
+
+    def all_files_in_jobs(self) -> list:
+        """Get all file names from all job folders"""
+        job_names = []
+        all_file_names = []
+        with self.db_lock:
+            jobs = get_job_dao().get_all_jobs()
+            job_names = list(map(lambda job: job.name, jobs))
+        for job_name in job_names:
+            # collect all files from selected_file_dtos
+            file_dtos = self.get_selected_file_dtos(job_name)
+            file_names = list(map(lambda file: file.name, file_dtos.values()))
+            all_file_names.extend(file_names)
+        return all_file_names
+
     def __setup_downloader(
         self,
         job_name: str,
@@ -664,7 +702,7 @@ class MainWindowController:
                 job_dto = JobDTO.from_model(job)
             if job_dto is None:
                 raise ValueError("Unknown job: " + job_name)
-            downloader = QueuedDownloader(job=job, monitor=self.monitor_daemon)
+            downloader = QueuedDownloader(job=job, monitor=self.journal_daemon)
             self.job_downloaders[job_name] = downloader
             downloader.start_download_threads()
 
@@ -678,6 +716,31 @@ class MainWindowController:
         per_thread_limit = self.rate_limiter.get_per_thread_limit(total_thread_count)
         for job in self.job_downloaders.keys():
             self.job_downloaders[job].set_rate_limit(per_thread_limit)
+
+    def add_thread(self, job_name: str) -> None:
+        """Increase the threads for the given job"""
+        self.__setup_downloader(job_name)
+        self.job_downloaders[job_name].add_thread()
+
+    def remove_thread(self, job_name: str) -> None:
+        """Decrease the threads for the given job"""
+        self.__setup_downloader(job_name)
+        downloader = self.job_downloaders[job_name]
+        victim_file = None
+        stopped = Event()
+        if downloader.get_active_thread_count() == downloader.worker_pool_size:
+            # find the active download with the lowest prio
+            files = []
+            for file_name in downloader.files_downloading:
+                file_dto = self.get_selected_file_dtos(job_name)[file_name]
+                files.append(file_dto)
+            victim_file = max(files, key=lambda file: file.priority)
+            logger.info(f"Stopping {victim_file.name} for {job_name} to reduce thread count.")
+            self.stop_download(job_name, victim_file.name, completion_event=stopped)
+        self.job_downloaders[job_name].remove_thread()
+        if victim_file is not None:
+            stopped.wait(2)
+            self.start_download(job_name, victim_file.name)  # re-queue the file
 
     # TODO refactor this out of there. There should be a central update cycle handler
     def update_tick(self, journal: dict):

@@ -23,6 +23,7 @@ class FileModelDTO:
         last_event_timestamp: str = None,
         last_event: str = None,
         target_path: str = None,
+        priority: int = 2,
         deleted: bool = False,
     ):
         self.name = name
@@ -39,6 +40,7 @@ class FileModelDTO:
         self.last_event_timestamp = last_event_timestamp
         self.last_event = last_event
         self.target_path = target_path
+        self.priority = priority
         if (
             self.percent_completed == -1
             and self.size_bytes is not None
@@ -75,6 +77,7 @@ class FileModelDTO:
             last_event_timestamp=file_model.get_latest_history_timestamp(),
             last_event=file_model.get_latest_history_entry().event,
             target_path=file_model.get_target_path(),
+            priority=file_model.priority
         )
         return file_model_dto
 
@@ -87,6 +90,13 @@ class FileModelDTO:
             "size_bytes": self.size_bytes,
             "downloaded_bytes": self.downloaded_bytes,
             "status": self.status,
+            "rate_bytes_per_sec": self.rate_bytes_per_sec,
+            "eta_seconds": self.eta_seconds,
+            "percent_completed": self.percent_completed,
+            "last_event_timestamp": self.last_event_timestamp,
+            "last_event": self.last_event,
+            "target_path": self.target_path,
+            "priority": self.priority,
             "deleted": self.deleted,
         }
 
@@ -108,6 +118,7 @@ class FileModelDTO:
             self.deleted = other.deleted
         if other.percent_completed and other.percent_completed > -1:
             self.percent_completed = other.percent_completed
+        self.priority = other.priority
         return self
 
     def merge_into_model(self, file_model):
@@ -128,6 +139,7 @@ class FileModelDTO:
             else file_model.downloaded_bytes
         )
         file_model.status = self.status if self.status else file_model.status
+        file_model.priority = self.priority
 
     def update_from_model(self, file_model):
         self.name = file_model.name if file_model.name else self.name
@@ -159,6 +171,7 @@ class FileModelDTO:
             and self.downloaded_bytes > -1
         ):
             self.percent_completed = int(100 * self.downloaded_bytes / self.size_bytes)
+        self.priority = file_model.priority
 
     def __str__(self):
         return (
@@ -171,7 +184,8 @@ class FileModelDTO:
             f"percent_completed={self.percent_completed}, "
             f"last_event_timestamp={self.last_event_timestamp}, "
             f"last_event={self.last_event}, "
-            f"target_path={self.target_path}, deleted={self.deleted})"
+            f"target_path={self.target_path}, deleted={self.deleted}, "
+            f"priority={self.priority})"
         )
 
     def __repr__(self):
@@ -196,6 +210,7 @@ class FileModelDTO:
             and self.last_event == __value.last_event
             and self.target_path == __value.target_path
             and self.deleted == __value.deleted
+            and self.priority == __value.priority
         )
 
     def __lt__(self, other):

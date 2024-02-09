@@ -127,6 +127,12 @@ class JobEditorDialog(QDialog):
         self.btnCheckAllShown.clicked.connect(self.__on_check_all_shown)
         self.btnUncheckAllShown.clicked.connect(self.__on_uncheck_all_shown)
         self.btnResetSelection.clicked.connect(self.__on_reset_selection)
+        self.btnDeselectDiskDuplicates.clicked.connect(
+            self.__on_deselect_disk_duplicates
+        )
+        self.btnDeselectJobDuplicates.clicked.connect(
+            self.__on_deselect_job_duplicates
+        )
         # filtering on selector tree
         self.txtSelectionFilter.textChanged.connect(
             qt_debounce(self, 500, self.__on_filter_selection_text_changed)
@@ -215,6 +221,25 @@ class JobEditorDialog(QDialog):
                 for j in range(extension_node.childCount()):
                     file_node = extension_node.child(j)
                     file_node.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
+
+    def __deselect_these(self, filenames):
+        """Deselect the given filenames"""
+        for i in range(self.treeFileSelector.topLevelItemCount()):
+            extension_node = self.treeFileSelector.topLevelItem(i)
+            for j in range(extension_node.childCount()):
+                file_node = extension_node.child(j)
+                if file_node.text(0) in filenames:
+                    file_node.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
+
+    def __on_deselect_disk_duplicates(self):
+        """Button click on deselect disk duplicates"""    
+        filenames_in_job_folders = self.controller.all_files_in_job_folders()
+        self.__deselect_these(filenames_in_job_folders)
+
+    def __on_deselect_job_duplicates(self):
+        """Button click on deselect job duplicates"""
+        filenames_in_jobs = self.controller.all_files_in_jobs()
+        self.__deselect_these(filenames_in_jobs)
 
     def __on_filter_selection_text_changed(self):
         """Filter the selection based on the text in the filter box"""

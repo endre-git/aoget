@@ -103,7 +103,7 @@ def qt_debounce(component, wait_ms, function, *args, **kwargs):
     return debounce.start
 
 
-def install_catch_all_exception_handler(log_path, error_path):
+def install_catch_all_exception_handler(main_window, log_path, error_path):
     """Install a catch all exception handler that will show an error dialog with the exception
     message and stack trace"""
 
@@ -136,6 +136,7 @@ def install_catch_all_exception_handler(log_path, error_path):
             with open(error_path, "w") as f:
                 f.write(msg)
 
+            main_window.closing = True
             QApplication.quit()
             os._exit(1)
         except Exception as e:
