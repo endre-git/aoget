@@ -3,10 +3,10 @@
 import time
 import os
 import logging
-import queue
 import threading
 from model.dto.job_dto import JobDTO
-from .downloader import download_file, DownloadSignals, resolve_remote_file_size
+from web.downloader import download_file, DownloadSignals, resolve_remote_file_size
+from web.file_queue import FileQueue
 from model.dto.file_model_dto import FileModelDTO
 from model.file_model import FileModel
 from controller.journal_daemon import JournalDaemon
@@ -86,7 +86,7 @@ class QueuedDownloader:
         self.job = job
         self.monitor = monitor
         self.worker_pool_size = worker_pool_size
-        self.queue = queue.Queue()
+        self.queue = FileQueue()
         self.threads = []
         self.signals = {}
         self.files_in_queue = []
@@ -94,11 +94,13 @@ class QueuedDownloader:
         self.size_resolver_lock = threading.RLock()
         self.is_resolver_running = False
         self.is_resolved_all_file_sizes = False
+        self.size_resolver_cancelled = False
         self.resolved_file_sizes = {}
         self.download_thread_lock = threading.Lock()
         self.are_download_threads_running = False
         self.active_thread_count = 0
         self.health_check_lock = threading.RLock()
+        self.health_check_cancelled = False
         self.is_health_check_running = False
 
     def run(self) -> None:
@@ -122,6 +124,8 @@ class QueuedDownloader:
     def kill(self) -> None:
         """Kill the download queue, stop running downloads, forget queued downloads."""
         self.__stop_workers()
+        self.health_check_cancelled = True
+        self.size_resolver_cancelled = True
         self.files_in_queue.clear()
         if len(self.files_downloading) > 0:
             wait_events = []
@@ -139,7 +143,10 @@ class QueuedDownloader:
         :param file:
             The file to download"""
         self.files_in_queue.append(file.name)
-        self.queue.put(file)
+        self.queue.put_file(file)
+        self.monitor.update_file_status(
+            self.job.name, file.name, FileModel.STATUS_QUEUED
+        )
 
     def cancel_download(self, filename: str) -> None:
         """Cancel the download of the given file.
@@ -183,14 +190,18 @@ class QueuedDownloader:
     def __start_workers(self, worker_pool=3):
         """Start the workers as per the worker pool size."""
         for i in range(worker_pool):
-            t = threading.Thread(target=self.__download_worker)
+            t = threading.Thread(
+                target=self.__download_worker,
+                name=f"download-{self.job.name}-{i}-",
+                daemon=True,
+            )
             t.start()
             self.threads.insert(i, t)
 
     def __stop_workers(self, sync=False) -> None:
         """Stop the workers by putting None (poison pill) on the queue and joining the threads"""
         for i in self.threads:
-            self.queue.put(None)
+            self.queue.put_file(None)
         if sync:
             for t in self.threads:
                 t.join()
@@ -201,9 +212,10 @@ class QueuedDownloader:
         """The worker thread that downloads files from the queue."""
         while True:
             try:
-                file_to_download = self.queue.get()
+                file_to_download = self.queue.pop_file()
                 if file_to_download is None:
-                    break
+                    logger.info("Worker received poison pill, stopping.")
+                    return
                 with self.download_thread_lock:
                     self.active_thread_count += 1
                 logger.info("Worker took file: %s", file_to_download.name)
@@ -240,7 +252,24 @@ class QueuedDownloader:
             The number of active threads"""
         with self.download_thread_lock:
             return self.active_thread_count
-        
+
+    def add_thread(self) -> None:
+        """Add a thread to the worker pool."""
+        self.worker_pool_size += 1
+        t = threading.Thread(
+            target=self.__download_worker,
+            name=f"download-{self.job.name}-{len(self.threads)}-",
+            daemon=True,
+        )
+        t.start()
+        self.threads.append(t)
+
+    def remove_thread(self) -> None:
+        """Kill a thread from the worker pool."""
+        self.worker_pool_size -= 1
+        if len(self.threads) > 1:
+            self.queue.put_file(None)
+
     def set_rate_limit(self, rate_limit_bps: int) -> None:
         """Set the rate limit for the downloaders.
         :param rate_limit_bps:
@@ -323,6 +352,8 @@ class QueuedDownloader:
             skipped = 0
             crashed = 0
             for filemodel in filemodels:
+                if self.health_check_cancelled:
+                    return
                 try:
                     local_path = self.__target_path_of_file(filemodel)
                     local_size = (
@@ -403,7 +434,8 @@ class QueuedDownloader:
 
             callback.emit("Integrity Check Complete", report)
 
-        threading.Thread(target=health_check_task).start()
+        threading.Thread(target=health_check_task,
+                         name=f"health-check-{self.job.name}").start()
 
     def resolve_file_sizes(self, job_name: str, filemodels: list) -> None:
         """Resolve the file sizes of the given filemodels.
@@ -422,6 +454,8 @@ class QueuedDownloader:
                 "Resolving file sizes in background for %d files", len(filemodels)
             )
             for filemodel in filemodels:
+                if self.size_resolver_cancelled:
+                    return
                 try:
                     filemodel.size_bytes = resolve_remote_file_size(filemodel.url)
                     self.monitor.update_file_size(
@@ -447,4 +481,5 @@ class QueuedDownloader:
                 self.resolved_all_file_sizes = True
                 self.is_resolver_running = False
 
-        threading.Thread(target=resolve_size_task).start()
+        threading.Thread(target=resolve_size_task,
+                         name=f"size-resolver-{self.job.name}").start()

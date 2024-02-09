@@ -125,3 +125,11 @@ class JobEditorController:
         self.page_url = self.job.page_url
         self.__load_files(self.job.id)
         return self.job
+
+    def all_files_in_job_folders(self) -> list:
+        """Get all file names from the job's folders."""
+        return self.app_controller.all_files_in_job_folders()
+
+    def all_files_in_jobs(self) -> list:
+        """Get all file names from the job's folders."""
+        return self.app_controller.all_files_in_jobs()

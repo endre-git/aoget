@@ -18,6 +18,7 @@ from controller.main_window_controller import MainWindowController
 from view.job_editor_dialog import JobEditorDialog
 from view.file_details_dialog import FileDetailsDialog
 from view.crash_report_dialog import CrashReportDialog
+from view.translucent_widget import TranslucentWidget
 from util.aogetutil import human_timestamp_from, human_filesize, human_eta, human_rate
 from util.qt_util import confirmation_dialog, show_warnings, message_dialog
 from model.file_model import FileModel
@@ -88,6 +89,7 @@ class MainWindow(QMainWindow):
         self.show()
         self.controller.resume_state()
         self.file_table_lock = threading.RLock()
+        self.closing = False
 
     def __setup_ui(self):
         """Setup the UI"""
@@ -96,11 +98,15 @@ class MainWindow(QMainWindow):
         self.update_job_signal.connect(self.update_job)
         self.update_file_signal.connect(self.update_file)
         self.message_signal.connect(self.show_message)
+        self.actionExit.triggered.connect(self.close_app)
+        self.actionPause_all.triggered.connect(self.pause_all)
+        self.actionResume_all.triggered.connect(self.resume_all)
 
         self.__setup_bandwidth_limit_menu()
         self.__setup_jobs_table()
         self.__setup_files_table()
         self.__populate()
+        self.__setup_overlays()
         self.__on_bandwidth_unlimited()
 
     def __setup_bandwidth_limit_menu(self):
@@ -121,6 +127,16 @@ class MainWindow(QMainWindow):
         # set them checkable
         for action in self.menuSet_global_bandwidth_limit.actions():
             action.setCheckable(True)
+
+    def __setup_overlays(self):
+        self.shutdown_overlay = TranslucentWidget(
+            self,
+            (
+                "Shutting down..."
+            ),
+        )
+        self.shutdown_overlay.resize(self.width(), self.height())
+        self.shutdown_overlay.hide()
 
     def __on_bandwidth_unlimited(self):
         self.controller.set_global_bandwidth_limit(0)
@@ -376,10 +392,16 @@ class MainWindow(QMainWindow):
         self.controller.stop_job(job_name)
 
     def __on_job_threads_plus(self):
-        pass
+        if not self.__is_job_selected():
+            return
+        current_job = self.tblJobs.selectedItems()[0].text()
+        self.controller.add_thread(current_job)
 
     def __on_job_threads_minus(self):
-        pass
+        if not self.__is_job_selected():
+            return
+        current_job = self.tblJobs.selectedItems()[0].text()
+        self.controller.remove_thread(current_job)
 
     def __on_create_new_job(self):
         """Create a new job"""
@@ -1189,3 +1211,37 @@ class MainWindow(QMainWindow):
     def show_crash_report(self, message):
         """Show a crash report in a dialog"""
         CrashReportDialog(message).exec()
+
+    def closeEvent(self, event):
+        """Handle the close event (X button) of the window"""
+        if self.closing:
+            event.accept()
+        elif self.close_app():
+            event.accept()
+        else:
+            event.ignore()
+
+    def close_app(self):
+        if confirmation_dialog(
+            self,
+            "Are you sure you want to quit? All downloads will be stopped.",
+            "Quit?"
+        ):
+            self.shutdown_overlay.show()
+            self.controller.shutdown()
+            self.closing = True
+            self.close()
+            return True
+        else:
+            return False
+
+    def pause_all(self):
+        if confirmation_dialog(
+            self,
+            "All jobs will be stopped. Are you sure you want to pause all?",
+            "Pause?"
+        ):
+            self.controller.stop_all_jobs()
+
+    def resume_all(self):
+        self.controller.resume_all_jobs()

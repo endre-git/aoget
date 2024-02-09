@@ -676,8 +676,10 @@
     <addaction name="actionSettings"/>
     <addaction name="actionOpen_GitHub_page"/>
     <addaction name="separator"/>
-    <addaction name="actionExit"/>
+    <addaction name="actionDonateArchiveOrg"/>
     <addaction name="actionBuy_the_dev_a_Coffee"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuJobs">
     <property name="title">
@@ -693,11 +695,9 @@
     <addaction name="actionResume_all"/>
     <addaction name="separator"/>
     <addaction name="menuSet_global_bandwidth_limit"/>
-    <addaction name="separator"/>
-    <addaction name="actionExit_2"/>
    </widget>
-   <addaction name="menuJobs"/>
    <addaction name="menuApplication"/>
+   <addaction name="menuJobs"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSettings">
@@ -710,7 +710,7 @@
     <string>Visit the GitHub Page</string>
    </property>
   </action>
-  <action name="actionExit">
+  <action name="actionDonateArchiveOrg">
    <property name="text">
     <string>Donate to archive.org</string>
    </property>
@@ -766,6 +766,11 @@
   <action name="action128KB_s">
    <property name="text">
     <string>128KB/ s</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
    </property>
   </action>
  </widget>

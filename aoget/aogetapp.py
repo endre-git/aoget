@@ -83,6 +83,7 @@ app = QApplication(sys.argv)
 
 window = MainWindow(aoget_db)
 install_catch_all_exception_handler(
+    window,
     get_config_value(AppConfig.LOG_FILE_PATH),
     get_config_value(AppConfig.CRASH_LOG_FILE_PATH),
 )
