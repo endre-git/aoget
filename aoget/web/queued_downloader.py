@@ -194,9 +194,9 @@ class QueuedDownloader:
         if file.name in self.files_in_queue:
             self.queue.put_file(file)
 
-    def __start_workers(self, worker_pool=3):
+    def __start_workers(self):
         """Start the workers as per the worker pool size."""
-        for i in range(worker_pool):
+        for i in range(self.worker_pool_size):
             t = threading.Thread(
                 target=self.__download_worker,
                 name=f"download-{self.job.name}-{i}-",

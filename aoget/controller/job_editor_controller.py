@@ -40,6 +40,7 @@ class JobEditorController:
             for url in urls_by_extension[extension]:
                 file = FileModelDTO.from_url(url)
                 file.selected = False
+                file.priority = 2
                 files_by_current_extension.append(file)
                 self.files_by_name[file.name] = file
             files_by_extension[extension] = sorted(files_by_current_extension)
