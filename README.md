@@ -15,6 +15,9 @@ AOGet is a download manager for easy fileset downloads from archive.org, or any 
 * As of 0.9.0 the rate display will be unreliable with very slow servers (<4KB/s) or many threads + bandwidth limit.
 * The target filenames are not temporaray as is the good practice with download managers (.filepart etc.)
 
+## What's next?
+Have a look at the [v1.0 Milestone](https://github.com/kosaendre/aoget/milestone/6)
+
 # Contribute
 ## Give feedback
 GitHub discussions link
