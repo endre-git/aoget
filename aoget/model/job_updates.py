@@ -5,7 +5,7 @@ from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 from model.dto.file_event_dto import FileEventDTO
 from model.file_model import FileModel
-from util.aogetutil import timestamp_str, human_filesize
+from util.aogetutil import timestamp_str, human_filesize, human_priority
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +174,18 @@ class JobUpdates:
                 job_name=self.job_name, name=file_name, size_bytes=size
             )
         self.add_file_event(file_name, "Resolved size: " + str(human_filesize(size)))
+
+    def update_file_priority(self, file_name: str, priority: int) -> None:
+        """Update the priority of a file.
+        :param file_name: The name of the file to update
+        :param priority: The new priority of the file"""
+        if file_name in self.file_model_updates:
+            self.file_model_updates[file_name].priority = priority
+        else:
+            self.file_model_updates[file_name] = FileModelDTO(
+                job_name=self.job_name, name=file_name, priority=priority
+            )
+        self.add_file_event(file_name, f"Priority changed to {human_priority(priority)}.")
 
     def deselect_file(self, file_name: str) -> None:
         """Deselect a file.

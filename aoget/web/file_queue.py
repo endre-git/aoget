@@ -36,7 +36,7 @@ class FileQueue(queue.PriorityQueue):
         entry = self.entry_finder.pop(file.name)
         entry[-1] = self.REMOVED
 
-    def pop_file(self) -> (int, FileModelDTO):
+    def pop_file(self) -> tuple[int, FileModelDTO]:
         """Pop a file from the queue.
         :return:
             The priority and file"""

@@ -735,12 +735,40 @@ class MainWindowController:
                 file_dto = self.get_selected_file_dtos(job_name)[file_name]
                 files.append(file_dto)
             victim_file = max(files, key=lambda file: file.priority)
-            logger.info(f"Stopping {victim_file.name} for {job_name} to reduce thread count.")
+            logger.info(
+                f"Stopping {victim_file.name} for {job_name} to reduce thread count."
+            )
             self.stop_download(job_name, victim_file.name, completion_event=stopped)
         self.job_downloaders[job_name].remove_thread()
         if victim_file is not None:
             stopped.wait(2)
             self.start_download(job_name, victim_file.name)  # re-queue the file
+
+    def increase_file_priorities(self, job_name: str, file_names: list) -> None:
+        """Increase the priority of the given files"""
+        for file_name in file_names:
+            file = self.get_selected_file_dtos(job_name)[file_name]
+            current_priority = file.priority
+            if current_priority > 1:
+                file.priority = file.priority - 1
+                self.__journal_of_job(job_name).update_file_priority(
+                    file_name, current_priority - 1
+                )
+                if job_name in self.job_downloaders:
+                    self.job_downloaders[job_name].update_priority(file)
+
+    def decrease_file_priorities(self, job_name: str, file_names: list) -> None:
+        """Decrease the priority of the given files"""
+        for file_name in file_names:
+            file = self.get_selected_file_dtos(job_name)[file_name]
+            current_priority = file.priority
+            if current_priority < 3:
+                file.priority = file.priority + 1
+                self.__journal_of_job(job_name).update_file_priority(
+                    file_name, current_priority + 1
+                )
+                if job_name in self.job_downloaders:
+                    self.job_downloaders[job_name].update_priority(file)
 
     # TODO refactor this out of there. There should be a central update cycle handler
     def update_tick(self, journal: dict):
