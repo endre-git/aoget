@@ -16,7 +16,10 @@ AOGet is a download manager for easy fileset downloads from archive.org, or any 
 * The target filenames are not temporaray as is the good practice with download managers (.filepart etc.)
 
 ## What's next?
-Have a look at the [v1.0 Milestone](https://github.com/kosaendre/aoget/milestone/6)
+I plan to do updates if the app sees some actual use.
+* [v0.9.1 Milestone](https://github.com/kosaendre/aoget/milestone/10) is mostly a technical release to enable faster development.
+* [v1.0 Milestone](https://github.com/kosaendre/aoget/milestone/6) is about actual enhancements.
+* [Later](https://github.com/kosaendre/aoget/milestone/9) are nice-to-haves.
 
 # Contribute
 ## Give feedback
