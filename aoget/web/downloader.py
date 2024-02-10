@@ -142,9 +142,9 @@ def __downloader(
                         fake_written = int(written - chunk_size + (i + 1) * fake_delta)
                         signals.on_update_progress(fake_written, total)
                         if signals.cancelled:
-                            logger.info("Download cancelled.")
+                            logger.info(f"Download cancelled for {file}")
                             return STATUS_STOPPED
-                        logger.info(
+                        logger.debug(
                             "Sleeping for %f seconds in cycle %f for %s fakewritten=%d",
                             remaining_time,
                             i,
@@ -156,7 +156,7 @@ def __downloader(
             if signals is not None:
                 signals.on_update_progress(written, total)
                 if signals.cancelled:
-                    logger.info("Download cancelled.")
+                    logger.debug(f"Download cancelled for {file}")
                     return STATUS_STOPPED
 
     # there's an unlikely possibility that the file was resumed when already
@@ -164,7 +164,7 @@ def __downloader(
     # be redundant for proper downloads
     if signals is not None:
         signals.on_update_progress(total, total)
-    logger.info("Downloaded %s", url)
+    logger.debug("Downloaded %s", url)
     return STATUS_COMPLETED
 
 
@@ -192,7 +192,7 @@ def download_file(
     else:
         file_size_online = resolve_remote_file_size(url)
     server_resume_supported = r.headers.get("accept-ranges", None) is not None
-    logger.info("Server supports resume for: %s", url)
+    logger.debug("Server supports resume for: %s", url)
     file = Path(local_path)
 
     if file.exists():
@@ -202,7 +202,7 @@ def download_file(
             if server_resume_supported:
                 # resume download
 
-                logger.info("Resuming download of %s", url)
+                logger.debug("Resuming download of %s", url)
                 signals.on_event(
                     "Resuming download at "
                     + str(human_filesize(file_size_offline))
@@ -215,19 +215,19 @@ def download_file(
                     signals=signals,
                 )
             else:
-                logger.info(
+                logger.debug(
                     "Server does not support resume for %s, downloading from scratch.",
                     url,
                 )
                 signals.on_event("Server does not support resume, restarting download.")
                 return __downloader(url, local_path, signals=signals)
         else:
-            logger.info("File %s already downloaded.", url)
+            logger.debug("File %s already downloaded.", url)
             signals.on_event("File was already on disk and complete.")
             signals.on_update_progress(file_size_offline, file_size_offline)
             return STATUS_COMPLETED
     else:
-        logger.info("Downloading %s from scratch.", url)
+        logger.debug("Downloading %s from scratch.", url)
         return __downloader(url, local_path, signals=signals)
 
 
@@ -265,7 +265,7 @@ def validate_file(local_path: str, expected_hash: str) -> bool:
     try:
         assert sha.hexdigest() == expected_hash
     except AssertionError:
-        logger.info(
+        logger.debug(
             "Failed validating %s, actual hexdigest=%s expected=%s",
             local_path,
             sha.hexdigest(),

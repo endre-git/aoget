@@ -4,6 +4,7 @@ import time
 import os
 import logging
 import threading
+from model.job import Job
 from model.dto.job_dto import JobDTO
 from web.downloader import download_file, DownloadSignals, resolve_remote_file_size
 from web.file_queue import FileQueue
@@ -11,6 +12,7 @@ from model.dto.file_model_dto import FileModelDTO
 from model.file_model import FileModel
 from controller.journal_daemon import JournalDaemon
 from util.aogetutil import human_duration
+from util.disk_util import get_local_file_size
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +106,7 @@ class QueuedDownloader:
         self.health_check_lock = threading.RLock()
         self.health_check_cancelled = False
         self.is_health_check_running = False
+        self.is_resuming = False
 
     def run(self) -> None:
         """Run the download queue. Blocks until all files are downloaded."""
@@ -223,13 +226,13 @@ class QueuedDownloader:
             try:
                 file_to_download = self.queue.pop_file()
                 if file_to_download is None:
-                    logger.info("Worker received poison pill, stopping.")
+                    logger.debug("Worker received poison pill, stopping.")
                     return
                 with self.download_thread_lock:
                     self.active_thread_count += 1
-                logger.info("Worker took file: %s", file_to_download.name)
+                logger.debug("Worker took file: %s", file_to_download.name)
                 if file_to_download.name not in self.files_in_queue:
-                    logger.info(
+                    logger.debug(
                         "File was cancelled before download started, not doing anything."
                     )
                     self.queue.task_done()
@@ -302,7 +305,7 @@ class QueuedDownloader:
             signal,
             file_size,
         )
-        logger.info("Worker finished with file: %s", file_to_download.name)
+        logger.debug("Worker finished with file: %s", file_to_download.name)
         self.__post_download(file_to_download, new_status=result_state)
 
     def __target_path_of_file(self, file_model_dto):
@@ -339,6 +342,79 @@ class QueuedDownloader:
             signal = FileProgressSignals(self.job.name, filename, self.monitor)
             self.signals[filename] = signal
         return signal
+
+    def resume_files(self, files: list, file_controller: any, callback: any) -> None:
+        """Resume files as per the last app run. Invoked once, when the app starts."""
+        job_name = self.job.name
+
+        def resume_task():
+            self.is_resuming = True
+            t0 = time.time()
+            logger.info("Resuming files for job %s", job_name)
+            callback.emit(job_name, Job.RESUME_STARTING, "")
+            try:
+                for file in files.values():
+                    if file.status == FileModel.STATUS_DOWNLOADING:
+                        logger.debug(
+                            "File %s was downloaded at last app run, will resume now.",
+                            file.name,
+                        )
+                        self.monitor.add_file_event(
+                            job_name, file.name, "Resumed after app-restart."
+                        )
+                        file_controller.start_download(job_name, file.name)
+
+                for file in files.values():
+                    if file.status == FileModel.STATUS_QUEUED:
+                        logger.debug(
+                            "File %s was queued at last app run, will re-queue now.",
+                            file.name,
+                        )
+                        self.monitor.add_file_event(
+                            job_name, file.name, "Re-queued after app-restart."
+                        )
+                        file_controller.start_download(job_name, file.name)
+
+                for file in files.values():
+                    if file.status == FileModel.STATUS_COMPLETED:
+                        local_size = get_local_file_size(file.target_path)
+                        if local_size is None:
+                            raise ValueError(
+                                f"Local file size is not set for {file.name}"
+                            )
+                        if file.downloaded_bytes is None:
+                            logger.error(
+                                """Database apparently corrupted for file "%s", 
+                                downloaded_bytes unset, despite marked as complete.""",
+                                file.name,
+                            )
+                            continue
+                        if local_size == -1:
+                            file.status = FileModel.STATUS_INVALID
+                            self.monitor.add_file_event(
+                                job_name, file.name, "Local file is missing."
+                            )
+                        elif local_size < file.downloaded_bytes:
+                            file.status = FileModel.STATUS_INVALID
+                            self.monitor.add_file_event(
+                                job_name,
+                                file.name,
+                                "Local file corrupted (smaller than expected).",
+                            )
+                callback.emit(job_name, Job.RESUME_SUCCESS, "")
+
+            except Exception as e:
+                logger.error("Failed to resume files for job %s", job_name, exc_info=e)
+                callback.emit(job_name, Job.RESUME_FAILED, e.msg)
+
+            logger.info(
+                "Finished resuming files for job %s in %s",
+                job_name,
+                human_duration(time.time() - t0),
+            )
+            self.is_resuming = False
+
+        threading.Thread(target=resume_task, name=f"resume-files-{job_name}").start()
 
     def health_check(self, filemodels: list, callback: any) -> None:
         """Check the health of the given filemodels.
@@ -443,8 +519,9 @@ class QueuedDownloader:
 
             callback.emit("Integrity Check Complete", report)
 
-        threading.Thread(target=health_check_task,
-                         name=f"health-check-{self.job.name}").start()
+        threading.Thread(
+            target=health_check_task, name=f"health-check-{self.job.name}"
+        ).start()
 
     def resolve_file_sizes(self, job_name: str, filemodels: list) -> None:
         """Resolve the file sizes of the given filemodels.
@@ -490,5 +567,6 @@ class QueuedDownloader:
                 self.resolved_all_file_sizes = True
                 self.is_resolver_running = False
 
-        threading.Thread(target=resolve_size_task,
-                         name=f"size-resolver-{self.job.name}").start()
+        threading.Thread(
+            target=resolve_size_task, name=f"size-resolver-{self.job.name}"
+        ).start()

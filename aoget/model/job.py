@@ -15,6 +15,10 @@ class Job(Base):
     STATUS_NOT_RUNNING = "Not Running"
     STATUS_COMPLETED = "Completed"
 
+    RESUME_STARTING = "Resume Starting"
+    RESUME_SUCCESS = "Resume Success"
+    RESUME_FAILED = "Resume Failed"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
     status: Mapped[str] = mapped_column(default=STATUS_CREATED)

@@ -1,5 +1,5 @@
 {
-    "debug": true,
+    "debug": false,
     "database-url": "sqlite:///settings/aoget.db",
     "settings-folder": "settings/",
     "target-folder-history-file": "settings/target-folder-history.lst",

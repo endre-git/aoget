@@ -83,16 +83,18 @@ class MainWindow(QMainWindow):
     update_job_signal = pyqtSignal(JobDTO)
     update_file_signal = pyqtSignal(FileModelDTO)
     message_signal = pyqtSignal(str, str)
+    job_resumed_signal = pyqtSignal(str, str, str)
 
     def __init__(self, aoget_db: AogetDb):
         super(MainWindow, self).__init__()
         self.controller = MainWindowController(self, aoget_db)
         uic.loadUi("aoget/qt/main_window.ui", self)
+        self.file_table_lock = threading.RLock()
+        self.closing = False
+        self.resuming_jobs = []
         self.__setup_ui()
         self.show()
         self.controller.resume_state()
-        self.file_table_lock = threading.RLock()
-        self.closing = False
 
     def __setup_ui(self):
         """Setup the UI"""
@@ -101,6 +103,7 @@ class MainWindow(QMainWindow):
         self.update_job_signal.connect(self.update_job)
         self.update_file_signal.connect(self.update_file)
         self.message_signal.connect(self.show_message)
+        self.job_resumed_signal.connect(self.job_resumed)
         self.actionOpen_GitHub_page.triggered.connect(self.open_github_page)
         self.actionSettings.triggered.connect(self.open_settings)
         self.actionExit.triggered.connect(self.close_app)
@@ -113,6 +116,7 @@ class MainWindow(QMainWindow):
         self.__populate()
         self.__setup_overlays()
         self.__on_bandwidth_unlimited()
+        self.__update_job_toolbar()
 
     def __setup_bandwidth_limit_menu(self):
         """Setup the bandwidth limit menu"""
@@ -124,7 +128,9 @@ class MainWindow(QMainWindow):
         self.menuSet_global_bandwidth_limit.addAction(
             human_rate(high_bandwidth_value)
         ).triggered.connect(self.__on_bandwidth_high)
-        medium_bandwidth_value = get_config_value(AppConfig.MEDIUM_BANDWIDTH_LIMIT) * 1024
+        medium_bandwidth_value = (
+            get_config_value(AppConfig.MEDIUM_BANDWIDTH_LIMIT) * 1024
+        )
         self.menuSet_global_bandwidth_limit.addAction(
             human_rate(medium_bandwidth_value)
         ).triggered.connect(self.__on_bandwidth_medium)
@@ -135,7 +141,9 @@ class MainWindow(QMainWindow):
         # set them checkable
         for action in self.menuSet_global_bandwidth_limit.actions():
             action.setCheckable(True)
-            action.setToolTip("Youn can adjust these limits in the application settings.")
+            action.setToolTip(
+                "Youn can adjust these limits in the application settings."
+            )
 
     def __setup_overlays(self):
         self.shutdown_overlay = TranslucentWidget(
@@ -336,7 +344,7 @@ class MainWindow(QMainWindow):
         header.sectionClicked.connect(self.__sort_files_table)
 
         # jobs table selection
-        self.tblFiles.itemSelectionChanged.connect(self.__on_file_selected)
+        self.tblFiles.itemSelectionChanged.connect(self.__update_file_toolbar)
 
         # file toolbar buttons
         self.btnFileStartDownload.clicked.connect(self.__on_file_start_download)
@@ -385,6 +393,7 @@ class MainWindow(QMainWindow):
         if not self.__is_job_selected():
             return
         selected_job_name = self.tblJobs.selectedItems()[0].text()
+        self.__update_job_toolbar()
         self.__show_files(selected_job_name)
         self.controller.job_post_select(selected_job_name)
 
@@ -600,10 +609,54 @@ class MainWindow(QMainWindow):
             and len(self.tblJobs.selectedItems()) > 0
         )
 
-    def __on_file_selected(self):
-        """A file has been selected in the files table"""
+    def __update_job_toolbar(self):
+        """Update the job toolbar buttons based on the selected job"""
+        job_name = (
+            self.tblJobs.selectedItems()[0].text() if self.__is_job_selected() else None
+        )
+        if job_name is None or job_name in self.resuming_jobs:
+            self.btnJobStart.setEnabled(False)
+            self.btnJobStop.setEnabled(False)
+            self.btnJobThreadsPlus.setEnabled(False)
+            self.btnJobThreadsMinus.setEnabled(False)
+            self.btnJobCreate.setEnabled(True)
+            self.btnJobEdit.setEnabled(False)
+            self.btnJobRemoveFromList.setEnabled(False)
+            self.btnJobRemove.setEnabled(False)
+            self.btnJobExport.setEnabled(False)
+            self.btnJobImport.setEnabled(True)
+            self.btnJobOpenLink.setEnabled(False)
+            self.btnJobHealthCheck.setEnabled(False)
+            if job_name in self.resuming_jobs:
+                self.btnJobStart.setToolTip(
+                    "Job is being resumed, please wait."
+                )
+                self.btnJobStop.setToolTip(
+                    "Job is being resumed, please wait."
+                )
+        else:
+            self.btnJobCreate.setEnabled(True)
+            self.btnJobEdit.setEnabled(True)
+            self.btnJobExport.setEnabled(True)
+            self.btnJobImport.setEnabled(True)
+            self.btnJobStart.setEnabled(True)
+            self.btnJobStop.setEnabled(True)
+            self.btnJobThreadsPlus.setEnabled(True)
+            self.btnJobThreadsMinus.setEnabled(True)
+            self.btnJobRemoveFromList.setEnabled(True)
+            self.btnJobRemove.setEnabled(True)
+            self.btnJobOpenLink.setEnabled(True)
+            self.btnJobHealthCheck.setEnabled(True)
+            self.btnJobStart.setToolTip("Start / resume downloading all files")
+            self.btnJobStop.setToolTip("Stop downloading all files")
 
-        if not self.__is_file_selected():
+    def __update_file_toolbar(self):
+        """A file has been selected in the files table"""
+        job_name = (
+            self.tblJobs.selectedItems()[0].text() if self.__is_job_selected() else None
+        )
+
+        if not self.__is_file_selected() or job_name in self.resuming_jobs:
             self.btnFileStartDownload.setEnabled(False)
             self.btnFileStopDownload.setEnabled(False)
             self.btnFileRedownload.setEnabled(False)
@@ -629,7 +682,7 @@ class MainWindow(QMainWindow):
             file_status = self.tblFiles.item(
                 self.tblFiles.currentRow(), MainWindow.FILE_STATUS_IDX
             ).text()
-            self.__update_file_toolbar_buttons(file_status)
+            self.__update_file_start_stop_buttons(file_status)
 
         else:
             self.btnFileStartDownload.setEnabled(True)
@@ -764,7 +817,7 @@ class MainWindow(QMainWindow):
             self.btnFileStopDownload.setEnabled(False)
             if not self.__is_job_selected() or not self.__is_file_selected():
                 self.btnFileRedownload.setEnabled(True)
-                self.__update_file_toolbar_buttons(
+                self.__update_file_start_stop_buttons(
                     self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX).text()
                 )
                 return
@@ -783,7 +836,7 @@ class MainWindow(QMainWindow):
                 self.__show_error_dialog("Failed to redownload: " + message)
                 self.btnFileRedownload.setEnabled(True)
                 self.__reset_rate_and_eta_for_file(file_name)
-            self.__update_file_toolbar_buttons(
+            self.__update_file_start_stop_buttons(
                 self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX).text()
             )
 
@@ -994,7 +1047,7 @@ class MainWindow(QMainWindow):
         if eta_item is not None:
             eta_item.setText("")
 
-    def __update_file_toolbar_buttons(self, status):
+    def __update_file_start_stop_buttons(self, status):
         """Update the file toolbar buttons based on the given status"""
         if status == FileModel.STATUS_DOWNLOADING:
             self.btnFileStartDownload.setEnabled(False)
@@ -1058,12 +1111,19 @@ class MainWindow(QMainWindow):
             else MainWindow.PROGRESS_BAR_PASSIVE_STYLE
         )
 
-    def update_job(self, job: JobDTO):
+    def update_job(self, job: JobDTO) -> None:
         """Update the job in the table. Called by the cycle ticker."""
         for row in range(self.tblJobs.rowCount()):
             if job.name == self.tblJobs.item(row, MainWindow.JOB_NAME_IDX).text():
                 self.__set_job_at_row(row, job)
                 break
+
+    def __get_row_index_of_job(self, job_name: str) -> int:
+        """Return the row of the job with the given name"""
+        for row in range(self.tblJobs.rowCount()):
+            if job_name == self.tblJobs.item(row, MainWindow.JOB_NAME_IDX).text():
+                return row
+        return None
 
     def __set_job_at_row(self, row, job: JobDTO):
         """Set the job at the given row in the jobs table"""
@@ -1258,11 +1318,38 @@ class MainWindow(QMainWindow):
                         self.__set_file_at_row(row, file)
                         break
                 if self.__is_file_selected(file.name):
-                    self.__update_file_toolbar_buttons(file.status)
+                    self.__update_file_start_stop_buttons(file.status)
 
     def show_message(self, title, message):
         """Show a message in a dialog"""
         message_dialog(self, message=message, header=title)
+
+    def job_resumed(self, job_name, status, msg):
+        """Show a message that the job has been resumed"""
+        idx = self.__get_row_index_of_job(job_name)
+        if status == Job.RESUME_STARTING:
+            # update the job in the table to resuming state
+            self.resuming_jobs.append(job_name)
+            item = self.tblJobs.item(idx, MainWindow.JOB_STATUS_IDX)
+            if item is not None:
+                item.setText("Resuming")
+            else:
+                self.tblJobs.setItem(
+                    idx, MainWindow.JOB_STATUS_IDX, QTableWidgetItem("Resuming")
+                )
+            return
+
+        if status == Job.RESUME_FAILED:
+            self.__show_error_dialog(
+                f"""Failed to resume job <b>{job_name}</b>: {msg}. <br/>
+                                     You can resume all downloads manually with the 
+                                     job start button."""
+            )
+        # update the job in the table with the db state
+        self.__set_job_at_row(idx, self.controller.get_job_dto_by_name(job_name))
+        self.resuming_jobs.remove(job_name)
+        self.__update_job_toolbar()
+        self.__update_file_toolbar()
 
     def show_crash_report(self, message):
         """Show a crash report in a dialog"""

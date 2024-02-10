@@ -2,6 +2,7 @@ import os
 import time
 import logging
 from typing import Any
+import threading
 from threading import Event
 from controller.journal_daemon import JournalDaemon
 from web.queued_downloader import QueuedDownloader
@@ -38,6 +39,7 @@ class MainWindowController:
         self.job_downloaders = {}
         self.file_dto_cache = {}
         self.rate_limiter = RateLimiter()
+        self.validation_is_running = False
 
     def resume_state(self) -> None:
 
@@ -48,7 +50,10 @@ class MainWindowController:
 
         files_per_job = {}
         with self.db_lock:
+            t0 = time.time()
             jobs = get_job_dao().get_all_jobs()
+            logger.info("Loading jobs from db took %s seconds.", time.time() - t0)
+            t0 = time.time()
             for job in jobs:
                 # get the selected file dtos for each job and put them in files_per_job
                 files_per_job[job.name] = self.get_selected_file_dtos(job_id=job.id)
@@ -70,14 +75,21 @@ class MainWindowController:
                 if job.downloaded_bytes == job.total_size_bytes:
                     job.status = Job.STATUS_COMPLETED
                 get_job_dao().save_job(job)
+        logger.info("Cache buildup took %s seconds.", time.time() - t0)
+        t0 = time.time()
 
         # create a journal for each job
         for job_name in files_per_job.keys():
             self.journal[job_name] = JobUpdates(job_name)
-
         self.file_dto_cache = files_per_job
+        logger.info("Journal creation took %s seconds.", time.time() - t0)
+        t0 = time.time()
 
-        self.__validate_file_states(files_per_job=files_per_job)
+        self.validation_thread = threading.Thread(
+            target=self.__validate_file_states, name="File state validation"
+        )
+        self.validation_is_running = True
+        self.validation_thread.start()
 
     def set_global_bandwidth_limit(self, rate_limit_bps: int) -> None:
         """Set the global bandwidth limit"""
@@ -107,14 +119,31 @@ class MainWindowController:
             return self.file_dto_cache[job_name]
 
         with self.db_lock:
+            t0 = time.time()
             if job_id == -1:
                 job_id = get_job_dao().get_job_by_name(job_name).id
-            file_models = get_file_model_dao().get_selected_files_of_job(job_id)
+            else:
+                job_name = get_job_dao().get_job_by_id(job_id).name
+            file_models = get_file_model_dao().get_selected_files_of_job(
+                job_id, eager_event_loading=True
+            )
+            logger.info(
+                "Loading files of job %s from db took %s seconds.",
+                job_name,
+                time.time() - t0,
+            )
+            t0 = time.time()
             file_dtos = dict(
                 map(
                     lambda file: (file.name, FileModelDTO.from_model(file, job_name)),
                     file_models,
                 )
+            )
+            self.file_dto_cache[job_name] = file_dtos
+            logger.info(
+                "Mapping files of job %s to DTOs took %s seconds.",
+                job_name,
+                time.time() - t0,
             )
             return file_dtos
 
@@ -264,52 +293,17 @@ class MainWindowController:
                 job_name, files_with_unknown_size
             )
 
-    def __validate_file_states(self, files_per_job) -> None:
-        """Validate the file states"""
+    def __validate_file_states(self) -> None:
+        """Validate the file states after application start.
+        This is done on separate threads for each job."""
+        files_per_job = self.file_dto_cache
         for job_name, files in files_per_job.items():
-            for file in files.values():
-                if file.status == FileModel.STATUS_DOWNLOADING:
-                    logger.info(
-                        "File %s was downloaded at last app run, will resume now.",
-                        file.name,
-                    )
-                    self.__journal_of_job(job_name).add_file_event(
-                        file.name, "Resumed after app-restart."
-                    )
-                    self.start_download(job_name, file.name)
-
-            for file in files.values():
-                if file.status == FileModel.STATUS_QUEUED:
-                    logger.info(
-                        "File %s was queued at last app run, will re-queue now.",
-                        file.name,
-                    )
-                    self.__journal_of_job(job_name).add_file_event(
-                        file.name, "Re-queued after app-restart."
-                    )
-                    self.start_download(job_name, file.name)
-
-            for file in files.values():
-                if file.status == FileModel.STATUS_COMPLETED:
-                    local_size = get_local_file_size(file.target_path)
-                    if local_size is None:
-                        raise ValueError(f"Local file size is None for {file.name}")
-                    if file.downloaded_bytes is None:
-                        logger.error(
-                            'Database apparently corrupted for file "%s", downloaded_bytes unset, despite marked as complete.',
-                            file.name,
-                        )
-                        continue
-                    if local_size == -1:
-                        file.status = FileModel.STATUS_INVALID
-                        self.__journal_of_job(job_name).add_file_event(
-                            file.name, "Local file is missing."
-                        )
-                    elif local_size < file.downloaded_bytes:
-                        file.status = FileModel.STATUS_INVALID
-                        self.__journal_of_job(job_name).add_file_event(
-                            file.name, "Local file corrupted (smaller than expected)."
-                        )
+            self.__setup_downloader(job_name)
+            self.job_downloaders[job_name].resume_files(
+                files=files,
+                file_controller=self,
+                callback=self.main_window.job_resumed_signal,
+            )
 
     def on_resolver_finished(self, job_name: str) -> None:
         """Called when a resolver has finished"""
@@ -960,6 +954,8 @@ class MainWindowController:
 
         # selectively update ui
         if job_updates.job_update is not None:
+            if job_name in self.job_downloaders and self.job_downloaders[job_name].is_resuming:
+                job_updates.job_update.status = "Resuming"
             self.main_window.update_job_signal.emit(job_updates.job_update)
         for file_model_dto in job_updates.file_model_updates.values():
             self.main_window.update_file_signal.emit(file_model_dto)

@@ -1,6 +1,6 @@
 import logging
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from model import FileModel, Job
 
@@ -120,16 +120,20 @@ class FileModelDAO:
             if commit:
                 self._commit()
 
-    def get_selected_files_of_job(self, job_id: int) -> list:
+    def get_selected_files_of_job(
+        self, job_id: int, eager_event_loading: bool = False
+    ) -> list:
         """Get the selected files of a job.
         :param job_id: The ID of the job to get the selected files for
         :return: A list of FileModel objects"""
-        return (
+        query = (
             self.session.query(FileModel)
             .filter_by(job_id=job_id, selected=True)
             .order_by(FileModel.name)
-            .all()
         )
+        if eager_event_loading:
+            query = query.options(joinedload(FileModel.history_entries))
+        return query.all()
 
     def get_total_downloaded_bytes_for_job(self, job_id: int) -> int:
         """Get the total number of downloaded bytes for a job.
@@ -137,7 +141,8 @@ class FileModelDAO:
         :return: The total number of downloaded bytes"""
         return (
             self.session.query(func.sum(FileModel.downloaded_bytes))
-            .filter_by(job_id=job_id, selected=True).scalar()
+            .filter_by(job_id=job_id, selected=True)
+            .scalar()
         )
 
     def get_completed_file_count_for_job_id(self, job_id: int) -> int:

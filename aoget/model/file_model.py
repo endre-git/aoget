@@ -28,7 +28,7 @@ class FileModel(Base):
     PRIORITY_LOW = 3
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(nullable=False)
+    name: Mapped[str] = mapped_column(nullable=False, index=True)
     extension: Mapped[str] = mapped_column(nullable=False)
     selected: Mapped[bool] = mapped_column(default=False, nullable=False)
     url: Mapped[str] = mapped_column(nullable=False)

@@ -43,21 +43,25 @@ def setup_logging():
 
 
 def setup_config():
-    load_config_from_file("config.json")
-    logging.basicConfig(
-        level=(
-            logging.INFO
-            if get_config_value(AppConfig.DEBUG) == "false"
-            else logging.DEBUG
+    try:
+        load_config_from_file("config.json")
+        logging.basicConfig(
+            level=(
+                logging.INFO
+                if get_config_value(AppConfig.DEBUG) == "false"
+                else logging.DEBUG
+            )
         )
-    )
-    setup_logging()
-    suppress_lib_logs()
-    url_cache_rel_path = get_config_value(AppConfig.URL_CACHE_FOLDER)
-    if not os.path.exists(url_cache_rel_path):
-        os.makedirs(url_cache_rel_path)
-    os.environ["TLDEXTRACT_CACHE"] = url_cache_rel_path
-    logger.info("App config initialized with: " + str(AppConfig.app_config))
+        setup_logging()
+        suppress_lib_logs()
+        url_cache_rel_path = get_config_value(AppConfig.URL_CACHE_FOLDER)
+        if not os.path.exists(url_cache_rel_path):
+            os.makedirs(url_cache_rel_path)
+        os.environ["TLDEXTRACT_CACHE"] = url_cache_rel_path
+        logger.info("App config initialized with: " + str(AppConfig.app_config))
+    except Exception as e:
+        logger.error("Error initializing app config: " + str(e))
+        raise e
 
 
 def suppress_lib_logs():
