@@ -3,6 +3,7 @@
 import os
 import logging
 from PyQt6 import QtCore
+from PyQt6.QtCore import QDir
 from PyQt6.QtWidgets import QDialog, QFileDialog
 from PyQt6 import uic
 from PyQt6.QtWidgets import QTreeWidgetItem
@@ -136,9 +137,7 @@ class JobEditorDialog(QDialog):
         self.btnDeselectDiskDuplicates.clicked.connect(
             self.__on_deselect_disk_duplicates
         )
-        self.btnDeselectJobDuplicates.clicked.connect(
-            self.__on_deselect_job_duplicates
-        )
+        self.btnDeselectJobDuplicates.clicked.connect(self.__on_deselect_job_duplicates)
         # filtering on selector tree
         self.txtSelectionFilter.textChanged.connect(
             qt_debounce(self, 500, self.__on_filter_selection_text_changed)
@@ -156,7 +155,9 @@ class JobEditorDialog(QDialog):
 
         # set placeholder texts for combo boxes (not possible from Qt Designer)
         self.cmbPageUrl.lineEdit().setPlaceholderText("Enter or paste URL")
-        self.cmbLocalTarget.lineEdit().setText(get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER))
+        self.cmbLocalTarget.lineEdit().setText(
+            get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER)
+        )
         self.cmbLocalTarget.lineEdit().setPlaceholderText("Select target folder")
 
         self.lstFilesetPreview.keyPressEvent = self.__on_preview_list_key_press
@@ -186,7 +187,14 @@ class JobEditorDialog(QDialog):
 
     def __on_browse_folder(self):
         """Button click on browse folder"""
-        file = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        file = str(
+            QFileDialog.getExistingDirectory(
+                self,
+                caption="Select Directory",
+                directory=self.cmbLocalTarget.currentText(),
+            )
+        )
+        file = QDir.toNativeSeparators(file)
         self.cmbLocalTarget.setItemText(self.cmbLocalTarget.currentIndex(), file)
 
     def __on_check_all_shown(self):
@@ -239,7 +247,7 @@ class JobEditorDialog(QDialog):
                     file_node.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
 
     def __on_deselect_disk_duplicates(self):
-        """Button click on deselect disk duplicates"""    
+        """Button click on deselect disk duplicates"""
         filenames_in_job_folders = self.controller.all_files_in_job_folders()
         self.__deselect_these(filenames_in_job_folders)
 
@@ -415,7 +423,9 @@ class JobEditorDialog(QDialog):
 
         target_folder = self.cmbLocalTarget.currentText()
         if self.folder_strategy == "per-job" and len(target_folder) > 0 and name != "":
-            target_folder = os.path.join(target_folder, to_filesystem_friendly_string(name))
+            target_folder = os.path.join(
+                target_folder, to_filesystem_friendly_string(name)
+            )
         self.cmbLocalTarget.setCurrentText(target_folder)
 
         self.__update_target_folder()

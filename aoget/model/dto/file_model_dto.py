@@ -173,6 +173,7 @@ class FileModelDTO:
         ):
             self.percent_completed = int(100 * self.downloaded_bytes / self.size_bytes)
         self.priority = file_model.priority
+        self.target_path = file_model.get_target_path()
 
     def __str__(self):
         return (

@@ -273,7 +273,7 @@ class MainWindowController:
                         "File %s was downloaded at last app run, will resume now.",
                         file.name,
                     )
-                    self.journal[job_name].add_file_event(
+                    self.__journal_of_job(job_name).add_file_event(
                         file.name, "Resumed after app-restart."
                     )
                     self.start_download(job_name, file.name)
@@ -284,7 +284,7 @@ class MainWindowController:
                         "File %s was queued at last app run, will re-queue now.",
                         file.name,
                     )
-                    self.journal[job_name].add_file_event(
+                    self.__journal_of_job(job_name).add_file_event(
                         file.name, "Re-queued after app-restart."
                     )
                     self.start_download(job_name, file.name)
@@ -292,6 +292,8 @@ class MainWindowController:
             for file in files.values():
                 if file.status == FileModel.STATUS_COMPLETED:
                     local_size = get_local_file_size(file.target_path)
+                    if local_size is None:
+                        raise ValueError(f"Local file size is None for {file.name}")
                     if file.downloaded_bytes is None:
                         logger.error(
                             'Database apparently corrupted for file "%s", downloaded_bytes unset, despite marked as complete.',
@@ -300,12 +302,12 @@ class MainWindowController:
                         continue
                     if local_size == -1:
                         file.status = FileModel.STATUS_INVALID
-                        self.journal[job_name].add_file_event(
+                        self.__journal_of_job(job_name).add_file_event(
                             file.name, "Local file is missing."
                         )
                     elif local_size < file.downloaded_bytes:
                         file.status = FileModel.STATUS_INVALID
-                        self.journal[job_name].add_file_event(
+                        self.__journal_of_job(job_name).add_file_event(
                             file.name, "Local file corrupted (smaller than expected)."
                         )
 

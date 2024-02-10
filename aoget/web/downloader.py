@@ -120,7 +120,11 @@ def __downloader(
             chunk_size = len(chunk)
             written += chunk_size
 
-            if signals is not None and signals.rate_limit_bps:
+            if (
+                signals
+                and signals.rate_limit_bps
+                and signals.rate_limit_bps > 0
+            ):
                 time_to_sleep = chunk_size / signals.rate_limit_bps
                 if time_to_sleep <= 1:
                     time.sleep(chunk_size / signals.rate_limit_bps)
@@ -132,8 +136,10 @@ def __downloader(
                     cycles = time_to_sleep
                     remaining_time = time_to_sleep
                     for i in range(math.ceil(cycles)):
-                        fake_delta = chunk_size / cycles if cycles > 1 else chunk_size * cycles
-                        fake_written = int(written - chunk_size + (i+1)*fake_delta)
+                        fake_delta = (
+                            chunk_size / cycles if cycles > 1 else chunk_size * cycles
+                        )
+                        fake_written = int(written - chunk_size + (i + 1) * fake_delta)
                         signals.on_update_progress(fake_written, total)
                         if signals.cancelled:
                             logger.info("Download cancelled.")
@@ -143,7 +149,7 @@ def __downloader(
                             remaining_time,
                             i,
                             file,
-                            fake_written
+                            fake_written,
                         )
                         time.sleep(min(remaining_time, 1 / cycles))
                         remaining_time -= 1 / cycles

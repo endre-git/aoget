@@ -30,6 +30,8 @@ class FileProgressSignals(DownloadSignals):
         self.filename = filename
         self.monitor = monitor
         self.status_listeners = {}
+        self.rate_limit_bps = 0
+        self.cancelled = False
 
     def on_update_progress(self, written: int, total: int) -> None:
         """Report progress to the monitor daemon.
