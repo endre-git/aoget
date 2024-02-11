@@ -139,7 +139,7 @@
           <item>
            <widget class="QToolButton" name="btnJobThreadsMinus">
             <property name="toolTip">
-             <string>Decrement download threads for the selected job</string>
+             <string>Decrement download threads for the selected job (minimum is 1)</string>
             </property>
             <property name="text">
              <string>...</string>

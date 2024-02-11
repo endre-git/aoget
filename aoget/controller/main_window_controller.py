@@ -737,6 +737,8 @@ class MainWindowController:
         """Decrease the threads for the given job"""
         self.__setup_downloader(job_name)
         downloader = self.job_downloaders[job_name]
+        if downloader.worker_pool_size == 1:
+            return
         victim_file = None
         stopped = Event()
         if downloader.get_active_thread_count() == downloader.worker_pool_size:
