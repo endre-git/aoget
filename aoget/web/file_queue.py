@@ -10,7 +10,10 @@ class FileQueue(queue.PriorityQueue):
         """Create a new file queue."""
         super().__init__()
         self.entry_finder = {}  # Mapping from item to priority
-        self.REMOVED = '<removed-task>'  # Placeholder for removed tasks
+        # this needs the be a FileModelDTO to keep elements sortable,
+        # although sort order won't matter for the placeholder, since
+        # it's always discarded
+        self.REMOVED = FileModelDTO(job_name="_removed_", name="_removed_")
 
     def put_file(self, file: FileModelDTO) -> None:
         """Put a file into the queue with the given priority.
