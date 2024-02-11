@@ -12,7 +12,7 @@
     "low-bandwidth-limit": 100,
     "medium-bandwidth-limit": 1500,
     "high-bandwidth-limit": 4096,
-    "job-autonaming-pattern": "title",
+    "job-autonaming-pattern": "url",
     "job-subfolder-policy": "per-job",
     "per-job-default-thread-count": 5,
     "auto-start-jobs": true,

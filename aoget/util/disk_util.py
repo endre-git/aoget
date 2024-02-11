@@ -1,5 +1,6 @@
 import os
 import re
+import errno
 
 
 def get_local_file_size(file_path: str) -> int:
@@ -36,3 +37,18 @@ def to_filesystem_friendly_string(original_string):
     safe_string = safe_string.lower()  # Convert to lowercase
 
     return safe_string
+
+
+def open_exclusive(file_path: str, mode: str) -> object:
+    """Open a file for exclusive access. If the file already exists, an OSError will be raised.
+    Not to be used for exclusive access locking on existing files.
+    :param file_path: The path to the file
+    :param mode: The mode to open the file in
+    :return: The file object"""
+    try:
+        # Open the file in a mode that requests exclusive access
+        fd = os.open(file_path, os.O_RDWR | os.O_CREAT | os.O_EXCL)
+        return os.fdopen(fd, mode)
+    except OSError as e:
+        new_message = f"Error opening file for exclusive access {file_path}: {str(e)}"
+        raise type(e)(new_message).with_traceback(e.__traceback__)

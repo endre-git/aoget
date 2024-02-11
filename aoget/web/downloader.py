@@ -11,6 +11,7 @@ import logging
 import time
 import requests
 from util.aogetutil import human_filesize
+import portalocker
 import math
 
 TIMEOUT_SECONDS = 5
@@ -112,6 +113,7 @@ def __downloader(
     file.parent.mkdir(parents=True, exist_ok=True)
 
     with open(file, mode) as f:
+        portalocker.lock(f, portalocker.LOCK_EX | portalocker.LOCK_NB)
         total = file_size
         written = initial_pos
         for chunk in r.iter_content(8 * block_size):

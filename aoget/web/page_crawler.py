@@ -1,4 +1,3 @@
-import crochet
 from scrapy.crawler import CrawlerProcess
 from web.aopage import AoPage
 from web.aospider import AoSpider

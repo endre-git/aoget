@@ -14,7 +14,7 @@ from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 from model.dto.file_event_dto import FileEventDTO
 from model.job_updates import JobUpdates
-from util.disk_util import get_local_file_size, get_all_file_names_from_folders
+from util.disk_util import get_all_file_names_from_folders
 from util.aogetutil import get_crash_report
 from config.app_config import get_config_value, AppConfig
 from controller.derived_field_calculator import DerivedFieldCalculator
@@ -201,19 +201,18 @@ class MainWindowController:
 
     def resolve_file_url(self, job_name: str, file_name: str) -> str:
         """Resolve the URL of a file"""
-        if job_name not in self.jobs:
-            return ""
-        return self.jobs[job_name].get_file_by_name(file_name).url
+        return self.get_selected_file_dtos(job_name)[file_name].url
 
     def resolve_local_file_path(self, job_name: str, file_name: str) -> str:
         """Resolve the local file path of a file"""
-        job = get_job_dao().get_job_by_name(job_name)
-        if job is None:
-            raise ValueError("Unknown job: " + job_name)
-        file = get_file_model_dao().get_file_model_by_name(job.id, file_name)
-        if file is None:
-            raise ValueError("Unknown file: " + file_name)
-        return file.get_target_path()
+        with self.db_lock:
+            job = get_job_dao().get_job_by_name(job_name)
+            if job is None:
+                raise ValueError("Unknown job: " + job_name)
+            file = get_file_model_dao().get_file_model_by_name(job.id, file_name)
+            if file is None:
+                raise ValueError("Unknown file: " + file_name)
+            return file.get_target_path()
 
     def redownload_file(self, job_name: str, file_name: str) -> (bool, str):
         """Redownload the given file
@@ -734,11 +733,12 @@ class MainWindowController:
             for file_name in downloader.files_downloading:
                 file_dto = self.get_selected_file_dtos(job_name)[file_name]
                 files.append(file_dto)
-            victim_file = max(files, key=lambda file: file.priority)
-            logger.info(
-                f"Stopping {victim_file.name} for {job_name} to reduce thread count."
-            )
-            self.stop_download(job_name, victim_file.name, completion_event=stopped)
+            if len(files) > 0:
+                victim_file = max(files, key=lambda file: file.priority)
+                logger.info(
+                    f"Stopping {victim_file.name} for {job_name} to reduce thread count."
+                )
+                self.stop_download(job_name, victim_file.name, completion_event=stopped)
         self.job_downloaders[job_name].remove_thread()
         if victim_file is not None:
             stopped.wait(2)
@@ -954,7 +954,10 @@ class MainWindowController:
 
         # selectively update ui
         if job_updates.job_update is not None:
-            if job_name in self.job_downloaders and self.job_downloaders[job_name].is_resuming:
+            if (
+                job_name in self.job_downloaders
+                and self.job_downloaders[job_name].is_resuming
+            ):
                 job_updates.job_update.status = "Resuming"
             self.main_window.update_job_signal.emit(job_updates.job_update)
         for file_model_dto in job_updates.file_model_updates.values():
