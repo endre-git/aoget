@@ -31,4 +31,3 @@ class AoPage:
                 sorted_stripped_filenames,
             )
         )
-    
