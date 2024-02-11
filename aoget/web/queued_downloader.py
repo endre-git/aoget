@@ -228,8 +228,6 @@ class QueuedDownloader:
                 if file_to_download is None:
                     logger.debug("Worker received poison pill, stopping.")
                     return
-                with self.download_thread_lock:
-                    self.active_thread_count += 1
                 logger.debug("Worker took file: %s", file_to_download.name)
                 if file_to_download.name not in self.files_in_queue:
                     logger.debug(
@@ -240,6 +238,8 @@ class QueuedDownloader:
                 self.files_in_queue.remove(file_to_download.name)
                 self.files_downloading.append(file_to_download.name)
 
+                with self.download_thread_lock:
+                    self.active_thread_count += 1
                 try:
                     self.__start_download(file_to_download)
                 except Exception as e:
@@ -248,15 +248,14 @@ class QueuedDownloader:
                     self.__post_download(
                         file_to_download, new_status=FileModel.STATUS_FAILED, err=str(e)
                     )
-                self.files_downloading.remove(file_to_download.name)
-                self.queue.task_done()
                 with self.download_thread_lock:
                     self.active_thread_count -= 1
+                self.files_downloading.remove(file_to_download.name)
+                self.queue.task_done()
+                
             except Exception as e:
                 # This is a catch-all exception handler to prevent the worker from dying
                 logger.error("Unexpected error in worker: %s", e)
-                with self.download_thread_lock:
-                    self.active_thread_count -= 1
 
     def get_active_thread_count(self) -> int:
         """Get the number of active threads.
