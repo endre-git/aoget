@@ -16,6 +16,8 @@ from util.disk_util import get_local_file_size
 
 logger = logging.getLogger(__name__)
 
+SIZE_RESOLVER_ATTEMPTS = 10
+
 
 class FileProgressSignals(DownloadSignals):
     """A progress observer that binds to a file and reports progress to a MonitorDaemon."""
@@ -252,7 +254,7 @@ class QueuedDownloader:
                     self.active_thread_count -= 1
                 self.files_downloading.remove(file_to_download.name)
                 self.queue.task_done()
-                
+
             except Exception as e:
                 # This is a catch-all exception handler to prevent the worker from dying
                 logger.error("Unexpected error in worker: %s", e)
@@ -547,32 +549,49 @@ class QueuedDownloader:
             with self.size_resolver_lock:
                 self.is_resolver_running = True
 
-            logger.debug(
-                "Resolving file sizes in background for %d files", len(filemodels)
-            )
-            for filemodel in filemodels:
-                if self.size_resolver_cancelled:
-                    return
-                try:
-                    filemodel.size_bytes = resolve_remote_file_size(filemodel.url)
-                    self.monitor.update_file_size(
-                        job_name, filemodel.name, filemodel.size_bytes
-                    )
-                    with self.size_resolver_lock:
-                        self.resolved_file_sizes[filemodel.name] = filemodel.size_bytes
-                except Exception as e:
-                    logger.error(
-                        "Failed to resolve file size for %s", filemodel.name, exc_info=e
-                    )
-                    self.monitor.update_file_status(
+            attempt = 1
+            had_failures = True
+            while attempt < SIZE_RESOLVER_ATTEMPTS and had_failures:
+
+                had_failures = False
+                logger.debug(
+                    "Resolving file sizes in background for %d files", len(filemodels)
+                )
+                for filemodel in filemodels:
+                    if self.size_resolver_cancelled:
+                        return
+                    if filemodel.size_bytes is not None and filemodel.size_bytes > 0:
+                        continue
+                    try:
+                        filemodel.size_bytes = resolve_remote_file_size(filemodel.url)
+                        self.monitor.update_file_size(
+                            job_name, filemodel.name, filemodel.size_bytes
+                        )
+                        with self.size_resolver_lock:
+                            self.resolved_file_sizes[filemodel.name] = (
+                                filemodel.size_bytes
+                            )
+                    except Exception as e:
+                        logger.error(
+                            "Failed to resolve file size for %s",
+                            filemodel.name,
+                            exc_info=e,
+                        )
+                        self.monitor.add_file_event(
+                            job_name, filemodel.name, "Size resolver failed: " + str(e)
+                        )
+                        had_failures = True
+                    attempt += 1
+                    logger.debug(
+                        "Size resolver attempt %d for job %s finished with sucess: %b",
+                        attempt,
                         job_name,
-                        filemodel.name,
-                        FileModel.STATUS_FAILED,
-                        err="Size resolver failed: " + str(e),
+                        not had_failures,
                     )
             logger.debug(
-                "Finished resolving file sizes in background for %d files",
+                "Finished resolving file sizes in background for %d files of job %s",
                 len(filemodels),
+                job_name
             )
             with self.size_resolver_lock:
                 self.resolved_all_file_sizes = True
