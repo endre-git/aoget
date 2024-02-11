@@ -20,6 +20,7 @@ class FileModel(Base):
     STATUS_QUEUED = "In queue"
     STATUS_COMPLETED = "Completed"
     STATUS_FAILED = "Failed"
+    STATUS_STOPPING = "Stopping"
     STATUS_STOPPED = "Stopped"
     STATUS_INVALID = "Invalid"
 

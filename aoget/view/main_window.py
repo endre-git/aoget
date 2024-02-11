@@ -705,11 +705,7 @@ class MainWindow(QMainWindow):
                 and len(self.tblFiles.selectedItems()) > 0
             )
         else:
-            return (
-                self.tblFiles.selectedItems() is not None
-                and len(self.tblFiles.selectedItems()) == 1
-                and self.tblFiles.selectedItems()[0].text() == filename
-            )
+            return filename in self.__selected_file_names()
 
     def __selected_file_count(self):
         """Get the number of selected files"""
@@ -768,6 +764,7 @@ class MainWindow(QMainWindow):
                 MainWindow.FILE_STATUS_IDX,
                 QTableWidgetItem(message),
             )
+            self.btnFileStopDownload.setEnabled(True)
         else:
             self.__show_error_dialog("Failed to start download: " + message)
             self.btnFileStartDownload.setEnabled(True)
@@ -794,6 +791,7 @@ class MainWindow(QMainWindow):
                 MainWindow.FILE_STATUS_IDX,
                 QTableWidgetItem(message),
             )
+            self.__update_file_start_stop_buttons(message)
         else:
             self.__show_error_dialog("Failed to stop download: " + message)
             self.btnFileStopDownload.setEnabled(True)
@@ -1052,6 +1050,9 @@ class MainWindow(QMainWindow):
         if status == FileModel.STATUS_DOWNLOADING:
             self.btnFileStartDownload.setEnabled(False)
             self.btnFileStopDownload.setEnabled(True)
+        elif status == FileModel.STATUS_STOPPING:
+            self.btnFileStartDownload.setEnabled(False)
+            self.btnFileStopDownload.setEnabled(False)
         elif status == FileModel.STATUS_QUEUED:
             self.btnFileStartDownload.setEnabled(False)
             self.btnFileStopDownload.setEnabled(True)

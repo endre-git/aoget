@@ -380,7 +380,7 @@ class MainWindowController:
             self.get_selected_file_dtos(job_name).values(), callback
         )
 
-    def start_download(self, job_name: str, file_name: str) -> (bool, str):
+    def start_download(self, job_name: str, file_name: str) -> tuple[bool, str]:
         """Start downloading the given file
         :param job_name:
             The name of the job
@@ -395,16 +395,16 @@ class MainWindowController:
 
         queue = self.job_downloaders[job_name]
         if file_name in queue.files_in_queue:
-            return False, "File is already downloading."
+            return False, "File is already in queue."
         if file_name in queue.files_downloading:
-            return False, "File is already queued."
+            return False, "File is already downloading."
         file_dto = self.get_file_dto(job_name, file_name)
         self.job_downloaders[job_name].download_file(file_dto)
         return True, FileModel.STATUS_QUEUED
 
     def stop_download(
         self, job_name: str, file_name: str, completion_event=None, add_to_journal=True
-    ) -> (bool, str):
+    ) -> tuple[bool, str]:
         """Stop downloading the given file
         :param job_name:
             The name of the job
@@ -432,9 +432,9 @@ class MainWindowController:
         self.job_downloaders[job_name].signals[file_name].cancel()
         if add_to_journal:
             self.__journal_of_job(job_name).update_file_status(
-                file_name=file_name, status=FileModel.STATUS_STOPPED
+                file_name=file_name, status=FileModel.STATUS_STOPPING
             )
-        return True, "Stopped"
+        return True, FileModel.STATUS_STOPPING
 
     def start_job(self, job_name: str) -> None:
         """Start the given job"""

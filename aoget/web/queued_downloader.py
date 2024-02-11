@@ -353,6 +353,18 @@ class QueuedDownloader:
             logger.info("Resuming files for job %s", job_name)
             callback.emit(job_name, Job.RESUME_STARTING, "")
             try:
+                # there might be some "remnant stopping" states if the app
+                # crashed / was killed, so set them all to Stopped
+                for file in files.values():
+                    if file.status == FileModel.STATUS_STOPPING:
+                        logger.debug(
+                            "File %s was stopping at last app run, will set to Stopped.",
+                            file.name,
+                        )
+                        self.monitor.update_file_status(
+                            job_name, file.name, FileModel.STATUS_STOPPED
+                        )
+
                 for file in files.values():
                     if file.status == FileModel.STATUS_DOWNLOADING:
                         logger.debug(
