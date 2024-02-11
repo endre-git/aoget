@@ -173,6 +173,7 @@ class MainWindowController:
             file_model = get_file_model_dao().get_file_model_by_name(job_id, file_name)
             return FileModelDTO.from_model(file_model, job_name)
 
+    # direct DB link, won't work from cache, won't update cache
     def get_file_dtos_by_job_id(self, job_id: int) -> list:
         """Get all file DTOs by job id"""
         with self.db_lock:
@@ -184,7 +185,6 @@ class MainWindowController:
                     file_models,
                 )
             )
-            self.file_dto_cache[job_name] = file_dtos
             return file_dtos
 
     def job_post_select(self, job_name: str, is_new=False) -> None:

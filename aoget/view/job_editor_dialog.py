@@ -90,10 +90,10 @@ class JobEditorDialog(QDialog):
         self.original_name = job_name
         if self.original_name is None and job_dto:
             self.original_name = job_dto.name
+        self.__setup_ui()
         self.controller = JobEditorController(
             self, main_window_controller, mode=self.mode
         )
-        self.__setup_ui()
         self.sort_preview_list = True
         if self.mode == JobEditorMode.JOB_EDITED:
             self.loader_overlay.show()
@@ -106,8 +106,14 @@ class JobEditorDialog(QDialog):
             self.controller.job = job_dto
             self.controller.use_files(file_dtos)
             self.__populate()
+            self.cmbLocalTarget.lineEdit().setText(
+                get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER)
+            )
         else:
             self.__disable_selector_buttons()
+            self.cmbLocalTarget.lineEdit().setText(
+                get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER)
+            )
         self.__update_ok_status()
 
         self.naming_strategy = get_config_value(AppConfig.JOB_AUTONAMING_PATTERN)
@@ -155,9 +161,6 @@ class JobEditorDialog(QDialog):
 
         # set placeholder texts for combo boxes (not possible from Qt Designer)
         self.cmbPageUrl.lineEdit().setPlaceholderText("Enter or paste URL")
-        self.cmbLocalTarget.lineEdit().setText(
-            get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER)
-        )
         self.cmbLocalTarget.lineEdit().setPlaceholderText("Select target folder")
 
         self.lstFilesetPreview.keyPressEvent = self.__on_preview_list_key_press
@@ -479,7 +482,7 @@ Downloaded files will fail the consistency check. Partially downloaded files wil
             self.btnFetchPage.setEnabled(True)
 
     def __populate(self):
-        """Populate the form with the given job. Invoked only in editor mode."""
+        """Populate the form with the given job. Invoked in editor / import mode."""
         job = self.controller.job
         self.txtJobName.setText(job.name)
         self.cmbPageUrl.setCurrentText(job.page_url)
