@@ -90,10 +90,10 @@ class JobEditorDialog(QDialog):
         self.original_name = job_name
         if self.original_name is None and job_dto:
             self.original_name = job_dto.name
-        self.__setup_ui()
         self.controller = JobEditorController(
             self, main_window_controller, mode=self.mode
         )
+        self.__setup_ui()
         self.sort_preview_list = True
         if self.mode == JobEditorMode.JOB_EDITED:
             self.loader_overlay.show()
