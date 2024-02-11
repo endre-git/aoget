@@ -25,12 +25,15 @@ class Job(Base):
     page_url: Mapped[str] = mapped_column(nullable=False)
     total_size_bytes: Mapped[int] = mapped_column(default=0)
     target_folder: Mapped[str] = mapped_column(nullable=True)
-    # cache field to speed things up
+    # cache field
     selected_files_with_known_size: Mapped[int] = mapped_column(default=0)
-    # cache field to speed things up
+    # cache field
     selected_files_count: Mapped[int] = mapped_column(default=0)
-    # cache field to speed things up
+    # cache field
     downloaded_bytes: Mapped[int] = mapped_column(default=0)
+    # cache field
+    files_done: Mapped[int] = mapped_column(default=0)
+    threads_allocated: Mapped[int] = mapped_column(default=3)
     files: Mapped[List["FileModel"]] = relationship(back_populates="job",
                                                     cascade="all, delete, delete-orphan")
 

@@ -33,7 +33,7 @@ class PageCrawler():
                 "HTTPCACHE_ENABLED": False,
             }
         )
-        
+
         allowed_domains = PageCrawler.__allowed_domains_of(page_url)
         result = crawler_runner.crawl(
             AoSpider,

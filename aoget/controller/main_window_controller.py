@@ -698,12 +698,20 @@ class MainWindowController:
                 job_dto = JobDTO.from_model(job)
             if job_dto is None:
                 raise ValueError("Unknown job: " + job_name)
-            worker_pool_size = get_config_value(AppConfig.PER_JOB_DEFAULT_THREAD_COUNT)
+            worker_pool_size = (
+                job_dto.threads_allocated
+                if job_dto.threads_allocated
+                else get_config_value(AppConfig.PER_JOB_DEFAULT_THREAD_COUNT)
+            )
             downloader = QueuedDownloader(
                 job=job, monitor=self.journal_daemon, worker_pool_size=worker_pool_size
             )
             self.job_downloaders[job_name] = downloader
             downloader.start_download_threads()
+            self.__journal_of_job(job_name).update_job_threads(
+                threads_allocated=worker_pool_size,
+                threads_active=downloader.get_active_thread_count(),
+            )
 
     def __update_rate_limits(self) -> None:
         """Update the rate limits"""
@@ -720,6 +728,10 @@ class MainWindowController:
         """Increase the threads for the given job"""
         self.__setup_downloader(job_name)
         self.job_downloaders[job_name].add_thread()
+        self.__journal_of_job(job_name).update_job_threads(
+            threads_allocated=self.job_downloaders[job_name].worker_pool_size,
+            threads_active=self.job_downloaders[job_name].get_active_thread_count()
+        )
 
     def remove_thread(self, job_name: str) -> None:
         """Decrease the threads for the given job"""
@@ -743,6 +755,10 @@ class MainWindowController:
         if victim_file is not None:
             stopped.wait(2)
             self.start_download(job_name, victim_file.name)  # re-queue the file
+        self.__journal_of_job(job_name).update_job_threads(
+            threads_allocated=self.job_downloaders[job_name].worker_pool_size,
+            threads_active=self.job_downloaders[job_name].get_active_thread_count()
+        )
 
     def increase_file_priorities(self, job_name: str, file_names: list) -> None:
         """Increase the priority of the given files"""

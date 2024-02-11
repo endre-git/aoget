@@ -44,7 +44,9 @@ class JobDTO:
             target_folder=job_model.target_folder,
             downloaded_bytes=job_model.downloaded_bytes,
             selected_files_count=job_model.selected_files_count,
-            selected_files_with_known_size=job_model.selected_files_with_known_size
+            selected_files_with_known_size=job_model.selected_files_with_known_size,
+            threads_allocated=job_model.threads_allocated,
+            files_done=job_model.files_done,
         )
         # job_dto.files = [FileModelDTO.from_model(file_model) for file_model in job_model.files]
         return job_dto
@@ -115,6 +117,14 @@ class JobDTO:
             if self.selected_files_with_known_size
             else job_model.selected_files_with_known_size
         )
+        job_model.threads_allocated = (
+            self.threads_allocated
+            if self.threads_allocated
+            else job_model.threads_allocated
+        )
+        job_model.files_done = (
+            self.files_done if self.files_done else job_model.files_done
+        )
 
     def update_from_model(self, job_model):
         self.id = job_model.id
@@ -144,12 +154,19 @@ class JobDTO:
             if job_model.selected_files_with_known_size
             else self.selected_files_with_known_size
         )
+        self.threads_allocated = (
+            job_model.threads_allocated
+            if job_model.threads_allocated
+            else self.threads_allocated
+        )
+        self.files_done = (
+            job_model.files_done if job_model.files_done else self.files_done
+        )
         return self
 
     def is_size_not_resolved(self):
-        return (
-            self.total_size_bytes is None
-            or (self.total_size_bytes is not None
-                and self.selected_files_count is not None
-                and self.selected_files_count != self.selected_files_with_known_size)
+        return self.total_size_bytes is None or (
+            self.total_size_bytes is not None
+            and self.selected_files_count is not None
+            and self.selected_files_count != self.selected_files_with_known_size
         )

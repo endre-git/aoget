@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 class JobUpdates:
     """This is a journal of changes. It is used to update the database in a single run
     instead of having plenty of small transactions. It also allows a drastically
-    simplified database session management and the use of immutable objects in the app."""
+    simplified database session management and the use of immutable objects in the app.
+    """
 
     def __init__(self, job_name: str):
         self.job_name = job_name
@@ -87,6 +88,21 @@ class JobUpdates:
         """Add a job update to the journal.
         :param job_dto: The job update to add to the journal."""
         self.job_update = job_dto
+
+    def update_job_threads(self, threads_allocated: int, threads_active: int) -> None:
+        """Update the number of threads allocated and active for the job.
+        :param threads_allocated: The number of threads allocated
+        :param threads_active: The number of threads active"""
+        if not self.job_update:
+            self.job_update = JobDTO(
+                id=-1,
+                name=self.job_name,
+                threads_allocated=threads_allocated,
+                threads_active=threads_active,
+            )
+        else:
+            self.job_update.threads_allocated = threads_allocated
+            self.job_update.threads_active = threads_active
 
     def add_file_model_update(self, file_model_dto: FileModelDTO) -> None:
         """Add a file model update to the journal.
@@ -185,7 +201,9 @@ class JobUpdates:
             self.file_model_updates[file_name] = FileModelDTO(
                 job_name=self.job_name, name=file_name, priority=priority
             )
-        self.add_file_event(file_name, f"Priority changed to {human_priority(priority)}.")
+        self.add_file_event(
+            file_name, f"Priority changed to {human_priority(priority)}."
+        )
 
     def deselect_file(self, file_name: str) -> None:
         """Deselect a file.
