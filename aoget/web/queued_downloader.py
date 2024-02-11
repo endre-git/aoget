@@ -258,6 +258,7 @@ class QueuedDownloader:
             except Exception as e:
                 # This is a catch-all exception handler to prevent the worker from dying
                 logger.error("Unexpected error in worker: %s", e)
+                logger.exception(e)
 
     def get_active_thread_count(self) -> int:
         """Get the number of active threads.
