@@ -15,6 +15,7 @@ from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
 from controller.main_window_controller import MainWindowController
 
+from view.size_widget_item import SizeWidgetItem
 from view.job_editor_dialog import JobEditorDialog
 from view.file_details_dialog import FileDetailsDialog
 from view.crash_report_dialog import CrashReportDialog
@@ -1134,7 +1135,7 @@ class MainWindow(QMainWindow):
         """Set the job at the given row in the jobs table"""
         self.tblJobs.setItem(row, MainWindow.JOB_NAME_IDX, QTableWidgetItem(job.name))
         self.tblJobs.setItem(
-            row, MainWindow.JOB_SIZE_IDX, QTableWidgetItem(self.__job_size_str(job))
+            row, MainWindow.JOB_SIZE_IDX, SizeWidgetItem(self.__job_size_str(job))
         )
         self.tblJobs.setItem(
             row, MainWindow.JOB_STATUS_IDX, QTableWidgetItem(job.status)
