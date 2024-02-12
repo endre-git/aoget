@@ -98,6 +98,24 @@ class JournalDaemon:
         with self.__lock:
             self.__journal_of_job(jobname).add_file_event(filename, event)
 
+    def update_job_downloaded_bytes(self, jobname: str, downloaded_bytes: int) -> None:
+        """Update the downloaded bytes of the given job.
+        :param jobname:
+            The name of the job
+        :param downloaded_bytes:
+            The downloaded bytes to update"""
+        with self.__lock:
+            self.__journal_of_job(jobname).update_job_downloaded_bytes(downloaded_bytes)
+
+    def update_job_files_done(self, jobname: str, files_done: int) -> None:
+        """Update the files done of the given job.
+        :param jobname:
+            The name of the job
+        :param files_done:
+            The files done to update"""
+        with self.__lock:
+            self.__journal_of_job(jobname).update_job_files_done(files_done)
+
     def __journal_of_job(self, jobname: str) -> JobUpdates:
         """Get the journal of a job.
         :param jobname:
