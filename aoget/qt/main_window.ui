@@ -577,7 +577,7 @@
           <item>
            <widget class="QToolButton" name="btnFileDetails">
             <property name="toolTip">
-             <string>Show details / history</string>
+             <string>Show details / history...</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -597,7 +597,7 @@
           <item>
            <widget class="QToolButton" name="btnFileShowInFolder">
             <property name="toolTip">
-             <string>Open target location</string>
+             <string>Open target location...</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -637,7 +637,7 @@
           <item>
            <widget class="QToolButton" name="btnFileOpenLink">
             <property name="toolTip">
-             <string>Open download URL (starts a browser download)</string>
+             <string>Open download URL (starts a browser download)...</string>
             </property>
             <property name="text">
              <string>...</string>
