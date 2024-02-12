@@ -215,7 +215,7 @@ class QueuedDownloader:
     def __stop_workers(self, sync=False) -> None:
         """Stop the workers by putting None (poison pill) on the queue and joining the threads"""
         for i in self.threads:
-            self.queue.put_file(None)
+            self.queue.posion_pill()
         if sync:
             for t in self.threads:
                 t.join()
@@ -227,7 +227,7 @@ class QueuedDownloader:
         while True:
             try:
                 file_to_download = self.queue.pop_file()
-                if file_to_download is None:
+                if FileQueue.is_posion_pill(file_to_download):
                     logger.debug("Worker received poison pill, stopping.")
                     return
                 logger.debug("Worker took file: %s", file_to_download.name)
