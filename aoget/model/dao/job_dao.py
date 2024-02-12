@@ -107,14 +107,19 @@ class JobDAO:
         else:
             logger.info(f"Deleted job (not committed): {job}")
 
-    def delete_job_by_name(self, name: str) -> None:
+    def delete_job_by_name(self, name: str, commit: bool = True) -> None:
         """Delete a Job by its name. Committed immediately.
         :param name:
             The name of the Job to delete
+        :param commit:
+            Whether to commit the changes to the database
         """
         statement = delete(Job).where(Job.name == name)
         deleted = self.session.execute(statement)
         logger.info(f"Deleted job by name {name} with result: {deleted}")
+        if commit:
+            self.session.commit()
+            logger.info(f"Committed deletion of job by name {name}")
 
     def get_job_by_name(self, name: str) -> Job:
         """Get a Job by its name.
