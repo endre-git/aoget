@@ -282,7 +282,7 @@ class QueuedDownloader:
         """Kill a thread from the worker pool."""
         self.worker_pool_size -= 1
         if len(self.threads) > 1:
-            self.queue.put_file(None)
+            self.queue.posion_pill()
 
     def set_rate_limit(self, rate_limit_bps: int) -> None:
         """Set the rate limit for the downloaders.

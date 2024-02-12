@@ -15,6 +15,7 @@ from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
 from controller.main_window_controller import MainWindowController
 
+from view.rate_widget_item import RateWidgetItem
 from view.size_widget_item import SizeWidgetItem
 from view.job_editor_dialog import JobEditorDialog
 from view.file_details_dialog import FileDetailsDialog
@@ -1143,7 +1144,7 @@ class MainWindow(QMainWindow):
         self.tblJobs.setItem(
             row,
             MainWindow.JOB_RATE_IDX,
-            QTableWidgetItem(
+            RateWidgetItem(
                 human_rate(job.rate_bytes_per_sec)
                 if job.status == Job.STATUS_RUNNING
                 else ""
