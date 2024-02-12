@@ -312,9 +312,16 @@ class JobEditorDialog(QDialog):
     def __update_ok_status(self):
         """Update the status of the OK button"""
         has_target_folder = self.cmbLocalTarget.currentText() != ""
+        target_folder_is_absolute = os.path.isabs(self.cmbLocalTarget.currentText())
         has_job_name = self.txtJobName.text() != ""
         has_page_url = self.cmbPageUrl.currentText() != ""
-        if has_page_url and has_job_name and self.job_name_unique and has_target_folder:
+        if (
+            has_page_url
+            and has_job_name
+            and self.job_name_unique
+            and has_target_folder
+            and target_folder_is_absolute
+        ):
             self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
         else:
             self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
@@ -441,11 +448,17 @@ class JobEditorDialog(QDialog):
 
     def __update_target_folder(self):
         """Update the target folder based on the current values of the form."""
-        if self.cmbLocalTarget.currentText() == "":
+        currentText = self.cmbLocalTarget.currentText()
+        if currentText == "":
             self.cmbLocalTarget.lineEdit().setStyleSheet(
                 JobEditorDialog.ERROR_TEXT_STYLE
             )
             self.cmbLocalTarget.setToolTip("Please select a target folder.")
+        elif not os.path.isabs(currentText):
+            self.cmbLocalTarget.lineEdit().setStyleSheet(
+                JobEditorDialog.ERROR_TEXT_STYLE
+            )
+            self.cmbLocalTarget.setToolTip("Please use a valid absolute path.")
         elif (
             self.mode == JobEditorMode.JOB_EDITED
             and self.cmbLocalTarget.currentText() != self.controller.job.target_folder

@@ -3,9 +3,15 @@ import os
 
 from PyQt6.QtWidgets import QApplication
 from view.main_window import MainWindow
-from util.qt_util import install_catch_all_exception_handler
+from util.catch_all_handler import install_catch_all_exception_handler
+from util.qt_util import error_dialog
 import logging
-from config.app_config import get_config_value, load_config_from_file, AppConfig, get_app_version
+from config.app_config import (
+    get_config_value,
+    load_config_from_file,
+    AppConfig,
+    get_app_version,
+)
 from config.log_config import setup_logging
 from db.aogetdb import init_db
 
@@ -31,7 +37,10 @@ def setup_config():
         logger.info("App config initialized with: " + str(AppConfig.app_config))
     except Exception as e:
         logger.error("Error initializing app config: " + str(e))
-        raise e
+        error_dialog(
+            parent=None, message=f"Failed app init: {e}", header="AOGet could not start"
+        )
+        sys.exit(-1)
 
 
 def suppress_lib_logs():
@@ -47,13 +56,13 @@ def setup_db():
     return init_db(config_db_url)
 
 
+app = QApplication(sys.argv)
 setup_config()
 aoget_db = setup_db()
 
 logger.info("App version: " + get_app_version())
 logger.info("Working dir: " + os.getcwd())
 logger.info("App config initialized with: " + str(AppConfig.app_config))
-app = QApplication(sys.argv)
 
 window = MainWindow(aoget_db)
 install_catch_all_exception_handler(

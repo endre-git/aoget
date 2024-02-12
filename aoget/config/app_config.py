@@ -98,13 +98,13 @@ def load_config_from_file(filename: str) -> dict:
         logger.error(f"Config file '{filename}' not found.")
         raise FileNotFoundError(f"Config file '{filename}' not found.") from e
     except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON format in config file: {e.msg}")
+        logger.error(f"Invalid JSON format in config: {e}")
         raise json.JSONDecodeError(
-            f"Invalid JSON format in config file: {e.msg}"
+            f"Invalid JSON format in config: {e}"
         ) from e
     except Exception as e:
-        logger.error(f"Error loading config from file: {e.msg}")
-        raise Exception(f"Error loading config from file: {e.msg}") from e
+        logger.error(f"Error loading config: {e}")
+        raise Exception(f"Error loading config: {e}") from e
 
 
 def validate():

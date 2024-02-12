@@ -484,6 +484,8 @@ class MainWindow(QMainWindow):
                 self.__show_files(None)
             except Exception as e:
                 self.__show_error_dialog("Failed to remove job: " + str(e))
+                logger.error("Failed to remove job: %s", job_name, exc_info=True)
+                logger.exception(e)
 
     def __on_job_remove_from_disk(self):
         """Remove the selected job from the list and delete the local files"""
@@ -508,6 +510,8 @@ class MainWindow(QMainWindow):
                 self.__show_files(None)
             except Exception as e:
                 self.__show_error_dialog("Failed to remove job: " + str(e))
+                logger.error("Failed to remove job: %s", job_name, exc_info=True)
+                logger.exception(e)
 
     def __on_job_export(self):
         """Export the selected job"""

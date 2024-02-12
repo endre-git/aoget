@@ -1,4 +1,5 @@
-from PyQt6.QtWidgets import QDialog, QFileDialog
+import os
+from PyQt6.QtWidgets import QDialog, QFileDialog, QDialogButtonBox
 from PyQt6 import uic
 from PyQt6.QtCore import QDir
 from config.app_config import (
@@ -7,6 +8,7 @@ from config.app_config import (
     get_config_value,
     save_config_to_file,
 )
+from view import ERROR_TEXT_STYLE, DEFAULT_TEXT_STYLE
 
 
 class AppSettingsDialog(QDialog):
@@ -43,11 +45,6 @@ class AppSettingsDialog(QDialog):
 
         self.txtTargetFolder.setText(
             get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER)
-        )
-        self.txtTargetFolder.textChanged.connect(
-            lambda: set_config_value(
-                AppConfig.DEFAULT_DOWNLOAD_FOLDER, self.txtTargetFolder.text(), save=True
-            )
         )
         self.cmbJobFolders.setCurrentIndex(
             AppConfig.job_folder_strategy_index(
@@ -106,7 +103,9 @@ class AppSettingsDialog(QDialog):
         )
         self.chkOverwriteFiles.clicked.connect(
             lambda: set_config_value(
-                AppConfig.OVERWRITE_EXISTING_FILES, self.chkOverwriteFiles.isChecked(), True
+                AppConfig.OVERWRITE_EXISTING_FILES,
+                self.chkOverwriteFiles.isChecked(),
+                True,
             )
         )
         self.chkUrlCaching.setChecked(get_config_value(AppConfig.URL_CACHE_ENABLED))
@@ -115,6 +114,24 @@ class AppSettingsDialog(QDialog):
                 AppConfig.URL_CACHE_ENABLED, self.chkUrlCaching.isChecked(), True
             )
         )
+        self.txtTargetFolder.textChanged.connect(self.__on_target_folder_updated)
+
+    def __on_target_folder_updated(self):
+        if not os.path.isabs(self.txtTargetFolder.text()):
+            self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
+            self.txtTargetFolder.setStyleSheet(ERROR_TEXT_STYLE)
+            self.txtTargetFolder.setToolTip(
+                "Default target folder must be a valid, absolute path."
+            )
+        else:
+            self.txtTargetFolder.setStyleSheet(DEFAULT_TEXT_STYLE)
+            self.txtTargetFolder.setToolTip("")
+            self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
+            set_config_value(
+                AppConfig.DEFAULT_DOWNLOAD_FOLDER,
+                self.txtTargetFolder.text(),
+                save=True
+            )
 
     def __browse_target_folder(self):
         """Open a file dialog to select the target folder."""
@@ -141,4 +158,3 @@ class AppSettingsDialog(QDialog):
             AppConfig.JOB_SUBFOLDER_POLICY, AppConfig.JOB_FOLDER_STRATEGY[index]
         )
         save_config_to_file()
-
