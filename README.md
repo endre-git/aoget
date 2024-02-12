@@ -7,8 +7,10 @@ AOGet is a download manager for easy fileset downloads from archive.org, or any 
 ## Single GIF manual
 
 ## Limitations, known issues
-* The app was written in Python, uses a heavyweight ORM and can be a little slow with large filesets.
+* The app is in beta. Expect issues.
+* It was written in Python and can be a little slow with large filesets.
 * It does not support parallel download threads for a single file, but can download many files in parallel.
+* No auto-retry as of the first beta release.
 * You can set global bandwidth limits, but not on a per-file basis.
 * The app does not explore directories recursively, it's limited to the flat set of files on a page.
 * There is no support for page logins, CAPTCHAs or any other non-trivial downloads.
