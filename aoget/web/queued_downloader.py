@@ -282,7 +282,7 @@ class QueuedDownloader:
         """Kill a thread from the worker pool."""
         self.worker_pool_size -= 1
         if len(self.threads) > 1:
-            self.queue.put_file(None)
+            self.queue.posion_pill()
 
     def set_rate_limit(self, rate_limit_bps: int) -> None:
         """Set the rate limit for the downloaders.
@@ -450,6 +450,8 @@ class QueuedDownloader:
             failure = 0
             skipped = 0
             crashed = 0
+            files_indeed_done = 0
+            total_size_local = 0
             for filemodel in filemodels:
                 if self.health_check_cancelled:
                     return
@@ -458,6 +460,7 @@ class QueuedDownloader:
                     local_size = (
                         os.path.getsize(local_path) if os.path.isfile(local_path) else 0
                     )
+                    total_size_local += local_size
                     # if completed, assumed size must match size on disk
                     if filemodel.status == FileModel.STATUS_COMPLETED:
                         if filemodel.size_bytes != local_size:
@@ -476,6 +479,7 @@ class QueuedDownloader:
                             failure += 1
                         else:
                             success += 1
+                            files_indeed_done += 1
                     # if has downloaded bytes, disk should match
                     elif (
                         filemodel.status != FileModel.STATUS_DOWNLOADING
@@ -514,6 +518,11 @@ class QueuedDownloader:
                         err="Failed integrity check: " + str(e),
                     )
                     crashed += 1
+
+            # the following won't work in the current approach since
+            # actively downloading files are not checked
+            # self.monitor.update_job_downloaded_bytes(job_name, total_size_local)
+            self.monitor.update_job_files_done(job_name, files_indeed_done)
 
             logger.debug(
                 "Finished checking health in background for %d files",

@@ -1,5 +1,6 @@
 import sys
 import os
+import portalocker
 
 from PyQt6.QtWidgets import QApplication
 from view.main_window import MainWindow
@@ -56,18 +57,34 @@ def setup_db():
     return init_db(config_db_url)
 
 
+def run_single_instance():
+    with open("aoget.lock", "wb") as f:
+        try:
+            portalocker.lock(f, portalocker.LOCK_EX | portalocker.LOCK_NB)
+            setup_config()
+            aoget_db = setup_db()
+
+            logger.info("App version: " + get_app_version())
+            logger.info("Working dir: " + os.getcwd())
+            logger.info("App config initialized with: " + str(AppConfig.app_config))
+
+            window = MainWindow(aoget_db)
+            install_catch_all_exception_handler(
+                window,
+                get_config_value(AppConfig.LOG_FILE_PATH),
+                get_config_value(AppConfig.CRASH_LOG_FILE_PATH),
+            )
+            app.exec()
+
+        except portalocker.LockException:
+            error_dialog(
+                parent=None,
+                message="Another instance of AOGet is already running.",
+                header="AOGet could not start"
+            )
+            sys.exit(-1)
+
+
 app = QApplication(sys.argv)
-setup_config()
-aoget_db = setup_db()
 
-logger.info("App version: " + get_app_version())
-logger.info("Working dir: " + os.getcwd())
-logger.info("App config initialized with: " + str(AppConfig.app_config))
-
-window = MainWindow(aoget_db)
-install_catch_all_exception_handler(
-    window,
-    get_config_value(AppConfig.LOG_FILE_PATH),
-    get_config_value(AppConfig.CRASH_LOG_FILE_PATH),
-)
-app.exec()
+run_single_instance()

@@ -104,6 +104,24 @@ class JobUpdates:
             self.job_update.threads_allocated = threads_allocated
             self.job_update.threads_active = threads_active
 
+    def update_job_downloaded_bytes(self, downloaded_bytes: int) -> None:
+        """Update the number of bytes downloaded for the job.
+        :param downloaded_bytes: The number of bytes downloaded"""
+        if not self.job_update:
+            self.job_update = JobDTO(
+                id=-1, name=self.job_name, downloaded_bytes=downloaded_bytes
+            )
+        else:
+            self.job_update.downloaded_bytes = downloaded_bytes
+
+    def update_job_files_done(self, files_done: int) -> None:
+        """Update the number of files done for the job.
+        :param files_done: The number of files done"""
+        if not self.job_update:
+            self.job_update = JobDTO(id=-1, name=self.job_name, files_done=files_done)
+        else:
+            self.job_update.files_done = files_done
+
     def add_file_model_update(self, file_model_dto: FileModelDTO) -> None:
         """Add a file model update to the journal.
         :param file_model_dto: The file model update to add to the journal."""

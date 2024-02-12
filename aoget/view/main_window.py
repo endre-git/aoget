@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QTableWidgetItem,
     QProgressBar,
-    QMessageBox,
     QApplication,
     QFileDialog,
 )
@@ -15,6 +14,13 @@ from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
 from controller.main_window_controller import MainWindowController
 
+from view.file_status_widget_item import FileStatusWidgetItem
+from view.priority_widget_item import PriorityWidgetItem
+from view.progress_bar_placeholder_widget_item import ProgressBarPlaceholderWidgetItem
+from view.progress_bar_widget import ProgressBarWidget
+from view.files_widget_item import FilesWidgetItem
+from view.threads_widget_item import ThreadsWidgetItem
+from view.rate_widget_item import RateWidgetItem
 from view.size_widget_item import SizeWidgetItem
 from view.job_editor_dialog import JobEditorDialog
 from view.file_details_dialog import FileDetailsDialog
@@ -22,8 +28,13 @@ from view.crash_report_dialog import CrashReportDialog
 from view.app_settings_dialog import AppSettingsDialog
 from view.translucent_widget import TranslucentWidget
 from util.aogetutil import human_timestamp_from, human_filesize, human_eta, human_rate
-from util.qt_util import confirmation_dialog, show_warnings, message_dialog
-from config.app_config import AppConfig, get_config_value
+from util.qt_util import (
+    confirmation_dialog,
+    show_warnings,
+    message_dialog,
+    error_dialog,
+)
+from config.app_config import AppConfig, get_config_value, get_app_version
 from model.file_model import FileModel
 from db.aogetdb import AogetDb
 
@@ -112,6 +123,7 @@ class MainWindow(QMainWindow):
         self.actionResume_all.triggered.connect(self.resume_all)
 
         self.__setup_bandwidth_limit_menu()
+        self.__setup_trivial_menu_items()
         self.__setup_jobs_table()
         self.__setup_files_table()
         self.__populate()
@@ -145,6 +157,24 @@ class MainWindow(QMainWindow):
             action.setToolTip(
                 "Youn can adjust these limits in the application settings."
             )
+
+    def __setup_trivial_menu_items(self):
+        """Setup the trivial menu items"""
+        self.actionAbout.triggered.connect(
+            lambda: message_dialog(
+                self, message=f"AOGet version is {get_app_version()}", header="About"
+            )
+        )
+        self.actionDonateArchiveOrg.triggered.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://archive.org/donate/")
+            )
+        )
+        self.actionBuy_the_dev_a_Coffee.triggered.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://www.buymeacoffee.com/kosaendre")
+            )
+        )
 
     def __setup_overlays(self):
         self.shutdown_overlay = TranslucentWidget(
@@ -266,11 +296,10 @@ class MainWindow(QMainWindow):
 
         self.tblJobs.setSelectionBehavior(QHeaderView.SelectionBehavior.SelectRows)
         self.tblJobs.setSelectionMode(QHeaderView.SelectionMode.SingleSelection)
+        self.tblJobs.verticalHeader().setHidden(True)
         column_widths = [200, 70, 100, 70, 70, 70, 250, 70, 200]
         for i, width in enumerate(column_widths):
             self.tblJobs.setColumnWidth(i, width)
-
-        self.btnFileRedownload.setHidden(True)
 
         # job control buttons
         self.btnJobStart.clicked.connect(self.__on_job_start)
@@ -336,13 +365,10 @@ class MainWindow(QMainWindow):
         )
         self.tblFiles.setSelectionBehavior(QHeaderView.SelectionBehavior.SelectRows)
         self.tblFiles.setSelectionMode(QHeaderView.SelectionMode.ExtendedSelection)
+        self.tblFiles.verticalHeader().setHidden(True)
         column_widths = [200, 70, 100, 100, 300, 70, 100, 150, 300]
         for i, width in enumerate(column_widths):
             self.tblFiles.setColumnWidth(i, width)
-
-        # Make columns sortable
-        header.setSectionsClickable(True)
-        header.sectionClicked.connect(self.__sort_files_table)
 
         # jobs table selection
         self.tblFiles.itemSelectionChanged.connect(self.__update_file_toolbar)
@@ -373,13 +399,11 @@ class MainWindow(QMainWindow):
         self.btnFilePriorityPlus.setEnabled(False)
         self.btnFilePriorityMinus.setEnabled(False)
 
+        self.btnFileRedownload.setHidden(True)
+
     def __populate(self):
         """Populate the UI with data from the database"""
         self.__update_jobs_table()
-
-    def __sort_files_table(self, logical_index):
-        """Sort the files table by the given column"""
-        self.tblFiles.sortItems(logical_index)
 
     def __update_jobs_table(self):
         """Update the list of jobs"""
@@ -452,8 +476,8 @@ class MainWindow(QMainWindow):
             return
         job_name = self.tblJobs.selectedItems()[0].text()
         if self.controller.is_job_downloading(job_name):
-            self.__show_error_dialog(
-                "Job is running. Please stop all downloads before editing."
+            error_dialog(
+                self, "Job is running. Please stop all downloads before editing."
             )
             return
 
@@ -484,7 +508,7 @@ class MainWindow(QMainWindow):
                 self.tblJobs.clearSelection()
                 self.__show_files(None)
             except Exception as e:
-                self.__show_error_dialog("Failed to remove job: " + str(e))
+                error_dialog(self, "Failed to remove job: " + str(e))
                 logger.error("Failed to remove job: %s", job_name, exc_info=True)
                 logger.exception(e)
 
@@ -510,7 +534,7 @@ class MainWindow(QMainWindow):
                 self.tblJobs.clearSelection()
                 self.__show_files(None)
             except Exception as e:
-                self.__show_error_dialog("Failed to remove job: " + str(e))
+                error_dialog(self, "Failed to remove job: " + str(e))
                 logger.error("Failed to remove job: %s", job_name, exc_info=True)
                 logger.exception(e)
 
@@ -521,8 +545,10 @@ class MainWindow(QMainWindow):
         job_name = self.tblJobs.selectedItems()[0].text()
         job_dto = self.controller.get_job_dto_by_name(job_name)
         if job_dto.is_size_not_resolved():
-            self.__show_error_dialog(
-                "Job size is not fully resolved. Please wait for the job to resolve its size before exporting."
+            error_dialog(
+                self,
+                """Job size is not fully resolved. Please wait for the job to resolve 
+                its size before exporting.""",
             )
             return
 
@@ -562,7 +588,9 @@ class MainWindow(QMainWindow):
                     elif get_config_value(AppConfig.AUTO_START_JOBS):
                         self.controller.start_job(dlg.controller.job.name)
             except Exception as e:
-                self.__show_error_dialog("Failed to import job: " + str(e))
+                error_dialog(self, "Failed to import job: " + str(e))
+                logger.error("Failed to import job: %s", file, exc_info=True)
+                logger.exception(e)
 
     def __on_job_open_link(self):
         """Open the link of the selected job"""
@@ -573,8 +601,9 @@ class MainWindow(QMainWindow):
         if job_dto and job_dto.page_url:
             QDesktopServices.openUrl(QUrl(job_dto.page_url))
         else:
-            self.__show_error_dialog(
-                "The job doesn't seem to have an associated link.<br/>Perhaps it was imported?"
+            message_dialog(
+                self,
+                "The job doesn't seem to have an associated link.<br/>Perhaps it was imported?",
             )
 
     def __on_job_health_check(self):
@@ -633,12 +662,8 @@ class MainWindow(QMainWindow):
             self.btnJobOpenLink.setEnabled(False)
             self.btnJobHealthCheck.setEnabled(False)
             if job_name in self.resuming_jobs:
-                self.btnJobStart.setToolTip(
-                    "Job is being resumed, please wait."
-                )
-                self.btnJobStop.setToolTip(
-                    "Job is being resumed, please wait."
-                )
+                self.btnJobStart.setToolTip("Job is being resumed, please wait.")
+                self.btnJobStop.setToolTip("Job is being resumed, please wait.")
         else:
             self.btnJobCreate.setEnabled(True)
             self.btnJobEdit.setEnabled(True)
@@ -771,7 +796,8 @@ class MainWindow(QMainWindow):
             )
             self.btnFileStopDownload.setEnabled(True)
         else:
-            self.__show_error_dialog("Failed to start download: " + message)
+            error_dialog(self, "Failed to start download: " + message)
+            logger.error("Failed to start download: %s", message)
             self.btnFileStartDownload.setEnabled(True)
 
     def __multi_file_download(self):
@@ -798,7 +824,8 @@ class MainWindow(QMainWindow):
             )
             self.__update_file_start_stop_buttons(message)
         else:
-            self.__show_error_dialog("Failed to stop download: " + message)
+            error_dialog(self, "Failed to stop download: " + message)
+            logger.error("Failed to stop download: %s", message)
             self.btnFileStopDownload.setEnabled(True)
 
     def __multi_file_stop_download(self):
@@ -836,7 +863,8 @@ class MainWindow(QMainWindow):
                     QTableWidgetItem(message),
                 )
             else:
-                self.__show_error_dialog("Failed to redownload: " + message)
+                error_dialog(self, "Failed to redownload: " + message)
+                logger.error("Failed to redownload: %s", message)
                 self.btnFileRedownload.setEnabled(True)
                 self.__reset_rate_and_eta_for_file(file_name)
             self.__update_file_start_stop_buttons(
@@ -871,7 +899,8 @@ class MainWindow(QMainWindow):
                     idx = self.tblFiles.selectionModel().selectedRows()[0].row()
                     self.tblFiles.setRowHidden(idx, True)
             else:
-                self.__show_error_dialog("Failed to remove from list: " + message)
+                error_dialog(self, "Failed to remove from list: " + message)
+                logger.error("Failed to remove from list: %s", message)
             self.btnFileRemoveFromList.setEnabled(True)
 
     def __multi_file_remove_from_list(self):
@@ -927,7 +956,8 @@ class MainWindow(QMainWindow):
                 with self.file_table_lock:
                     idx = self.tblFiles.selectionModel().selectedRows()[0].row()
                     self.tblFiles.setRowHidden(idx, True)
-                self.__show_error_dialog("Failed to remove: " + message)
+                error_dialog(self, "Failed to remove: " + message)
+                logger.error("Failed to remove: %s", message)
             self.btnFileRemoveFromList.setEnabled(True)
 
     def __multi_file_remove(self):
@@ -959,7 +989,7 @@ class MainWindow(QMainWindow):
         """Show the details of the selected file"""
         if not self.__is_job_selected() or not self.__is_file_selected():
             # show error that no files are selected
-            self.__show_error_dialog("No file selected")
+            error_dialog(self, "No file selected")
             return
         job_name = self.tblJobs.selectedItems()[0].text()
         file_name = self.tblFiles.selectedItems()[0].text()
@@ -1020,16 +1050,8 @@ class MainWindow(QMainWindow):
         selected_files = self.__selected_file_names()
         self.controller.decrease_file_priorities(job_name, selected_files)
 
-    def __show_error_dialog(
-        self, message, title="Error", icon=QMessageBox.Icon.Critical
-    ):
-        error_dialog = QMessageBox()
-        error_dialog.setText(message)
-        error_dialog.setWindowTitle(title)
-        error_dialog.exec()
-
     def __restyleFileProgressBar(self, row, style):
-        """Disable the given cell in the files table"""
+        """Restyle the progress bar for the given row in the files table"""
         progress_bar = self.tblFiles.cellWidget(row, MainWindow.FILE_PROGRESS_IDX)
         if progress_bar:
             progress_bar.setStyleSheet(style)
@@ -1094,28 +1116,24 @@ class MainWindow(QMainWindow):
             self.tblJobs.setItem(
                 row,
                 MainWindow.JOB_PROGRESS_IDX,
-                QTableWidgetItem("Resolving size..."),
+                ProgressBarPlaceholderWidgetItem("Resolving size..."),
             )
             return
         if job.total_size_bytes is None or job.total_size_bytes == 0:
             self.tblJobs.setItem(
                 row,
                 MainWindow.JOB_PROGRESS_IDX,
-                QTableWidgetItem("Unknown size"),
+                ProgressBarPlaceholderWidgetItem("Unknown size"),
             )
             return
 
         progress_bar = self.tblJobs.cellWidget(row, MainWindow.JOB_PROGRESS_IDX)
         if progress_bar is None:
-            progress_bar = QProgressBar()
+            progress_bar = ProgressBarWidget()
             self.tblJobs.setCellWidget(row, MainWindow.JOB_PROGRESS_IDX, progress_bar)
         completion = int(100 * (job.downloaded_bytes or 0) / job.total_size_bytes)
         progress_bar.setValue(completion)
-        progress_bar.setStyleSheet(
-            MainWindow.PROGRESS_BAR_ACTIVE_STYLE
-            if job.status == Job.STATUS_RUNNING
-            else MainWindow.PROGRESS_BAR_PASSIVE_STYLE
-        )
+        progress_bar.set_active()
 
     def update_job(self, job: JobDTO) -> None:
         """Update the job in the table. Called by the cycle ticker."""
@@ -1134,6 +1152,7 @@ class MainWindow(QMainWindow):
     def __set_job_at_row(self, row, job: JobDTO):
         """Set the job at the given row in the jobs table"""
         self.tblJobs.setItem(row, MainWindow.JOB_NAME_IDX, QTableWidgetItem(job.name))
+        self.tblJobs.item(row, MainWindow.JOB_NAME_IDX).setToolTip(job.name)
         self.tblJobs.setItem(
             row, MainWindow.JOB_SIZE_IDX, SizeWidgetItem(self.__job_size_str(job))
         )
@@ -1143,7 +1162,7 @@ class MainWindow(QMainWindow):
         self.tblJobs.setItem(
             row,
             MainWindow.JOB_RATE_IDX,
-            QTableWidgetItem(
+            RateWidgetItem(
                 human_rate(job.rate_bytes_per_sec)
                 if job.status == Job.STATUS_RUNNING
                 else ""
@@ -1152,12 +1171,14 @@ class MainWindow(QMainWindow):
         self.tblJobs.setItem(
             row,
             MainWindow.JOB_THREADS_IDX,
-            QTableWidgetItem(f"{job.threads_active or 0}/{job.threads_allocated or 0}"),
+            ThreadsWidgetItem(
+                f"{job.threads_active or 0}/{job.threads_allocated or 0}"
+            ),
         )
         self.tblJobs.setItem(
             row,
             MainWindow.JOB_FILES_IDX,
-            QTableWidgetItem(f"{job.files_done or 0}/{job.selected_files_count or 0}"),
+            FilesWidgetItem(f"{job.files_done or 0}/{job.selected_files_count or 0}"),
         )
         self.__set_job_progress_item(row, job)
         self.tblJobs.setItem(
@@ -1179,6 +1200,9 @@ class MainWindow(QMainWindow):
         self.tblJobs.setItem(
             row, MainWindow.JOB_TARGET_FOLDER_IDX, QTableWidgetItem(job.target_folder)
         )
+        self.tblJobs.item(row, MainWindow.JOB_TARGET_FOLDER_IDX).setToolTip(
+            job.target_folder
+        )
 
     def __priority_str(self, priority):
         """Return the priority string for the given priority"""
@@ -1197,11 +1221,11 @@ class MainWindow(QMainWindow):
             # NAME
             name_table_item = self.tblFiles.item(row, MainWindow.FILE_NAME_IDX)
             if name_table_item is None:
-                self.tblFiles.setItem(
-                    row, MainWindow.FILE_NAME_IDX, QTableWidgetItem(file.name)
-                )
+                name_table_item = QTableWidgetItem(file.name)
+                self.tblFiles.setItem(row, MainWindow.FILE_NAME_IDX, name_table_item)
             else:
                 name_table_item.setText(file.name)
+            name_table_item.setToolTip(file.name)
             # SIZE
             size_str = (
                 human_filesize(file.size_bytes)
@@ -1211,7 +1235,7 @@ class MainWindow(QMainWindow):
             size_table_item = self.tblFiles.item(row, MainWindow.FILE_SIZE_IDX)
             if size_table_item is None:
                 self.tblFiles.setItem(
-                    row, MainWindow.FILE_SIZE_IDX, QTableWidgetItem(size_str)
+                    row, MainWindow.FILE_SIZE_IDX, SizeWidgetItem(size_str)
                 )
             else:
                 size_table_item.setText(size_str)
@@ -1219,7 +1243,7 @@ class MainWindow(QMainWindow):
             priority_str = self.__priority_str(file.priority)
             priority_table_item = self.tblFiles.item(row, MainWindow.FILE_PRIORITY_IDX)
             if priority_table_item is None:
-                priority_table_item = QTableWidgetItem(priority_str)
+                priority_table_item = PriorityWidgetItem(priority_str)
                 self.tblFiles.setItem(
                     row, MainWindow.FILE_PRIORITY_IDX, priority_table_item
                 )
@@ -1228,7 +1252,7 @@ class MainWindow(QMainWindow):
             # STATUS
             status_table_item = self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX)
             if status_table_item is None:
-                status_table_item = QTableWidgetItem(file.status)
+                status_table_item = FileStatusWidgetItem(file.status)
                 self.tblFiles.setItem(
                     row, MainWindow.FILE_STATUS_IDX, status_table_item
                 )
@@ -1263,7 +1287,7 @@ class MainWindow(QMainWindow):
                 rate_str = human_rate(file.rate_bytes_per_sec)
                 rate_table_item = self.tblFiles.item(row, MainWindow.FILE_RATE_IDX)
                 if rate_table_item is None:
-                    rate_table_item = QTableWidgetItem(rate_str)
+                    rate_table_item = RateWidgetItem(rate_str)
                     self.tblFiles.setItem(
                         row,
                         MainWindow.FILE_RATE_IDX,
@@ -1308,6 +1332,7 @@ class MainWindow(QMainWindow):
                 )
             else:
                 last_event_table_item.setText(last_event_str)
+            last_event_table_item.setToolTip(last_event_str)
 
     def update_file(self, file: FileModelDTO):
         """Update the file progress of the given file if the right job is selected"""
@@ -1346,10 +1371,11 @@ class MainWindow(QMainWindow):
             return
 
         if status == Job.RESUME_FAILED:
-            self.__show_error_dialog(
+            error_dialog(
+                self,
                 f"""Failed to resume job <b>{job_name}</b>: {msg}. <br/>
                                      You can resume all downloads manually with the 
-                                     job start button."""
+                                     job start button.""",
             )
         # update the job in the table with the db state
         self.__set_job_at_row(idx, self.controller.get_job_dto_by_name(job_name))

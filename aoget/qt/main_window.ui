@@ -76,6 +76,12 @@
           <enum>QFrame::Raised</enum>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
           <item>
            <widget class="QToolButton" name="btnJobStart">
             <property name="toolTip">
@@ -434,6 +440,12 @@
           <enum>QFrame::Raised</enum>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
           <item>
            <widget class="QToolButton" name="btnFileStartDownload">
             <property name="toolTip">
@@ -565,7 +577,7 @@
           <item>
            <widget class="QToolButton" name="btnFileDetails">
             <property name="toolTip">
-             <string>Show details / history</string>
+             <string>Show details / history...</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -585,7 +597,7 @@
           <item>
            <widget class="QToolButton" name="btnFileShowInFolder">
             <property name="toolTip">
-             <string>Open target location</string>
+             <string>Open target location...</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -625,7 +637,7 @@
           <item>
            <widget class="QToolButton" name="btnFileOpenLink">
             <property name="toolTip">
-             <string>Open download URL (starts a browser download)</string>
+             <string>Open download URL (starts a browser download)...</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -727,6 +739,9 @@
         <widget class="QTableWidget" name="tblFiles">
          <property name="editTriggers">
           <set>QAbstractItemView::NoEditTriggers</set>
+         </property>
+         <property name="sortingEnabled">
+          <bool>true</bool>
          </property>
         </widget>
        </item>

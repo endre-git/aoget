@@ -6,6 +6,10 @@ from aoget.web.downloader import DownloadSignals, download_file, validate_file
 
 
 class TestProgressObserver(DownloadSignals):
+
+    def __init__(self):
+        self.rate_limit_bps = 100000
+
     def on_update_progress(self, written: int, total: int) -> None:
         pass
 

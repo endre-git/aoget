@@ -562,19 +562,18 @@ class MainWindowController:
                     messages.append(f"Could not delete file from disk: {e}")
                     logger.error("Could not delete file from disk: %s", e)
         logger.info("Deleting files from disk took %s seconds.", time.time() - t0)
-        t0 = time.time()
 
-        if job_name in self.journal:
-            self.journal.pop(job_name)
-        if job_name in self.file_dto_cache:
-            self.file_dto_cache.pop(job_name)
-        logger.info(
-            "Deleting journal and file cache took %s seconds.", time.time() - t0
-        )
-        t0 = time.time()
         with self.db_lock:
-            job = get_job_dao().get_job_by_name(job_name)
-            get_job_dao().delete_job(job)
+            t0 = time.time()
+            if job_name in self.journal:
+                self.journal.pop(job_name)
+            if job_name in self.file_dto_cache:
+                self.file_dto_cache.pop(job_name)
+            logger.info(
+                "Deleting journal and file cache took %s seconds.", time.time() - t0
+            )
+            t0 = time.time()
+            get_job_dao().delete_job_by_name(job_name)
         logger.info("Deleting job from db took %s seconds.", time.time() - t0)
         return messages if len(messages) > 0 else None
 
@@ -931,6 +930,9 @@ class MainWindowController:
                 file_model_dto.update_from_model(file_model)
 
                 # sync up the local cache state
+                if job_name not in self.file_dto_cache.keys():
+                    logger.warn("Job %s not in state cache, assumably got deleted", job_name)
+                    return
                 if (
                     not file_model_dto.selected
                     and file_model_dto.name in self.file_dto_cache[job_name]
