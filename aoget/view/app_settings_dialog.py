@@ -79,7 +79,7 @@ class AppSettingsDialog(QDialog):
         )
         self.spinLowBandwidth.valueChanged.connect(
             lambda: set_config_value(
-                AppConfig.LOW_BANDWIDTH_LIMIT, str(self.spinLowBandwidth.value()), True
+                AppConfig.LOW_BANDWIDTH_LIMIT, self.spinLowBandwidth.value(), True
             )
         )
         self.spinThreadsPerJob.setValue(

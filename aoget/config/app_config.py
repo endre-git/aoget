@@ -63,7 +63,7 @@ def get_config_value(key: str) -> str:
     return AppConfig.app_config[key]
 
 
-def set_config_value(key: str, value: str, save: bool = False):
+def set_config_value(key: str, value: any, save: bool = False):
     """Set the value of the given key in the config file.
     :param key:
         The key to set the value for
