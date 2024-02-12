@@ -1,3 +1,4 @@
+import math
 import os
 import urllib.parse
 from datetime import datetime
@@ -53,6 +54,27 @@ def human_filesize(file_size_bytes: int) -> str:
         suffix_index += 1
         file_size_bytes /= 1024
     return f"{file_size_bytes:.1f}{suffixes[suffix_index]}"
+
+
+def dehumanized_filesize(file_size_str: str) -> int:
+    """Get a filesize in bytes from the given human readable filesize. 
+    Inverse of human_filesize.
+    :param file_size_str:
+        The human readable filesize
+    :return:
+        The filesize in bytes"""
+    if file_size_str is None or file_size_str == "":
+        return 0
+    suffixes = ["KB", "MB", "GB", "TB"]
+    file_size_str = file_size_str.strip()
+    # if the last two characters are not digits:
+    if len(file_size_str) > 2 and not file_size_str[-2:].isdigit():
+        for i, suffix in enumerate(suffixes):
+            if file_size_str.endswith(suffix):
+                return int(float(file_size_str[:-len(suffix)]) * (1024 ** (i+1)))
+    elif len(file_size_str) >= 2 and file_size_str.endswith("B"):
+        return int(file_size_str[:-1])
+    return int(file_size_str)
 
 
 def human_rate(rate_bytes_per_second: float) -> str:

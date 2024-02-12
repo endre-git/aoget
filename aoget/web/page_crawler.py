@@ -1,9 +1,9 @@
-import crochet
 from scrapy.crawler import CrawlerProcess
 from web.aopage import AoPage
 from web.aospider import AoSpider
 from util.aogetutil import is_valid_url
 from crochet import setup, wait_for
+from config.log_config import setup_logging
 
 
 class PageCrawler():
@@ -33,15 +33,17 @@ class PageCrawler():
                 "HTTPCACHE_ENABLED": False,
             }
         )
-        
+
         allowed_domains = PageCrawler.__allowed_domains_of(page_url)
-        return crawler_runner.crawl(
+        result = crawler_runner.crawl(
             AoSpider,
             ao_page=self.ao_page,
             name="aoget-" + allowed_domains,
             allowed_domains=allowed_domains,
             start_url=page_url,
         )
+        setup_logging()  # re-setup logging after scrapy has mucked with it
+        return result
 
     def fetch_links(self) -> map:
         """Fetch the links from the given page url.

@@ -6,6 +6,7 @@ from web.page_crawler import PageCrawler
 from model.dto.file_model_dto import FileModelDTO
 from model.file_model import FileModel
 from view import JobEditorMode
+from config.app_config import AppConfig, get_config_value
 
 logger = logging.getLogger("JobEditorController")
 
@@ -72,6 +73,7 @@ class JobEditorController:
             page_url=self.page_url,
             total_size_bytes=self.job.total_size_bytes if self.job else 0,
             target_folder=self.job_editor_dialog.get_target_folder(),
+            threads_allocated=get_config_value(AppConfig.PER_JOB_DEFAULT_THREAD_COUNT)
         )
 
     def use_files(self, files: list) -> None:

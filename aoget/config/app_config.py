@@ -63,7 +63,7 @@ def get_config_value(key: str) -> str:
     return AppConfig.app_config[key]
 
 
-def set_config_value(key: str, value: str, save: bool = False):
+def set_config_value(key: str, value: any, save: bool = False):
     """Set the value of the given key in the config file.
     :param key:
         The key to set the value for
@@ -95,11 +95,16 @@ def load_config_from_file(filename: str) -> dict:
             AppConfig.app_config = app_config
         validate()
     except FileNotFoundError as e:
+        logger.error(f"Config file '{filename}' not found.")
         raise FileNotFoundError(f"Config file '{filename}' not found.") from e
     except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON format in config: {e}")
         raise json.JSONDecodeError(
-            f"Invalid JSON format in config file '{filename}'."
+            f"Invalid JSON format in config: {e}"
         ) from e
+    except Exception as e:
+        logger.error(f"Error loading config: {e}")
+        raise Exception(f"Error loading config: {e}") from e
 
 
 def validate():

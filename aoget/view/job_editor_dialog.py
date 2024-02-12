@@ -3,6 +3,7 @@
 import os
 import logging
 from PyQt6 import QtCore
+from PyQt6.QtCore import QDir
 from PyQt6.QtWidgets import QDialog, QFileDialog
 from PyQt6 import uic
 from PyQt6.QtWidgets import QTreeWidgetItem
@@ -105,8 +106,14 @@ class JobEditorDialog(QDialog):
             self.controller.job = job_dto
             self.controller.use_files(file_dtos)
             self.__populate()
+            self.cmbLocalTarget.lineEdit().setText(
+                get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER)
+            )
         else:
             self.__disable_selector_buttons()
+            self.cmbLocalTarget.lineEdit().setText(
+                get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER)
+            )
         self.__update_ok_status()
 
         self.naming_strategy = get_config_value(AppConfig.JOB_AUTONAMING_PATTERN)
@@ -136,9 +143,7 @@ class JobEditorDialog(QDialog):
         self.btnDeselectDiskDuplicates.clicked.connect(
             self.__on_deselect_disk_duplicates
         )
-        self.btnDeselectJobDuplicates.clicked.connect(
-            self.__on_deselect_job_duplicates
-        )
+        self.btnDeselectJobDuplicates.clicked.connect(self.__on_deselect_job_duplicates)
         # filtering on selector tree
         self.txtSelectionFilter.textChanged.connect(
             qt_debounce(self, 500, self.__on_filter_selection_text_changed)
@@ -156,7 +161,6 @@ class JobEditorDialog(QDialog):
 
         # set placeholder texts for combo boxes (not possible from Qt Designer)
         self.cmbPageUrl.lineEdit().setPlaceholderText("Enter or paste URL")
-        self.cmbLocalTarget.lineEdit().setText(get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER))
         self.cmbLocalTarget.lineEdit().setPlaceholderText("Select target folder")
 
         self.lstFilesetPreview.keyPressEvent = self.__on_preview_list_key_press
@@ -186,7 +190,14 @@ class JobEditorDialog(QDialog):
 
     def __on_browse_folder(self):
         """Button click on browse folder"""
-        file = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        file = str(
+            QFileDialog.getExistingDirectory(
+                self,
+                caption="Select Directory",
+                directory=self.cmbLocalTarget.currentText(),
+            )
+        )
+        file = QDir.toNativeSeparators(file)
         self.cmbLocalTarget.setItemText(self.cmbLocalTarget.currentIndex(), file)
 
     def __on_check_all_shown(self):
@@ -239,7 +250,7 @@ class JobEditorDialog(QDialog):
                     file_node.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
 
     def __on_deselect_disk_duplicates(self):
-        """Button click on deselect disk duplicates"""    
+        """Button click on deselect disk duplicates"""
         filenames_in_job_folders = self.controller.all_files_in_job_folders()
         self.__deselect_these(filenames_in_job_folders)
 
@@ -301,9 +312,16 @@ class JobEditorDialog(QDialog):
     def __update_ok_status(self):
         """Update the status of the OK button"""
         has_target_folder = self.cmbLocalTarget.currentText() != ""
+        target_folder_is_absolute = os.path.isabs(self.cmbLocalTarget.currentText())
         has_job_name = self.txtJobName.text() != ""
         has_page_url = self.cmbPageUrl.currentText() != ""
-        if has_page_url and has_job_name and self.job_name_unique and has_target_folder:
+        if (
+            has_page_url
+            and has_job_name
+            and self.job_name_unique
+            and has_target_folder
+            and target_folder_is_absolute
+        ):
             self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
         else:
             self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
@@ -415,7 +433,9 @@ class JobEditorDialog(QDialog):
 
         target_folder = self.cmbLocalTarget.currentText()
         if self.folder_strategy == "per-job" and len(target_folder) > 0 and name != "":
-            target_folder = os.path.join(target_folder, to_filesystem_friendly_string(name))
+            target_folder = os.path.join(
+                target_folder, to_filesystem_friendly_string(name)
+            )
         self.cmbLocalTarget.setCurrentText(target_folder)
 
         self.__update_target_folder()
@@ -428,11 +448,17 @@ class JobEditorDialog(QDialog):
 
     def __update_target_folder(self):
         """Update the target folder based on the current values of the form."""
-        if self.cmbLocalTarget.currentText() == "":
+        currentText = self.cmbLocalTarget.currentText()
+        if currentText == "":
             self.cmbLocalTarget.lineEdit().setStyleSheet(
                 JobEditorDialog.ERROR_TEXT_STYLE
             )
             self.cmbLocalTarget.setToolTip("Please select a target folder.")
+        elif not os.path.isabs(currentText):
+            self.cmbLocalTarget.lineEdit().setStyleSheet(
+                JobEditorDialog.ERROR_TEXT_STYLE
+            )
+            self.cmbLocalTarget.setToolTip("Please use a valid absolute path.")
         elif (
             self.mode == JobEditorMode.JOB_EDITED
             and self.cmbLocalTarget.currentText() != self.controller.job.target_folder
@@ -469,7 +495,7 @@ Downloaded files will fail the consistency check. Partially downloaded files wil
             self.btnFetchPage.setEnabled(True)
 
     def __populate(self):
-        """Populate the form with the given job. Invoked only in editor mode."""
+        """Populate the form with the given job. Invoked in editor / import mode."""
         job = self.controller.job
         self.txtJobName.setText(job.name)
         self.cmbPageUrl.setCurrentText(job.page_url)

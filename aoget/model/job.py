@@ -15,18 +15,25 @@ class Job(Base):
     STATUS_NOT_RUNNING = "Not Running"
     STATUS_COMPLETED = "Completed"
 
+    RESUME_STARTING = "Resume Starting"
+    RESUME_SUCCESS = "Resume Success"
+    RESUME_FAILED = "Resume Failed"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
     status: Mapped[str] = mapped_column(default=STATUS_CREATED)
     page_url: Mapped[str] = mapped_column(nullable=False)
     total_size_bytes: Mapped[int] = mapped_column(default=0)
     target_folder: Mapped[str] = mapped_column(nullable=True)
-    # cache field to speed things up
+    # cache field
     selected_files_with_known_size: Mapped[int] = mapped_column(default=0)
-    # cache field to speed things up
+    # cache field
     selected_files_count: Mapped[int] = mapped_column(default=0)
-    # cache field to speed things up
+    # cache field
     downloaded_bytes: Mapped[int] = mapped_column(default=0)
+    # cache field
+    files_done: Mapped[int] = mapped_column(default=0)
+    threads_allocated: Mapped[int] = mapped_column(default=3)
     files: Mapped[List["FileModel"]] = relationship(back_populates="job",
                                                     cascade="all, delete, delete-orphan")
 

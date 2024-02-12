@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>AOGet</string>
+   <string>AOGet Beta</string>
   </property>
   <property name="windowIcon">
    <iconset>
@@ -139,7 +139,7 @@
           <item>
            <widget class="QToolButton" name="btnJobThreadsMinus">
             <property name="toolTip">
-             <string>Decrement download threads for the selected job</string>
+             <string>Decrement download threads for the selected job (minimum is 1)</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -399,6 +399,9 @@
        </item>
        <item>
         <widget class="QTableWidget" name="tblJobs">
+         <property name="editTriggers">
+          <set>QAbstractItemView::NoEditTriggers</set>
+         </property>
          <property name="sortingEnabled">
           <bool>true</bool>
          </property>
@@ -721,7 +724,11 @@
         </widget>
        </item>
        <item>
-        <widget class="QTableWidget" name="tblFiles"/>
+        <widget class="QTableWidget" name="tblFiles">
+         <property name="editTriggers">
+          <set>QAbstractItemView::NoEditTriggers</set>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>

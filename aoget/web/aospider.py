@@ -4,7 +4,7 @@ from pathlib import Path
 
 class AoSpider(scrapy.Spider):
     """Scrapy spider to parse the links from a webpage. It will extract the title of the page and
-    the links to downloadable files. It will group the files by extension fore more convenient
+    the links to downloadable files. It will group the files by extension fore downstream
     use."""
     extension_counts = {}
     files_by_extension = {}
