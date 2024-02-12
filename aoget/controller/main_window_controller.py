@@ -562,7 +562,7 @@ class MainWindowController:
                     messages.append(f"Could not delete file from disk: {e}")
                     logger.error("Could not delete file from disk: %s", e)
         logger.info("Deleting files from disk took %s seconds.", time.time() - t0)
-                
+
         with self.db_lock:
             t0 = time.time()
             if job_name in self.journal:
@@ -573,8 +573,7 @@ class MainWindowController:
                 "Deleting journal and file cache took %s seconds.", time.time() - t0
             )
             t0 = time.time()
-            job = get_job_dao().get_job_by_name(job_name)
-            get_job_dao().delete_job(job)
+            get_job_dao().delete_job_by_name(job_name)
         logger.info("Deleting job from db took %s seconds.", time.time() - t0)
         return messages if len(messages) > 0 else None
 
