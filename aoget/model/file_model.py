@@ -37,9 +37,10 @@ class FileModel(Base):
     downloaded_bytes: Mapped[int] = mapped_column(nullable=True, default=-1)
     status: Mapped[str] = mapped_column(default=STATUS_NEW)
     priority: Mapped[int] = mapped_column(default=2, nullable=False)
-    history_entries: Mapped[List["FileEvent"]] = relationship(back_populates="file",
-                                                              cascade="all, delete, delete-orphan")
-    job_id: Mapped[int] = mapped_column(ForeignKey("job.id"))
+    history_entries: Mapped[List["FileEvent"]] = relationship(
+        back_populates="file", cascade="all, delete, delete-orphan"
+    )
+    job_id: Mapped[int] = mapped_column(ForeignKey("job.id", ondelete="CASCADE"))
     job: Mapped["Job"] = relationship(back_populates="files")
 
     def __init__(self, job, url):
@@ -65,7 +66,8 @@ class FileModel(Base):
     def get_latest_history_timestamp(self) -> int:
         """Get the timestamp of the latest history entry.
         :return:
-            The timestamp of the latest history entry, or None if there are no history entries"""
+            The timestamp of the latest history entry, or None if there are no history entries
+        """
         if not self.has_history():
             return None
         return self.get_latest_history_entry().timestamp
@@ -76,7 +78,9 @@ class FileModel(Base):
             The latest history entry, or None if there are no history entries"""
         if not self.has_history():
             return None
-        return max(self.history_entries, key=lambda event: event.timestamp, default=None)
+        return max(
+            self.history_entries, key=lambda event: event.timestamp, default=None
+        )
 
     def get_target_path(self) -> str:
         """Get the target path of the file.
@@ -97,4 +101,3 @@ class FileModel(Base):
         if not os.path.exists(self.get_target_path()):
             return -1
         return os.path.getsize(self.get_target_path())
-    
