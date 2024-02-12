@@ -6,13 +6,11 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QTableWidgetItem,
     QProgressBar,
-    QMessageBox,
     QApplication,
     QFileDialog,
-    QToolTip,
 )
 from PyQt6 import uic
-from PyQt6.QtCore import pyqtSignal, QUrl, QEvent
+from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
 from controller.main_window_controller import MainWindowController
 
@@ -36,7 +34,7 @@ from util.qt_util import (
     message_dialog,
     error_dialog,
 )
-from config.app_config import AppConfig, get_config_value
+from config.app_config import AppConfig, get_config_value, get_app_version
 from model.file_model import FileModel
 from db.aogetdb import AogetDb
 
@@ -125,6 +123,7 @@ class MainWindow(QMainWindow):
         self.actionResume_all.triggered.connect(self.resume_all)
 
         self.__setup_bandwidth_limit_menu()
+        self.__setup_trivial_menu_items()
         self.__setup_jobs_table()
         self.__setup_files_table()
         self.__populate()
@@ -158,6 +157,24 @@ class MainWindow(QMainWindow):
             action.setToolTip(
                 "Youn can adjust these limits in the application settings."
             )
+
+    def __setup_trivial_menu_items(self):
+        """Setup the trivial menu items"""
+        self.actionAbout.triggered.connect(
+            lambda: message_dialog(
+                self, message=f"AOGet version is {get_app_version()}", header="About"
+            )
+        )
+        self.actionDonateArchiveOrg.triggered.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://archive.org/donate/")
+            )
+        )
+        self.actionBuy_the_dev_a_Coffee.triggered.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://www.buymeacoffee.com/kosaendre")
+            )
+        )
 
     def __setup_overlays(self):
         self.shutdown_overlay = TranslucentWidget(
