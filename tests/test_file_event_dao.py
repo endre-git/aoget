@@ -5,10 +5,13 @@ from aoget.model.file_event import FileEvent
 from aoget.model.dao.file_event_dao import FileEventDAO
 from aoget.model.dao.file_model_dao import FileModelDAO
 from aoget.model.dao.job_dao import JobDAO
+from aoget.model.file_model import FileModel
+from aoget.model.job import Job
 
 
 class TestFileEventDAO(unittest.TestCase):
     def setUp(self):
+
         # Create an SQLite in-memory database for testing
         self.engine = create_engine('sqlite:///:memory:')
         self.session = Session(self.engine)
@@ -23,14 +26,10 @@ class TestFileEventDAO(unittest.TestCase):
         self.file_model_dao = FileModelDAO(self.session)
         self.job_dao = JobDAO(self.session)
 
-        self.test_job = self.job_dao.create_job(
-            name='Test Job', page_url='http://example.com', target_folder='/tmp'
-        )
-        self.test_file_model = self.file_model_dao.create_file_model(
-            job=self.test_job,
-            url='http://example.com/file1.txt'
-        )
-
+        self.test_job = Job(name='Test Job', page_url='http://example.com', target_folder='/tmp')
+        self.test_file_model = FileModel(job=self.test_job, url='http://example.com/file1.txt')
+        self.job_dao.add_job(self.test_job)
+        self.file_model_dao.add_file_model(self.test_file_model)
         self.assertEqual(1, self.test_file_model.id)
 
     def tearDown(self):

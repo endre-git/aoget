@@ -66,12 +66,13 @@ class TestJobDAO(unittest.TestCase):
         # Save the job using save_job method
         self.job_dao.add_job(new_job)
         self.assertNotEqual(0, new_job.id)
+        new_job_id = new_job.id
 
         # Delete the job by its ID
         self.job_dao.delete_job_by_id(new_job.id)
 
         # Assert that the job is deleted
-        self.assertIsNone(self.job_dao.get_job_by_id(new_job.id))
+        self.assertIsNone(self.job_dao.get_job_by_id(new_job_id))
 
     def test_delete_all_jobs(self):
         # Create multiple jobs

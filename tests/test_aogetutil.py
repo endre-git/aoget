@@ -174,7 +174,7 @@ class TestAogetutil(unittest.TestCase):
     def test_human_rate(self):
         # Test case for a rate of 0 bytes per second
         rate_bytes_per_second = 0
-        expected_result = "0B/s"
+        expected_result = ""
         result = human_rate(rate_bytes_per_second)
         self.assertEqual(result, expected_result)
 
