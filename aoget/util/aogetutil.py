@@ -104,6 +104,36 @@ def human_eta(eta_seconds: int) -> str:
     return str(timedelta(seconds=eta_seconds))
 
 
+def parse_timedelta(td_str):
+    days, hours, minutes, seconds = 0, 0, 0, 0
+
+    # Extract days, if present
+    if 'day' in td_str:
+        days, td_str = td_str.split(' day', 1)
+        days = int(days)
+
+    # Extract hours, minutes, and seconds
+    time_parts = td_str.split(':')
+    if len(time_parts) == 3:
+        hours, minutes, seconds = map(int, time_parts)
+    elif len(time_parts) == 2:
+        minutes, seconds = map(int, time_parts)
+
+    return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
+
+
+def dehumanized_eta(eta_str: str) -> int:
+    """Get an ETA in seconds from the given human readable ETA. 
+    Inverse of human_eta.
+    :param eta_str:
+        The human readable ETA
+    :return:
+        The ETA in seconds"""
+    if eta_str is None or eta_str == "":
+        return 0
+    return parse_timedelta(eta_str).total_seconds()
+
+
 def human_duration(duration_seconds: float) -> str:
     """Get a human readable duration from the given duration as milliseconds, seconds, minutes
     or hours, depending on the length of time.
@@ -135,6 +165,22 @@ def human_priority(priority: int) -> str:
     if priority == 1:
         return "High"
     return "Unknown"
+
+
+def dehumanized_priority(priority_str: str) -> int:
+    """Get a priority from the given human readable priority. 
+    Inverse of human_priority.
+    :param priority_str:
+        The human readable priority
+    :return:
+        The priority"""
+    if priority_str == "Low":
+        return 3
+    if priority_str == "Normal":
+        return 2
+    if priority_str == "High":
+        return 1
+    return 0
 
 
 def get_last_log_lines(log_file: str, num_lines: int) -> list:

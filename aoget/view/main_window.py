@@ -15,6 +15,12 @@ from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
 from controller.main_window_controller import MainWindowController
 
+from view.file_status_widget_item import FileStatusWidgetItem
+from view.priority_widget_item import PriorityWidgetItem
+from view.progress_bar_placeholder_widget_item import ProgressBarPlaceholderWidgetItem
+from view.progress_bar_widget import ProgressBarWidget
+from view.files_widget_item import FilesWidgetItem
+from view.threads_widget_item import ThreadsWidgetItem
 from view.rate_widget_item import RateWidgetItem
 from view.size_widget_item import SizeWidgetItem
 from view.job_editor_dialog import JobEditorDialog
@@ -267,11 +273,10 @@ class MainWindow(QMainWindow):
 
         self.tblJobs.setSelectionBehavior(QHeaderView.SelectionBehavior.SelectRows)
         self.tblJobs.setSelectionMode(QHeaderView.SelectionMode.SingleSelection)
+        self.tblJobs.verticalHeader().setHidden(True)
         column_widths = [200, 70, 100, 70, 70, 70, 250, 70, 200]
         for i, width in enumerate(column_widths):
             self.tblJobs.setColumnWidth(i, width)
-
-        self.btnFileRedownload.setHidden(True)
 
         # job control buttons
         self.btnJobStart.clicked.connect(self.__on_job_start)
@@ -337,13 +342,10 @@ class MainWindow(QMainWindow):
         )
         self.tblFiles.setSelectionBehavior(QHeaderView.SelectionBehavior.SelectRows)
         self.tblFiles.setSelectionMode(QHeaderView.SelectionMode.ExtendedSelection)
+        self.tblFiles.verticalHeader().setHidden(True)
         column_widths = [200, 70, 100, 100, 300, 70, 100, 150, 300]
         for i, width in enumerate(column_widths):
             self.tblFiles.setColumnWidth(i, width)
-
-        # Make columns sortable
-        header.setSectionsClickable(True)
-        header.sectionClicked.connect(self.__sort_files_table)
 
         # jobs table selection
         self.tblFiles.itemSelectionChanged.connect(self.__update_file_toolbar)
@@ -374,13 +376,11 @@ class MainWindow(QMainWindow):
         self.btnFilePriorityPlus.setEnabled(False)
         self.btnFilePriorityMinus.setEnabled(False)
 
+        self.btnFileRedownload.setHidden(True)
+
     def __populate(self):
         """Populate the UI with data from the database"""
         self.__update_jobs_table()
-
-    def __sort_files_table(self, logical_index):
-        """Sort the files table by the given column"""
-        self.tblFiles.sortItems(logical_index)
 
     def __update_jobs_table(self):
         """Update the list of jobs"""
@@ -1030,7 +1030,7 @@ class MainWindow(QMainWindow):
         error_dialog.exec()
 
     def __restyleFileProgressBar(self, row, style):
-        """Disable the given cell in the files table"""
+        """Restyle the progress bar for the given row in the files table"""
         progress_bar = self.tblFiles.cellWidget(row, MainWindow.FILE_PROGRESS_IDX)
         if progress_bar:
             progress_bar.setStyleSheet(style)
@@ -1095,28 +1095,24 @@ class MainWindow(QMainWindow):
             self.tblJobs.setItem(
                 row,
                 MainWindow.JOB_PROGRESS_IDX,
-                QTableWidgetItem("Resolving size..."),
+                ProgressBarPlaceholderWidgetItem("Resolving size..."),
             )
             return
         if job.total_size_bytes is None or job.total_size_bytes == 0:
             self.tblJobs.setItem(
                 row,
                 MainWindow.JOB_PROGRESS_IDX,
-                QTableWidgetItem("Unknown size"),
+                ProgressBarPlaceholderWidgetItem("Unknown size"),
             )
             return
 
         progress_bar = self.tblJobs.cellWidget(row, MainWindow.JOB_PROGRESS_IDX)
         if progress_bar is None:
-            progress_bar = QProgressBar()
+            progress_bar = ProgressBarWidget()
             self.tblJobs.setCellWidget(row, MainWindow.JOB_PROGRESS_IDX, progress_bar)
         completion = int(100 * (job.downloaded_bytes or 0) / job.total_size_bytes)
         progress_bar.setValue(completion)
-        progress_bar.setStyleSheet(
-            MainWindow.PROGRESS_BAR_ACTIVE_STYLE
-            if job.status == Job.STATUS_RUNNING
-            else MainWindow.PROGRESS_BAR_PASSIVE_STYLE
-        )
+        progress_bar.set_active()
 
     def update_job(self, job: JobDTO) -> None:
         """Update the job in the table. Called by the cycle ticker."""
@@ -1153,12 +1149,12 @@ class MainWindow(QMainWindow):
         self.tblJobs.setItem(
             row,
             MainWindow.JOB_THREADS_IDX,
-            QTableWidgetItem(f"{job.threads_active or 0}/{job.threads_allocated or 0}"),
+            ThreadsWidgetItem(f"{job.threads_active or 0}/{job.threads_allocated or 0}"),
         )
         self.tblJobs.setItem(
             row,
             MainWindow.JOB_FILES_IDX,
-            QTableWidgetItem(f"{job.files_done or 0}/{job.selected_files_count or 0}"),
+            FilesWidgetItem(f"{job.files_done or 0}/{job.selected_files_count or 0}"),
         )
         self.__set_job_progress_item(row, job)
         self.tblJobs.setItem(
@@ -1175,7 +1171,7 @@ class MainWindow(QMainWindow):
                 )
                 if job.status == Job.STATUS_RUNNING
                 else ""
-            ),
+            )
         )
         self.tblJobs.setItem(
             row, MainWindow.JOB_TARGET_FOLDER_IDX, QTableWidgetItem(job.target_folder)
@@ -1212,7 +1208,7 @@ class MainWindow(QMainWindow):
             size_table_item = self.tblFiles.item(row, MainWindow.FILE_SIZE_IDX)
             if size_table_item is None:
                 self.tblFiles.setItem(
-                    row, MainWindow.FILE_SIZE_IDX, QTableWidgetItem(size_str)
+                    row, MainWindow.FILE_SIZE_IDX, SizeWidgetItem(size_str)
                 )
             else:
                 size_table_item.setText(size_str)
@@ -1220,7 +1216,7 @@ class MainWindow(QMainWindow):
             priority_str = self.__priority_str(file.priority)
             priority_table_item = self.tblFiles.item(row, MainWindow.FILE_PRIORITY_IDX)
             if priority_table_item is None:
-                priority_table_item = QTableWidgetItem(priority_str)
+                priority_table_item = PriorityWidgetItem(priority_str)
                 self.tblFiles.setItem(
                     row, MainWindow.FILE_PRIORITY_IDX, priority_table_item
                 )
@@ -1229,7 +1225,7 @@ class MainWindow(QMainWindow):
             # STATUS
             status_table_item = self.tblFiles.item(row, MainWindow.FILE_STATUS_IDX)
             if status_table_item is None:
-                status_table_item = QTableWidgetItem(file.status)
+                status_table_item = FileStatusWidgetItem(file.status)
                 self.tblFiles.setItem(
                     row, MainWindow.FILE_STATUS_IDX, status_table_item
                 )
@@ -1264,7 +1260,7 @@ class MainWindow(QMainWindow):
                 rate_str = human_rate(file.rate_bytes_per_sec)
                 rate_table_item = self.tblFiles.item(row, MainWindow.FILE_RATE_IDX)
                 if rate_table_item is None:
-                    rate_table_item = QTableWidgetItem(rate_str)
+                    rate_table_item = RateWidgetItem(rate_str)
                     self.tblFiles.setItem(
                         row,
                         MainWindow.FILE_RATE_IDX,

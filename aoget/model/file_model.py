@@ -55,7 +55,7 @@ class FileModel(Base):
 
     def __repr__(self):
         return "<FileModel(name='%s', url='%s')>" % (self.name, self.url)
-    
+
     def has_history(self) -> bool:
         """Determine whether this file has any history entries.
         :return:
