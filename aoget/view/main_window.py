@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QApplication,
     QFileDialog,
-    QToolTip
+    QToolTip,
 )
 from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal, QUrl, QEvent
@@ -30,7 +30,12 @@ from view.crash_report_dialog import CrashReportDialog
 from view.app_settings_dialog import AppSettingsDialog
 from view.translucent_widget import TranslucentWidget
 from util.aogetutil import human_timestamp_from, human_filesize, human_eta, human_rate
-from util.qt_util import confirmation_dialog, show_warnings, message_dialog
+from util.qt_util import (
+    confirmation_dialog,
+    show_warnings,
+    message_dialog,
+    error_dialog,
+)
 from config.app_config import AppConfig, get_config_value
 from model.file_model import FileModel
 from db.aogetdb import AogetDb
@@ -454,8 +459,8 @@ class MainWindow(QMainWindow):
             return
         job_name = self.tblJobs.selectedItems()[0].text()
         if self.controller.is_job_downloading(job_name):
-            self.__show_error_dialog(
-                "Job is running. Please stop all downloads before editing."
+            error_dialog(
+                self, "Job is running. Please stop all downloads before editing."
             )
             return
 
@@ -486,7 +491,7 @@ class MainWindow(QMainWindow):
                 self.tblJobs.clearSelection()
                 self.__show_files(None)
             except Exception as e:
-                self.__show_error_dialog("Failed to remove job: " + str(e))
+                error_dialog(self, "Failed to remove job: " + str(e))
                 logger.error("Failed to remove job: %s", job_name, exc_info=True)
                 logger.exception(e)
 
@@ -512,7 +517,7 @@ class MainWindow(QMainWindow):
                 self.tblJobs.clearSelection()
                 self.__show_files(None)
             except Exception as e:
-                self.__show_error_dialog("Failed to remove job: " + str(e))
+                error_dialog(self, "Failed to remove job: " + str(e))
                 logger.error("Failed to remove job: %s", job_name, exc_info=True)
                 logger.exception(e)
 
@@ -523,8 +528,10 @@ class MainWindow(QMainWindow):
         job_name = self.tblJobs.selectedItems()[0].text()
         job_dto = self.controller.get_job_dto_by_name(job_name)
         if job_dto.is_size_not_resolved():
-            self.__show_error_dialog(
-                "Job size is not fully resolved. Please wait for the job to resolve its size before exporting."
+            error_dialog(
+                self,
+                """Job size is not fully resolved. Please wait for the job to resolve 
+                its size before exporting.""",
             )
             return
 
@@ -564,7 +571,9 @@ class MainWindow(QMainWindow):
                     elif get_config_value(AppConfig.AUTO_START_JOBS):
                         self.controller.start_job(dlg.controller.job.name)
             except Exception as e:
-                self.__show_error_dialog("Failed to import job: " + str(e))
+                error_dialog(self, "Failed to import job: " + str(e))
+                logger.error("Failed to import job: %s", file, exc_info=True)
+                logger.exception(e)
 
     def __on_job_open_link(self):
         """Open the link of the selected job"""
@@ -575,8 +584,9 @@ class MainWindow(QMainWindow):
         if job_dto and job_dto.page_url:
             QDesktopServices.openUrl(QUrl(job_dto.page_url))
         else:
-            self.__show_error_dialog(
-                "The job doesn't seem to have an associated link.<br/>Perhaps it was imported?"
+            message_dialog(
+                self,
+                "The job doesn't seem to have an associated link.<br/>Perhaps it was imported?",
             )
 
     def __on_job_health_check(self):
@@ -635,12 +645,8 @@ class MainWindow(QMainWindow):
             self.btnJobOpenLink.setEnabled(False)
             self.btnJobHealthCheck.setEnabled(False)
             if job_name in self.resuming_jobs:
-                self.btnJobStart.setToolTip(
-                    "Job is being resumed, please wait."
-                )
-                self.btnJobStop.setToolTip(
-                    "Job is being resumed, please wait."
-                )
+                self.btnJobStart.setToolTip("Job is being resumed, please wait.")
+                self.btnJobStop.setToolTip("Job is being resumed, please wait.")
         else:
             self.btnJobCreate.setEnabled(True)
             self.btnJobEdit.setEnabled(True)
@@ -773,7 +779,8 @@ class MainWindow(QMainWindow):
             )
             self.btnFileStopDownload.setEnabled(True)
         else:
-            self.__show_error_dialog("Failed to start download: " + message)
+            error_dialog(self, "Failed to start download: " + message)
+            logger.error("Failed to start download: %s", message)
             self.btnFileStartDownload.setEnabled(True)
 
     def __multi_file_download(self):
@@ -800,7 +807,8 @@ class MainWindow(QMainWindow):
             )
             self.__update_file_start_stop_buttons(message)
         else:
-            self.__show_error_dialog("Failed to stop download: " + message)
+            error_dialog(self, "Failed to stop download: " + message)
+            logger.error("Failed to stop download: %s", message)
             self.btnFileStopDownload.setEnabled(True)
 
     def __multi_file_stop_download(self):
@@ -838,7 +846,8 @@ class MainWindow(QMainWindow):
                     QTableWidgetItem(message),
                 )
             else:
-                self.__show_error_dialog("Failed to redownload: " + message)
+                error_dialog(self, "Failed to redownload: " + message)
+                logger.error("Failed to redownload: %s", message)
                 self.btnFileRedownload.setEnabled(True)
                 self.__reset_rate_and_eta_for_file(file_name)
             self.__update_file_start_stop_buttons(
@@ -873,7 +882,8 @@ class MainWindow(QMainWindow):
                     idx = self.tblFiles.selectionModel().selectedRows()[0].row()
                     self.tblFiles.setRowHidden(idx, True)
             else:
-                self.__show_error_dialog("Failed to remove from list: " + message)
+                error_dialog(self, "Failed to remove from list: " + message)
+                logger.error("Failed to remove from list: %s", message)
             self.btnFileRemoveFromList.setEnabled(True)
 
     def __multi_file_remove_from_list(self):
@@ -929,7 +939,8 @@ class MainWindow(QMainWindow):
                 with self.file_table_lock:
                     idx = self.tblFiles.selectionModel().selectedRows()[0].row()
                     self.tblFiles.setRowHidden(idx, True)
-                self.__show_error_dialog("Failed to remove: " + message)
+                error_dialog(self, "Failed to remove: " + message)
+                logger.error("Failed to remove: %s", message)
             self.btnFileRemoveFromList.setEnabled(True)
 
     def __multi_file_remove(self):
@@ -961,7 +972,7 @@ class MainWindow(QMainWindow):
         """Show the details of the selected file"""
         if not self.__is_job_selected() or not self.__is_file_selected():
             # show error that no files are selected
-            self.__show_error_dialog("No file selected")
+            error_dialog(self, "No file selected")
             return
         job_name = self.tblJobs.selectedItems()[0].text()
         file_name = self.tblFiles.selectedItems()[0].text()
@@ -1021,14 +1032,6 @@ class MainWindow(QMainWindow):
         job_name = self.tblJobs.selectedItems()[0].text()
         selected_files = self.__selected_file_names()
         self.controller.decrease_file_priorities(job_name, selected_files)
-
-    def __show_error_dialog(
-        self, message, title="Error", icon=QMessageBox.Icon.Critical
-    ):
-        error_dialog = QMessageBox()
-        error_dialog.setText(message)
-        error_dialog.setWindowTitle(title)
-        error_dialog.exec()
 
     def __restyleFileProgressBar(self, row, style):
         """Restyle the progress bar for the given row in the files table"""
@@ -1151,7 +1154,9 @@ class MainWindow(QMainWindow):
         self.tblJobs.setItem(
             row,
             MainWindow.JOB_THREADS_IDX,
-            ThreadsWidgetItem(f"{job.threads_active or 0}/{job.threads_allocated or 0}"),
+            ThreadsWidgetItem(
+                f"{job.threads_active or 0}/{job.threads_allocated or 0}"
+            ),
         )
         self.tblJobs.setItem(
             row,
@@ -1173,7 +1178,7 @@ class MainWindow(QMainWindow):
                 )
                 if job.status == Job.STATUS_RUNNING
                 else ""
-            )
+            ),
         )
         self.tblJobs.setItem(
             row, MainWindow.JOB_TARGET_FOLDER_IDX, QTableWidgetItem(job.target_folder)
@@ -1200,9 +1205,7 @@ class MainWindow(QMainWindow):
             name_table_item = self.tblFiles.item(row, MainWindow.FILE_NAME_IDX)
             if name_table_item is None:
                 name_table_item = QTableWidgetItem(file.name)
-                self.tblFiles.setItem(
-                    row, MainWindow.FILE_NAME_IDX, name_table_item
-                )
+                self.tblFiles.setItem(row, MainWindow.FILE_NAME_IDX, name_table_item)
             else:
                 name_table_item.setText(file.name)
             name_table_item.setToolTip(file.name)
@@ -1351,10 +1354,11 @@ class MainWindow(QMainWindow):
             return
 
         if status == Job.RESUME_FAILED:
-            self.__show_error_dialog(
+            error_dialog(
+                self,
                 f"""Failed to resume job <b>{job_name}</b>: {msg}. <br/>
                                      You can resume all downloads manually with the 
-                                     job start button."""
+                                     job start button.""",
             )
         # update the job in the table with the db state
         self.__set_job_at_row(idx, self.controller.get_job_dto_by_name(job_name))
