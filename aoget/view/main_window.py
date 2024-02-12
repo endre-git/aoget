@@ -9,9 +9,10 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QApplication,
     QFileDialog,
+    QToolTip
 )
 from PyQt6 import uic
-from PyQt6.QtCore import pyqtSignal, QUrl
+from PyQt6.QtCore import pyqtSignal, QUrl, QEvent
 from PyQt6.QtGui import QDesktopServices
 from controller.main_window_controller import MainWindowController
 
@@ -1131,6 +1132,7 @@ class MainWindow(QMainWindow):
     def __set_job_at_row(self, row, job: JobDTO):
         """Set the job at the given row in the jobs table"""
         self.tblJobs.setItem(row, MainWindow.JOB_NAME_IDX, QTableWidgetItem(job.name))
+        self.tblJobs.item(row, MainWindow.JOB_NAME_IDX).setToolTip(job.name)
         self.tblJobs.setItem(
             row, MainWindow.JOB_SIZE_IDX, SizeWidgetItem(self.__job_size_str(job))
         )
@@ -1176,6 +1178,9 @@ class MainWindow(QMainWindow):
         self.tblJobs.setItem(
             row, MainWindow.JOB_TARGET_FOLDER_IDX, QTableWidgetItem(job.target_folder)
         )
+        self.tblJobs.item(row, MainWindow.JOB_TARGET_FOLDER_IDX).setToolTip(
+            job.target_folder
+        )
 
     def __priority_str(self, priority):
         """Return the priority string for the given priority"""
@@ -1194,11 +1199,13 @@ class MainWindow(QMainWindow):
             # NAME
             name_table_item = self.tblFiles.item(row, MainWindow.FILE_NAME_IDX)
             if name_table_item is None:
+                name_table_item = QTableWidgetItem(file.name)
                 self.tblFiles.setItem(
-                    row, MainWindow.FILE_NAME_IDX, QTableWidgetItem(file.name)
+                    row, MainWindow.FILE_NAME_IDX, name_table_item
                 )
             else:
                 name_table_item.setText(file.name)
+            name_table_item.setToolTip(file.name)
             # SIZE
             size_str = (
                 human_filesize(file.size_bytes)
@@ -1305,6 +1312,7 @@ class MainWindow(QMainWindow):
                 )
             else:
                 last_event_table_item.setText(last_event_str)
+            last_event_table_item.setToolTip(last_event_str)
 
     def update_file(self, file: FileModelDTO):
         """Update the file progress of the given file if the right job is selected"""
