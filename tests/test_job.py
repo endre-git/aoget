@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import MagicMock
 from aoget.model.file_model import FileModel
@@ -7,7 +8,7 @@ from aoget.model.job import Job
 class TestJob(unittest.TestCase):
     def setUp(self):
         self.job = Job(
-            name='Test Job', page_url='http://example.com', target_folder='c:\\tmp'
+            name='Test Job', page_url='http://example.com', target_folder='tmp'
         )
         self.file1 = FileModel(self.job, "https://example.com/file1.txt")
         self.file2 = FileModel(self.job, "https://example.com/file2.txt")
@@ -86,7 +87,8 @@ class TestJob(unittest.TestCase):
         self.job.add_file(file)
         self.assertEqual(len(self.job.files), 3)
         self.assertEqual(self.job.files[2], file)
-        self.assertEqual(self.job.files[2].get_target_path(), "c:\\tmp\\file3.txt")
+        self.assertEqual(self.job.files[2].get_target_path(),
+                         os.path.join("tmp", "file3.txt"))
 
     def test_get_selected_files_with_unknown_size(self):
         self.file1.selected = True

@@ -1,3 +1,4 @@
+import os
 import unittest
 from aoget.model.file_model import FileModel
 from aoget.model.file_event import FileEvent
@@ -7,7 +8,7 @@ from aoget.model.job import Job
 class TestFileModel(unittest.TestCase):
     def setUp(self):
         self.job = Job(
-            name="Test Job", page_url="http://example.com", target_folder="c:\\tmp"
+            name="Test Job", page_url="http://example.com", target_folder="tmp"
         )
         self.url = "https://example.com/file.txt"
         self.file_model = FileModel(self.job, self.url)
@@ -44,7 +45,7 @@ class TestFileModel(unittest.TestCase):
     def test_get_target_path(self):
         self.assertEqual(
             self.file_model.get_target_path(),
-            "c:\\tmp\\file.txt",
+            os.path.join("tmp", "file.txt"),
         )
 
     def test_get_latest_history_entry(self):
