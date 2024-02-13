@@ -5,6 +5,7 @@ Download the installer from the [Releases page](https://github.com/kosaendre/aog
 AOGet is a download manager for easy fileset downloads from archive.org, or any other website that provides directory listing - a collection of downloadable URLs on a single page.
 
 ## Single GIF manual
+![Single GIF manual](aoget/docs/aoget_manual.gif)
 
 ## Limitations, known issues
 * The app was written in Python, uses a heavyweight ORM and can be a little slow with large filesets.
@@ -23,7 +24,7 @@ I plan to do updates if the app sees some actual use.
 
 # Contribute
 ## Give feedback
-GitHub discussions link
+Please use the [Discussions](https://github.com/kosaendre/aoget/discussions/) tab.
 
 ## Report bugs
 When the app crashes, it'll prompt you to open a new issue. If you have a GitHub account, or willing to create one, please report issues. If you want to go the extra mile, you can check in the [existing set of issues](https://github.com/kosaendre/aoget/issues/) whether your case was reported already.
