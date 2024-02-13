@@ -17,7 +17,7 @@ class TestFileModelDAO(unittest.TestCase):
 
         # Create an instance of FileModelDAO with the testing session
         self.file_model_dao = FileModelDAO(self.session)
-        
+
         # Files can't exist without a job, so we need to create a job
         self.job_dao = JobDAO(self.session)
         self.job = self.job_dao.create_job(
@@ -44,7 +44,7 @@ class TestFileModelDAO(unittest.TestCase):
         )
 
         # Assert that the retrieved file model matches the created file model
-        self.assertEqual(new_file_model.url, 'http://example.com/file1.txt')
+        self.assertEqual(retrieved_file_model.url, 'http://example.com/file1.txt')
 
     def test_add_file_model(self):
         # Create a new file model
@@ -62,7 +62,7 @@ class TestFileModelDAO(unittest.TestCase):
         )
 
         # Assert that the retrieved file model matches the added file model
-        self.assertEqual(new_file_model.url, 'http://example.com/file1.txt')
+        self.assertEqual(retrieved_file_model.url, 'http://example.com/file1.txt')
 
     def test_get_file_model_by_id(self):
         # Create a new file model and retrieve it by ID
@@ -75,7 +75,7 @@ class TestFileModelDAO(unittest.TestCase):
         )
 
         # Assert that the retrieved file model matches the created file model
-        self.assertEqual(new_file_model.url, 'http://example.com/file1.txt')
+        self.assertEqual(retrieved_file_model.url, 'http://example.com/file1.txt')
 
     def test_get_all_file_models(self):
         # Create multiple file models

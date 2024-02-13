@@ -398,7 +398,7 @@ class QueuedDownloader:
                             )
                         if file.downloaded_bytes is None:
                             logger.error(
-                                """Database apparently corrupted for file "%s", 
+                                """Database apparently corrupted for file "%s",
                                 downloaded_bytes unset, despite marked as complete.""",
                                 file.name,
                             )

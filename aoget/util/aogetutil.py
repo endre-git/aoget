@@ -1,4 +1,3 @@
-import math
 import os
 import urllib.parse
 from datetime import datetime
@@ -57,7 +56,7 @@ def human_filesize(file_size_bytes: int) -> str:
 
 
 def dehumanized_filesize(file_size_str: str) -> int:
-    """Get a filesize in bytes from the given human readable filesize. 
+    """Get a filesize in bytes from the given human readable filesize.
     Inverse of human_filesize.
     :param file_size_str:
         The human readable filesize
@@ -123,7 +122,7 @@ def parse_timedelta(td_str):
 
 
 def dehumanized_eta(eta_str: str) -> int:
-    """Get an ETA in seconds from the given human readable ETA. 
+    """Get an ETA in seconds from the given human readable ETA.
     Inverse of human_eta.
     :param eta_str:
         The human readable ETA
@@ -168,7 +167,7 @@ def human_priority(priority: int) -> str:
 
 
 def dehumanized_priority(priority_str: str) -> int:
-    """Get a priority from the given human readable priority. 
+    """Get a priority from the given human readable priority.
     Inverse of human_priority.
     :param priority_str:
         The human readable priority

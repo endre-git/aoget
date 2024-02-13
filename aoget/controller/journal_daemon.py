@@ -64,7 +64,7 @@ class JournalDaemon:
             )
 
     def update_file_status(
-        self, jobname: str, filename: str, status: str, err: str=""
+        self, jobname: str, filename: str, status: str, err: str = ""
     ) -> None:
         """Update the status of the given filename.
         :param jobname:

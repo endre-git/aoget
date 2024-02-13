@@ -28,7 +28,7 @@ class AoSpider(scrapy.Spider):
             # process the url
             self.handle(url)
             # recusively parse each url
-            ##yield scrapy.http.Request(url=url, callback=self.parse)
+            # yield scrapy.http.Request(url=url, callback=self.parse)
 
     def extract_title(self, response):
         title = response.xpath('//title/text()').extract_first()

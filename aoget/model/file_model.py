@@ -41,7 +41,7 @@ class FileModel(Base):
         back_populates="file", cascade="all, delete, delete-orphan"
     )
     job_id: Mapped[int] = mapped_column(ForeignKey("job.id", ondelete="CASCADE"))
-    job: Mapped["Job"] = relationship(back_populates="files")
+    job: Mapped["Job"] = relationship(back_populates="files")  # noqa: F821
 
     def __init__(self, job, url):
         self.name = unquote(url.split("/")[-1])

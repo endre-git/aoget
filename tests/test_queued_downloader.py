@@ -6,6 +6,7 @@ from aoget.model.dto.file_model_dto import FileModelDTO
 from aoget.web.queued_downloader import QueuedDownloader
 from aoget.controller.journal_daemon import JournalDaemon
 
+
 @pytest.fixture
 def mock_journal_daemon():
     return MagicMock(spec=JournalDaemon)

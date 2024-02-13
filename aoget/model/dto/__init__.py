@@ -1,1 +1,0 @@
-"""Contains DTOs to access the database models in a thread-safe manner."""

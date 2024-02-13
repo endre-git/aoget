@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class AogetDb:
     """App-level initializer and access to DB objects. AOGet uses a single, long-lived session for
     all DB operations. This is because the application is single-user, single-threaded and the
-    session is not shared beetween threads, except for the state update thread that monitors file 
+    session is not shared beetween threads, except for the state update thread that monitors file
     downloads, but that is explicitly synchronized."""
 
     scoped_session_factory = None

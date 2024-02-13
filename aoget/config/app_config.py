@@ -107,30 +107,7 @@ def load_config_from_file(filename: str) -> dict:
         raise Exception(f"Error loading config: {e}") from e
 
 
-def validate():
-    debug = get_config_value(AppConfig.DEBUG)
-    if debug is None:
-        debug = False
-        set_config_value(AppConfig.DEBUG, debug)
-    if debug not in [True, False]:
-        raise ValueError(
-            f"Invalid value for {AppConfig.DEBUG} in the current configuration: {debug} Must be 'true' or 'false'."
-        )
-    if not os.path.exists(get_config_value(AppConfig.SETTINGS_FOLDER)):
-        os.path.mkdirs(get_config_value(AppConfig.SETTINGS_FOLDER))
-        logger.info(
-            "Created settings folder: " + get_config_value(AppConfig.SETTINGS_FOLDER)
-        )
-    default_download_folder = get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER)
-    if default_download_folder is None or default_download_folder == "":
-        # use user home folder
-        default_download_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-        set_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER, default_download_folder)
-        logger.info("Using default download folder: " + default_download_folder)
-    if not os.path.exists(default_download_folder):
-        os.makedirs(default_download_folder)
-        logger.info("Created default download folder: " + default_download_folder)
-
+def validate_bandwidth_config():
     low_bandwidth_limit = get_config_value(AppConfig.LOW_BANDWIDTH_LIMIT)
     if low_bandwidth_limit is None:
         low_bandwidth_limit = 100
@@ -170,6 +147,33 @@ def validate():
         raise ValueError(
             f"Invalid value for {AppConfig.PER_JOB_DEFAULT_THREAD_COUNT} in the current configuration. Must be a number."
         )
+
+
+def validate():
+    debug = get_config_value(AppConfig.DEBUG)
+    if debug is None:
+        debug = False
+        set_config_value(AppConfig.DEBUG, debug)
+    if debug not in [True, False]:
+        raise ValueError(
+            f"Invalid value for {AppConfig.DEBUG} in the current configuration: {debug} Must be 'true' or 'false'."
+        )
+    if not os.path.exists(get_config_value(AppConfig.SETTINGS_FOLDER)):
+        os.path.mkdirs(get_config_value(AppConfig.SETTINGS_FOLDER))
+        logger.info(
+            "Created settings folder: " + get_config_value(AppConfig.SETTINGS_FOLDER)
+        )
+    default_download_folder = get_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER)
+    if default_download_folder is None or default_download_folder == "":
+        # use user home folder
+        default_download_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+        set_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER, default_download_folder)
+        logger.info("Using default download folder: " + default_download_folder)
+    if not os.path.exists(default_download_folder):
+        os.makedirs(default_download_folder)
+        logger.info("Created default download folder: " + default_download_folder)
+
+    validate_bandwidth_config()
 
     auto_start_jobs = get_config_value(AppConfig.AUTO_START_JOBS)
     if auto_start_jobs is None:

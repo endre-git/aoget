@@ -1,6 +1,5 @@
 import os
 import re
-import errno
 
 
 def get_local_file_size(file_path: str) -> int:

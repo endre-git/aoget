@@ -46,29 +46,29 @@ class TestFileEventDAO(unittest.TestCase):
         retrieved_file_event = self.file_event_dao.get_file_event_by_id(new_file_event.id)
 
         # Assert that the retrieved file event matches the created file event
-        self.assertEqual(new_file_event.event, 'Downloaded')
+        self.assertEqual(retrieved_file_event.event, 'Downloaded')
 
     def test_add_file_event(self):
         # Create a new file event
         new_file_event = FileEvent(event='Downloaded', file=self.test_file_model)
-        
+
         # Add the file event using add_file_event method
         self.file_event_dao.add_file_event(new_file_event)
-        
+
         # Retrieve the file event by its ID
         retrieved_file_event = self.file_event_dao.get_file_event_by_id(new_file_event.id)
-        
+
         # Assert that the retrieved file event matches the added file event
-        self.assertEqual(new_file_event.event, 'Downloaded')
+        self.assertEqual(retrieved_file_event.event, 'Downloaded')
 
     def test_get_file_events_by_file_id(self):
         # Create multiple file events for a file
         self.file_event_dao.create_file_event(event='Downloaded', file_model=self.test_file_model)
         self.file_event_dao.create_file_event(event='Deleted', file_model=self.test_file_model)
-        
+
         # Retrieve all file events for the file
         file_events = self.file_event_dao.get_file_events_by_file_id(file_id=1)
-        
+
         # Assert that the correct number of file events is retrieved
         self.assertEqual(len(file_events), 3)  # 1 added by default, 2 created above
 
@@ -77,10 +77,10 @@ class TestFileEventDAO(unittest.TestCase):
         new_file_event = self.file_event_dao.create_file_event(event='Downloaded',
                                                                file_model=self.test_file_model)
         self.file_event_dao.delete_file_event(event_id=new_file_event.id)
-        
+
         # Try to retrieve the deleted file event by its ID
         deleted_file_event = self.file_event_dao.get_file_event_by_id(event_id=new_file_event.id)
-        
+
         # Assert that the deleted file event is not found
         self.assertIsNone(deleted_file_event)
 
@@ -88,13 +88,13 @@ class TestFileEventDAO(unittest.TestCase):
         # Create multiple file events for a file
         self.file_event_dao.create_file_event(event='Downloaded', file_model=self.test_file_model)
         self.file_event_dao.create_file_event(event='Deleted', file_model=self.test_file_model)
-        
+
         # Delete all file events for the file
         self.file_event_dao.delete_file_events_by_file_id(file_id=1)
-        
+
         # Retrieve all file events for the file after deletion
         file_events = self.file_event_dao.get_file_events_by_file_id(file_id=1)
-        
+
         # Assert that there are no file events left for the file
         self.assertEqual(len(file_events), 0)
 
