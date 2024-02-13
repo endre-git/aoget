@@ -92,5 +92,6 @@ class TestJobDAO(unittest.TestCase):
         # Assert that no jobs are left
         self.assertEqual(len(self.job_dao.get_all_jobs()), 0)
 
+
 if __name__ == '__main__':
     unittest.main()

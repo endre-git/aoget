@@ -1,5 +1,4 @@
 import unittest
-from urllib.parse import unquote
 from aoget.model.file_model import FileModel
 from aoget.model.file_event import FileEvent
 from aoget.model.job import Job

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class JobDAO:
-    """Data access object for Jobs. Uses a shared session object. Mutators by default commit the 
+    """Data access object for Jobs. Uses a shared session object. Mutators by default commit the
     changes."""
 
     def __init__(self, session: Session):

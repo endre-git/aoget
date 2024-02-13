@@ -18,8 +18,8 @@ def install_catch_all_exception_handler(main_window, log_path, error_path):
     message and stack trace"""
 
     def handle_exception(exc_type, exc_value, exc_traceback):
-        ## KeyboardInterrupt is a special case.
-        ## We don't raise the error dialog when it occurs.
+        # KeyboardInterrupt is a special case.
+        # We don't raise the error dialog when it occurs.
         if issubclass(exc_type, KeyboardInterrupt):
             if QtGui.qApp:
                 QtGui.qApp.quit()
@@ -34,8 +34,8 @@ def install_catch_all_exception_handler(main_window, log_path, error_path):
             last_50_lines = "".join(get_last_log_lines(log_path, 20))
             monospaced_last_50_lines = f"<pre>{last_50_lines}</pre>"
 
-            msg = f"""<html><h4>AOGet Crash Report</h4><p>A critical error killed the application. 
-                It might be a bug or an unexpected system condition. Error message was: 
+            msg = f"""<html><h4>AOGet Crash Report</h4><p>A critical error killed the application.
+                It might be a bug or an unexpected system condition. Error message was:
                 <b>{error}</b><br/><br/>
                 It occurred at <b>line {line}</b> of file <b>{filename}</b>.<br/>
                 App version is <b>{get_app_version()}</b>.<br/>

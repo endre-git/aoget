@@ -270,7 +270,8 @@ class MainWindow(QMainWindow):
             "Name of the job"
         )
         self.tblJobs.horizontalHeaderItem(MainWindow.JOB_SIZE_IDX).setToolTip(
-            "Total size of the job, calculated from file sizes. If still being resolved, will be shown as >X."
+            """Total size of the job, calculated from file sizes. If still being resolved,
+            will be shown as >X."""
         )
         self.tblJobs.horizontalHeaderItem(MainWindow.JOB_STATUS_IDX).setToolTip(
             "Status of the job"
@@ -288,7 +289,8 @@ class MainWindow(QMainWindow):
             "Progress of the job based on size, not shown if the size is not fully resolved."
         )
         self.tblJobs.horizontalHeaderItem(MainWindow.JOB_ETA_IDX).setToolTip(
-            "ETA for the job to complete. Not shown if the size is not fully resolved. Might be way off with poor server bandwidth."
+            """ETA for the job to complete. Not shown if the size is not fully resolved.
+            Might be way off with poor server bandwidth."""
         )
         self.tblJobs.horizontalHeaderItem(MainWindow.JOB_TARGET_FOLDER_IDX).setToolTip(
             "Target folder for the job, where the downloaded files are saved."
@@ -547,7 +549,7 @@ class MainWindow(QMainWindow):
         if job_dto.is_size_not_resolved():
             error_dialog(
                 self,
-                """Job size is not fully resolved. Please wait for the job to resolve 
+                """Job size is not fully resolved. Please wait for the job to resolve
                 its size before exporting.""",
             )
             return
@@ -615,9 +617,9 @@ class MainWindow(QMainWindow):
             self,
             f"""Perform an integrity check on the job: <b>{job_name}</b>?<br>
             <p>This will check the status of all files in the job and update their status if necessary.<br/>
-            Checks will be limited to files for which size is known, are currently not downloading and 
+            Checks will be limited to files for which size is known, are currently not downloading and
             already should be on disk (partially or completely downloaded).</p>
-            <p>The process will not check the remote links for availability. 
+            <p>The process will not check the remote links for availability.
             It will be done in the background, with failing files being updated as the process goes.</p>""",
         ):
             self.controller.health_check(job_name, self.message_signal)
@@ -1374,7 +1376,7 @@ class MainWindow(QMainWindow):
             error_dialog(
                 self,
                 f"""Failed to resume job <b>{job_name}</b>: {msg}. <br/>
-                                     You can resume all downloads manually with the 
+                                     You can resume all downloads manually with the
                                      job start button.""",
             )
         # update the job in the table with the db state

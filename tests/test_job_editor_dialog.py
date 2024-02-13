@@ -32,6 +32,5 @@ class TestJobEditorDialog(unittest.TestCase):
             self.assertIsInstance(dialog.controller, MagicMock)  # Since it's mocked
 
 
-
 if __name__ == '__main__':
     unittest.main()
