@@ -1429,4 +1429,4 @@ class MainWindow(QMainWindow):
         self.__setup_bandwidth_limit_menu()
 
     def open_github_page(self):
-        QDesktopServices.openUrl(QUrl("https://github.com/kosaendre/aoget/"))
+        QDesktopServices.openUrl(QUrl("https://github.com/endre-git/aoget/"))

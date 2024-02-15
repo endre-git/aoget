@@ -1,5 +1,5 @@
 # Get
-Download the installer from the [Releases page](https://github.com/kosaendre/aoget/releases). The latest version is **0.9.0**. Happy downloading!
+Download the installer from the [Releases page](https://github.com/endre-git/aoget/releases). The latest version is **0.9.0**. Happy downloading!
 
 # What's this?
 AOGet is a download manager for easy fileset downloads from archive.org, or any other website that provides directory listing - a collection of downloadable URLs on a single page.
@@ -20,19 +20,19 @@ AOGet is a download manager for easy fileset downloads from archive.org, or any 
 
 ## What's next?
 I plan to do updates if the app sees some actual use.
-* [v0.9.1 Milestone](https://github.com/kosaendre/aoget/milestone/10) is mostly a technical increment to enable faster development.
-* [v1.0 Milestone](https://github.com/kosaendre/aoget/milestone/6) would be about actual enhancements.
-* [Later](https://github.com/kosaendre/aoget/milestone/9) are nice-to-haves.
+* [v0.9.1 Milestone](https://github.com/endre-git/aoget/milestone/10) is mostly a technical increment to enable faster development.
+* [v1.0 Milestone](https://github.com/endre-git/aoget/milestone/6) would be about actual enhancements.
+* [Later](https://github.com/endre-git/aoget/milestone/9) are nice-to-haves.
 
 # Contribute
 ## Give feedback
-Please use the [Discussions](https://github.com/kosaendre/aoget/discussions/) tab.
+Please use the [Discussions](https://github.com/endre-git/aoget/discussions/) tab.
 
 ## Report bugs
-When the app crashes, it'll prompt you to open a new issue. If you have a GitHub account, or willing to create one, please report issues. If you want to go the extra mile, you can check in the [existing set of issues](https://github.com/kosaendre/aoget/issues/) whether your case was reported already.
+When the app crashes, it'll prompt you to open a new issue. If you have a GitHub account, or willing to create one, please report issues. If you want to go the extra mile, you can check in the [existing set of issues](https://github.com/endre-git/aoget/issues/) whether your case was reported already.
 
 ## Develop
-You can actively develop AOGet. Take a look at the [issues](https://github.com/kosaendre/aoget/issues/), fix one, raise a PR and bug me to get it reviewed and merged.
+You can actively develop AOGet. Take a look at the [issues](https://github.com/endre-git/aoget/issues/), fix one, raise a PR and bug me to get it reviewed and merged.
 
 ### Principles
 * OOP Python & clean code please, with type hinting and documenting all visible APIs

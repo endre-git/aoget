@@ -4,7 +4,7 @@
 #define MyAppName "AOGet Beta"
 #define MyAppVersion "0.9.0"
 #define MyAppPublisher "kosaendre"
-#define MyAppURL "https://github.com/kosaendre/aoget"
+#define MyAppURL "https://github.com/endre-git/aoget"
 #define MyAppExeName "aoget.exe"
 
 [Setup]
