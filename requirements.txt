@@ -33,7 +33,7 @@ pycparser==2.21
 PyDispatcher==2.0.7
 pyinstaller==6.3.0
 pyinstaller-hooks-contrib==2024.0
-pyOpenSSL==23.3.0
+pyOpenSSL==24.0.0
 PyQt6==6.6.1
 PyQt6-Qt6==6.6.1
 PyQt6-sip==13.6.0
