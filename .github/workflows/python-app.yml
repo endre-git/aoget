@@ -38,6 +38,9 @@ jobs:
 #      run: |
 #        sudo apt-get update
 #        sudo apt-get install -y libegl1
+    - name: Delete Qt tests as they don't run on GitHub's Ubuntu servers currently
+      run: |
+        rm -rf tests/test__qt*.py
     - name: Test with pytest
       run: |
         python -m pytest
