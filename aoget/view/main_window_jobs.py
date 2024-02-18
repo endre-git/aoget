@@ -51,6 +51,7 @@ class MainWindowJobs:
         """Initialize the MainWindowJobs object.
         :param main_window: The main window object."""
         self.main_window = main_window
+        self.resuming_jobs = []
 
     def setup_ui(self):
         self.__setup_table()
@@ -153,7 +154,7 @@ class MainWindowJobs:
         job_name = (
             mw.tblJobs.selectedItems()[0].text() if self.is_job_selected() else None
         )
-        if job_name is None or job_name in mw.resuming_jobs:
+        if job_name is None or job_name in self.resuming_jobs:
             mw.btnJobStart.setEnabled(False)
             mw.btnJobStop.setEnabled(False)
             mw.btnJobThreadsPlus.setEnabled(False)
@@ -166,7 +167,7 @@ class MainWindowJobs:
             mw.btnJobImport.setEnabled(True)
             mw.btnJobOpenLink.setEnabled(False)
             mw.btnJobHealthCheck.setEnabled(False)
-            if job_name in mw.resuming_jobs:
+            if job_name in self.resuming_jobs:
                 mw.btnJobStart.setToolTip("Job is being resumed, please wait.")
                 mw.btnJobStop.setToolTip("Job is being resumed, please wait.")
         else:
@@ -508,7 +509,7 @@ class MainWindowJobs:
         idx = self.__get_row_index_of_job(job_name)
         if status == Job.RESUME_STARTING:
             # update the job in the table to resuming state
-            mw.resuming_jobs.append(job_name)
+            self.resuming_jobs.append(job_name)
             item = mw.tblJobs.item(idx, JOB_STATUS_IDX)
             if item is not None:
                 item.setText("Resuming")
@@ -525,7 +526,7 @@ class MainWindowJobs:
             )
         # update the job in the table with the db state
         self.set_job_at_row(idx, mw.controller.get_job_dto_by_name(job_name))
-        mw.resuming_jobs.remove(job_name)
+        self.resuming_jobs.remove(job_name)
         self.update_job_toolbar()
         mw.update_file_toolbar()
 

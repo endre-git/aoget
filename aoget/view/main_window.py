@@ -89,7 +89,6 @@ class MainWindow(QMainWindow):
         self.file_table_lock = threading.RLock()
         self.closing = False
         self.jobs_table_view = MainWindowJobs(self)
-        self.resuming_jobs = []
         self.__setup_ui()
         self.show()
         self.controller.resume_state()
@@ -314,7 +313,7 @@ class MainWindow(QMainWindow):
             self.tblJobs.selectedItems()[0].text() if self.__is_job_selected() else None
         )
 
-        if not self.__is_file_selected() or job_name in self.resuming_jobs:
+        if not self.__is_file_selected() or job_name in self.jobs_table_view.resuming_jobs:
             self.btnFileStartDownload.setEnabled(False)
             self.btnFileStopDownload.setEnabled(False)
             self.btnFileRedownload.setEnabled(False)

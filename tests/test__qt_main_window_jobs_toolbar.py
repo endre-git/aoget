@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch, call
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -19,6 +19,11 @@ from aoget.view.main_window_jobs import (
 )
 
 
+class MockMainWindow(QMainWindow):
+    def show_files(self, job_name):
+        pass
+
+
 class TestMainWindowJobs(unittest.TestCase):
 
     @classmethod
@@ -30,7 +35,7 @@ class TestMainWindowJobs(unittest.TestCase):
         cls.app.quit()
 
     def setUp(self):
-        self.window = QMainWindow()
+        self.window = MockMainWindow()
         self.window.tblJobs = QTableWidget()
         self.window.btnJobStart = QPushButton()
         self.window.btnJobStop = QPushButton()
@@ -106,9 +111,110 @@ class TestMainWindowJobs(unittest.TestCase):
         self.assertFalse(self.window.btnJobRemoveFromList.isEnabled())
         self.assertFalse(self.window.btnJobRemove.isEnabled())
         self.assertFalse(self.window.btnJobExport.isEnabled())
-        self.assertFalse(self.window.btnJobImport.isEnabled())
+        self.assertTrue(self.window.btnJobImport.isEnabled())
         self.assertFalse(self.window.btnJobOpenLink.isEnabled())
         self.assertFalse(self.window.btnJobHealthCheck.isEnabled())
+
+    def test_update_job_toolbar_resuming_job(self):
+        job = JobDTO(
+            id=-1,
+            name="Test Job",
+            status="Resuming",
+            threads_active=1,
+            threads_allocated=3,
+            total_size_bytes=123123123,
+            downloaded_bytes=123123123,
+            selected_files_count=10,
+            selected_files_with_known_size=10,
+            files_done=10,
+            page_url="http://test.com",
+        )
+        self.window.tblJobs.clear()
+        self.main_window_jobs.setup_ui()
+        self.main_window_jobs.resuming_jobs.append("Test Job")
+        self.window.tblJobs.setRowCount(1)
+        self.window.tblJobs.selectRow(0)
+        self.main_window_jobs.set_job_at_row(0, job)
+        item = self.window.tblJobs.item(0, JOB_NAME_IDX)
+        self.assertIsNotNone(item)
+        self.assertEqual(item.text(), "Test Job")
+        QApplication.processEvents()
+        self.main_window_jobs.update_job_toolbar()
+        self.assertFalse(self.window.btnJobStart.isEnabled())
+        self.assertFalse(self.window.btnJobStop.isEnabled())
+        self.assertFalse(self.window.btnJobThreadsPlus.isEnabled())
+        self.assertFalse(self.window.btnJobThreadsMinus.isEnabled())
+        self.assertFalse(self.window.btnJobEdit.isEnabled())
+        self.assertFalse(self.window.btnJobRemoveFromList.isEnabled())
+        self.assertFalse(self.window.btnJobRemove.isEnabled())
+        self.assertFalse(self.window.btnJobExport.isEnabled())
+        self.assertTrue(self.window.btnJobImport.isEnabled())
+        self.assertFalse(self.window.btnJobOpenLink.isEnabled())
+        self.assertFalse(self.window.btnJobHealthCheck.isEnabled())
+
+    def test_update_job_toolbar_running_job(self):
+        job = JobDTO(
+            id=-1,
+            name="Test Job",
+            status="Running",
+            threads_active=1,
+            threads_allocated=3,
+            total_size_bytes=123123123,
+            downloaded_bytes=123123123,
+            selected_files_count=10,
+            selected_files_with_known_size=10,
+            files_done=10,
+            page_url="http://test.com",
+        )
+        self.window.tblJobs.clear()
+        self.main_window_jobs.setup_ui()
+        self.window.tblJobs.setRowCount(1)
+        self.window.tblJobs.selectRow(0)
+        self.main_window_jobs.set_job_at_row(0, job)
+        item = self.window.tblJobs.item(0, JOB_NAME_IDX)
+        self.assertIsNotNone(item)
+        self.assertEqual(item.text(), "Test Job")
+        QApplication.processEvents()
+        self.main_window_jobs.update_job_toolbar()
+        self.assertTrue(self.window.btnJobStart.isEnabled())
+        self.assertTrue(self.window.btnJobStop.isEnabled())
+        self.assertTrue(self.window.btnJobThreadsPlus.isEnabled())
+        self.assertTrue(self.window.btnJobThreadsMinus.isEnabled())
+        self.assertTrue(self.window.btnJobEdit.isEnabled())
+        self.assertTrue(self.window.btnJobRemoveFromList.isEnabled())
+        self.assertTrue(self.window.btnJobRemove.isEnabled())
+        self.assertTrue(self.window.btnJobExport.isEnabled())
+        self.assertTrue(self.window.btnJobImport.isEnabled())
+        self.assertTrue(self.window.btnJobOpenLink.isEnabled())
+        self.assertTrue(self.window.btnJobHealthCheck.isEnabled())
+
+    @patch("aoget.view.main_window_jobs.show_warnings")
+    @patch("aoget.view.main_window_jobs.confirmation_dialog", return_value=True)
+    def test_job_remove_from_list(self, mock_show_warnings, mock_confirmation_dialog):
+        job = JobDTO(
+            id=-1,
+            name="Test Job",
+            status="Running",
+            threads_active=1,
+            threads_allocated=3,
+            total_size_bytes=123123123,
+            downloaded_bytes=123123123,
+            selected_files_count=10,
+            selected_files_with_known_size=10,
+            files_done=10,
+            page_url="http://test.com",
+        )
+        self.window.tblJobs.clear()
+        self.main_window_jobs.setup_ui()
+        self.window.tblJobs.setRowCount(1)
+        self.window.tblJobs.selectRow(0)
+        self.main_window_jobs.set_job_at_row(0, job)
+        item = self.window.tblJobs.item(0, JOB_NAME_IDX)
+        self.assertIsNotNone(item)
+        self.assertEqual(item.text(), "Test Job")
+        QApplication.processEvents()
+        self.window.btnJobRemoveFromList.click()
+        self.controller_mock.delete_job.assert_called_once_with("Test Job")
 
     def tearDown(self):
         self.window.close()
