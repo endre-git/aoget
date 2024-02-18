@@ -15,3 +15,25 @@ ERROR_TEXT_STYLE = """
 DEFAULT_TEXT_STYLE = """
         QLineEdit {
         }"""
+
+PROGRESS_BAR_PASSIVE_STYLE = """
+    QProgressBar {
+        border: 1px solid grey;
+        border-radius: 0px;
+        text-align: center;
+    }
+    QProgressBar::chunk {
+        background-color: #d0d6db;
+        width: 1px;
+    }"""
+
+PROGRESS_BAR_ACTIVE_STYLE = """
+    QProgressBar {
+        border: 1px solid grey;
+        border-radius: 0px;
+        text-align: center;
+    }
+    QProgressBar::chunk {
+        background-color: #31a7f5;
+        width: 1px;
+    }"""
