@@ -2,8 +2,8 @@ import logging
 
 from PyQt6.QtWidgets import (
     QHeaderView,
-    QFileDialog,
     QTableWidgetItem,
+    QFileDialog
 )
 from PyQt6.QtCore import QUrl
 from PyQt6.QtGui import QDesktopServices

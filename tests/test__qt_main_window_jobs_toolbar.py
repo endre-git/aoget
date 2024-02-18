@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -7,15 +7,12 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QTableWidgetItem,
 )
+from PyQt6.QtCore import QUrl
 from aoget.view.main_window_jobs import MainWindowJobs
 from aoget.model.dto.job_dto import JobDTO
 from aoget.view.main_window_jobs import (
     JOB_NAME_IDX,
     JOB_STATUS_IDX,
-    JOB_THREADS_IDX,
-    JOB_SIZE_IDX,
-    JOB_FILES_IDX,
-    JOB_PROGRESS_IDX,
 )
 
 
@@ -242,7 +239,195 @@ class TestMainWindowJobs(unittest.TestCase):
         self.assertEqual(item.text(), "Test Job")
         QApplication.processEvents()
         self.window.btnJobRemove.click()
-        self.controller_mock.delete_job.assert_called_once_with("Test Job", delete_from_disk=True)
+        self.controller_mock.delete_job.assert_called_once_with(
+            "Test Job", delete_from_disk=True
+        )
+
+    @patch("aoget.view.main_window_jobs.error_dialog")
+    def test_job_export_size_not_resolved(self, mock_error_dialog):
+        job = JobDTO(
+            id=-1,
+            name="Test Job",
+            status="Not Running",
+            threads_active=1,
+            threads_allocated=3,
+            total_size_bytes=123123123,
+            downloaded_bytes=123123123,
+            selected_files_count=10,
+            selected_files_with_known_size=8,
+            files_done=10,
+            page_url="http://test.com",
+        )
+        self.window.tblJobs.clear()
+        self.main_window_jobs.setup_ui()
+        self.window.tblJobs.setRowCount(1)
+        self.window.tblJobs.selectRow(0)
+        self.main_window_jobs.set_job_at_row(0, job)
+        item = self.window.tblJobs.item(0, JOB_NAME_IDX)
+        self.assertIsNotNone(item)
+        self.assertEqual(item.text(), "Test Job")
+        QApplication.processEvents()
+        self.controller_mock.get_job_dto_by_name.return_value = job
+        self.window.btnJobExport.click()
+        mock_error_dialog.assert_called_once()
+
+    @patch(
+        "aoget.view.main_window_jobs.QFileDialog.getSaveFileName",
+        return_value=("test_file", "csv"),
+    )
+    def test_job_export(self, mock_get_open_file_name):
+        job = JobDTO(
+            id=-1,
+            name="Test Job",
+            status="Not Running",
+            threads_active=1,
+            threads_allocated=3,
+            total_size_bytes=123123123,
+            downloaded_bytes=123123123,
+            selected_files_count=10,
+            selected_files_with_known_size=10,
+            files_done=10,
+            page_url="http://test.com",
+        )
+
+        self.window.tblJobs.clear()
+        self.main_window_jobs.setup_ui()
+        self.window.tblJobs.setRowCount(1)
+        self.window.tblJobs.selectRow(0)
+        self.main_window_jobs.set_job_at_row(0, job)
+        item = self.window.tblJobs.item(0, JOB_NAME_IDX)
+        self.assertIsNotNone(item)
+        self.assertEqual(item.text(), "Test Job")
+        QApplication.processEvents()
+        self.controller_mock.get_job_dto_by_name.return_value = job
+        self.window.btnJobExport.click()
+        self.controller_mock.export_job.assert_called_once_with("Test Job", "test_file")
+
+    @patch(
+        "aoget.view.main_window_jobs.QFileDialog.getOpenFileName",
+        return_value=("test_file", "csv"),
+    )
+    @patch("aoget.view.main_window_jobs.JobEditorDialog", return_value=MagicMock())
+    def test_job_import(self, mock_get_open_file_name, mock_job_editor_dialog):
+        job = JobDTO(
+            id=-1,
+            name="Test Job",
+            status="Not Running",
+            threads_active=1,
+            threads_allocated=3,
+            total_size_bytes=123123123,
+            downloaded_bytes=123123123,
+            selected_files_count=10,
+            selected_files_with_known_size=10,
+            files_done=10,
+            page_url="http://test.com",
+        )
+        file_dtos = [
+            MagicMock(),
+            MagicMock(),
+        ]
+
+        mock_job_editor_dialog.exec.return_value = 1
+
+        self.window.tblJobs.clear()
+        self.main_window_jobs.setup_ui()
+        self.controller_mock.get_job_dto_by_name.return_value = job
+        self.controller_mock.import_job.return_value = (job, file_dtos)
+        self.window.btnJobImport.click()
+        self.controller_mock.import_job.assert_called_once_with("test_file")
+
+    @patch("aoget.view.main_window_jobs.QDesktopServices.openUrl")
+    def test_open_link(self, mock_open_url):
+        job = JobDTO(
+            id=-1,
+            name="Test Job",
+            status="Not Running",
+            threads_active=1,
+            threads_allocated=3,
+            total_size_bytes=123123123,
+            downloaded_bytes=123123123,
+            selected_files_count=10,
+            selected_files_with_known_size=10,
+            files_done=10,
+            page_url="http://test.com",
+        )
+
+        self.window.tblJobs.clear()
+        self.main_window_jobs.setup_ui()
+        self.window.tblJobs.setRowCount(1)
+        self.window.tblJobs.selectRow(0)
+        self.main_window_jobs.set_job_at_row(0, job)
+        item = self.window.tblJobs.item(0, JOB_NAME_IDX)
+        self.assertIsNotNone(item)
+        self.assertEqual(item.text(), "Test Job")
+        QApplication.processEvents()
+        self.controller_mock.get_job_dto_by_name.return_value = job
+        self.window.btnJobOpenLink.click()
+        mock_open_url.assert_called_once_with(QUrl("http://test.com"))
+
+    @patch(
+        "aoget.view.main_window_jobs.QFileDialog.getOpenFileName",
+        return_value=("test_file", "csv"),
+    )
+    @patch("aoget.view.main_window_jobs.JobEditorDialog", return_value=MagicMock())
+    def test_create_job(self, mock_get_open_file_name, mock_job_editor_dialog):
+        job = JobDTO(
+            id=-1,
+            name="Test Job",
+            status="Not Running",
+            threads_active=1,
+            threads_allocated=3,
+            total_size_bytes=123123123,
+            downloaded_bytes=123123123,
+            selected_files_count=10,
+            selected_files_with_known_size=10,
+            files_done=10,
+            page_url="http://test.com",
+        )
+        file_dtos = [
+            MagicMock(),
+            MagicMock(),
+        ]
+
+        mock_job_editor_dialog.exec.return_value = 1
+
+        self.window.tblJobs.clear()
+        self.main_window_jobs.setup_ui()
+        self.controller_mock.get_job_dto_by_name.return_value = job
+        self.controller_mock.import_job.return_value = (job, file_dtos)
+        self.window.btnJobCreate.click()
+
+    @patch(
+        "aoget.view.main_window_jobs.QFileDialog.getOpenFileName",
+        return_value=("test_file", "csv"),
+    )
+    @patch("aoget.view.main_window_jobs.JobEditorDialog", return_value=MagicMock())
+    def test_edit_job(self, mock_get_open_file_name, mock_job_editor_dialog):
+        job = JobDTO(
+            id=-1,
+            name="Test Job",
+            status="Not Running",
+            threads_active=1,
+            threads_allocated=3,
+            total_size_bytes=123123123,
+            downloaded_bytes=123123123,
+            selected_files_count=10,
+            selected_files_with_known_size=10,
+            files_done=10,
+            page_url="http://test.com",
+        )
+        file_dtos = [
+            MagicMock(),
+            MagicMock(),
+        ]
+
+        mock_job_editor_dialog.exec.return_value = 1
+
+        self.window.tblJobs.clear()
+        self.main_window_jobs.setup_ui()
+        self.controller_mock.get_job_dto_by_name.return_value = job
+        self.controller_mock.import_job.return_value = (job, file_dtos)
+        self.window.btnJobEdit.click()
 
     def tearDown(self):
         self.window.close()
