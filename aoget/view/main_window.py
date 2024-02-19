@@ -36,15 +36,24 @@ class MainWindow(QMainWindow):
     message_signal = pyqtSignal(str, str)
     job_resumed_signal = pyqtSignal(str, str, str)
 
-    def __init__(self, aoget_db: AogetDb):
+    def __init__(
+        self,
+        aoget_db: AogetDb,
+        controller: MainWindowController = None,
+        show: bool = True,
+    ):
         super(MainWindow, self).__init__()
-        self.controller = MainWindowController(self, aoget_db)
+        if controller:
+            self.controller = controller
+        else:
+            self.controller = MainWindowController(self, aoget_db)
         uic.loadUi("aoget/qt/main_window.ui", self)
         self.closing = False
         self.jobs_table_view = MainWindowJobs(self)
         self.files_table_view = MainWindowFiles(self)
         self.__setup_ui()
-        self.show()
+        if show:
+            self.show()
         self.controller.resume_state()
 
     def __setup_ui(self):
