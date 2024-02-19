@@ -141,12 +141,17 @@ class MainWindowFiles:
         for i in range(len(selected_files), mw.tblFiles.rowCount()):
             mw.tblFiles.setRowHidden(i, True)
 
+    def get_current_file_status(self) -> str:
+        """Get the status of the currently selected file"""
+        mw = self.main_window
+        current_row = mw.tblFiles.currentRow()
+        item = mw.tblFiles.item(current_row, FILE_STATUS_IDX)
+        return item.text() if item is not None else ""
+
     def update_file_toolbar(self) -> None:
         """A file has been selected in the files table"""
         mw = self.main_window
-        job_name = (
-            mw.tblJobs.selectedItems()[0].text() if mw.is_job_selected() else None
-        )
+        job_name = mw.get_selected_job_name()
 
         if not self.is_file_selected() or job_name in mw.jobs_table_view.resuming_jobs:
             mw.btnFileStartDownload.setEnabled(False)
@@ -171,9 +176,7 @@ class MainWindowFiles:
             mw.btnFileOpenLink.setEnabled(True)
             mw.btnFilePriorityPlus.setEnabled(True)
             mw.btnFilePriorityMinus.setEnabled(True)
-            file_status = mw.tblFiles.item(
-                mw.tblFiles.currentRow(), FILE_STATUS_IDX
-            ).text()
+            file_status = self.get_current_file_status()
             self.__update_file_start_stop_buttons(file_status)
 
         else:
@@ -610,9 +613,7 @@ class MainWindowFiles:
             )
             size_table_item = mw.tblFiles.item(row, FILE_SIZE_IDX)
             if size_table_item is None:
-                mw.tblFiles.setItem(
-                    row, FILE_SIZE_IDX, SizeWidgetItem(size_str)
-                )
+                mw.tblFiles.setItem(row, FILE_SIZE_IDX, SizeWidgetItem(size_str))
             else:
                 size_table_item.setText(size_str)
             # PRIORITY
@@ -620,27 +621,21 @@ class MainWindowFiles:
             priority_table_item = mw.tblFiles.item(row, FILE_PRIORITY_IDX)
             if priority_table_item is None:
                 priority_table_item = PriorityWidgetItem(priority_str)
-                mw.tblFiles.setItem(
-                    row, FILE_PRIORITY_IDX, priority_table_item
-                )
+                mw.tblFiles.setItem(row, FILE_PRIORITY_IDX, priority_table_item)
             else:
                 priority_table_item.setText(priority_str)
             # STATUS
             status_table_item = mw.tblFiles.item(row, FILE_STATUS_IDX)
             if status_table_item is None:
                 status_table_item = FileStatusWidgetItem(file.status)
-                mw.tblFiles.setItem(
-                    row, FILE_STATUS_IDX, status_table_item
-                )
+                mw.tblFiles.setItem(row, FILE_STATUS_IDX, status_table_item)
             else:
                 status_table_item.setText(file.status)
             # PROGRESS
             progress_bar = mw.tblFiles.cellWidget(row, FILE_PROGRESS_IDX)
             if progress_bar is None:
                 progress_bar = QProgressBar()
-                mw.tblFiles.setCellWidget(
-                    row, FILE_PROGRESS_IDX, progress_bar
-                )
+                mw.tblFiles.setCellWidget(row, FILE_PROGRESS_IDX, progress_bar)
             progress_bar.setValue(
                 file.percent_completed
                 if file.percent_completed is not None and file.percent_completed > -1
@@ -674,9 +669,7 @@ class MainWindowFiles:
                 self.__restyleFileProgressBar(row, PROGRESS_BAR_ACTIVE_STYLE)
             else:
                 self.__reset_rate_and_eta_for_row(row)
-                self.__restyleFileProgressBar(
-                    row, PROGRESS_BAR_PASSIVE_STYLE
-                )
+                self.__restyleFileProgressBar(row, PROGRESS_BAR_PASSIVE_STYLE)
 
             # LAST UPDATED
             last_updated_timestamp_str = (
@@ -684,9 +677,7 @@ class MainWindowFiles:
                 if file.last_event_timestamp is not None
                 else ""
             )
-            last_updated_table_item = mw.tblFiles.item(
-                row, FILE_LAST_UPDATED_IDX
-            )
+            last_updated_table_item = mw.tblFiles.item(row, FILE_LAST_UPDATED_IDX)
             if last_updated_table_item is None:
                 last_updated_table_item = QTableWidgetItem(last_updated_timestamp_str)
                 mw.tblFiles.setItem(
@@ -698,14 +689,10 @@ class MainWindowFiles:
                 last_updated_table_item.setText(last_updated_timestamp_str)
             # LAST EVENT
             last_event_str = file.last_event or ""
-            last_event_table_item = mw.tblFiles.item(
-                row, FILE_LAST_EVENT_IDX
-            )
+            last_event_table_item = mw.tblFiles.item(row, FILE_LAST_EVENT_IDX)
             if last_event_table_item is None:
                 last_event_table_item = QTableWidgetItem(last_event_str)
-                mw.tblFiles.setItem(
-                    row, FILE_LAST_EVENT_IDX, last_event_table_item
-                )
+                mw.tblFiles.setItem(row, FILE_LAST_EVENT_IDX, last_event_table_item)
             else:
                 last_event_table_item.setText(last_event_str)
             last_event_table_item.setToolTip(last_event_str)
@@ -719,10 +706,7 @@ class MainWindowFiles:
                 and file.job_name == mw.tblJobs.selectedItems()[0].text()
             ):
                 for row in range(mw.tblFiles.rowCount()):
-                    if (
-                        file.name
-                        == mw.tblFiles.item(row, FILE_NAME_IDX).text()
-                    ):
+                    if file.name == mw.tblFiles.item(row, FILE_NAME_IDX).text():
                         self.__set_file_at_row(row, file)
                         break
                 if self.is_file_selected(file.name):

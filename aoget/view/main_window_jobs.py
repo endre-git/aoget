@@ -1,10 +1,6 @@
 import logging
 
-from PyQt6.QtWidgets import (
-    QHeaderView,
-    QTableWidgetItem,
-    QFileDialog
-)
+from PyQt6.QtWidgets import QHeaderView, QTableWidgetItem, QFileDialog
 from PyQt6.QtCore import QUrl
 from PyQt6.QtGui import QDesktopServices
 from view.job_editor_dialog import JobEditorDialog
@@ -147,6 +143,11 @@ class MainWindowJobs:
         mw = self.main_window
         selected = mw.tblJobs.selectedItems()
         return selected is not None and len(selected) > 0
+
+    def get_selected_job_name(self):
+        """Return the name of the selected job"""
+        mw = self.main_window
+        return mw.tblJobs.selectedItems()[0].text() if self.is_job_selected() else None
 
     def update_job_toolbar(self):
         """Update the job toolbar buttons based on the selected job"""

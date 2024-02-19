@@ -162,19 +162,23 @@ class MainWindow(QMainWindow):
         for action in self.menuSet_global_bandwidth_limit.actions()[0:3]:
             action.setChecked(False)
 
-    def show_files(self, job_name):
+    def show_files(self, job_name: str) -> None:
         """Show the files of the given job in the files table."""
         self.files_table_view.show_files(job_name)
 
-    def update_file_toolbar(self):
+    def update_file_toolbar(self) -> None:
         """Update the file toolbar"""
         self.files_table_view.update_file_toolbar()
 
-    def is_job_selected(self):
+    def is_job_selected(self) -> bool:
         """Determine whether a job is selected"""
         return self.jobs_table_view.is_job_selected()
 
-    def is_file_selected(self, filename=None):
+    def get_selected_job_name(self) -> str:
+        """Get the name of the selected job"""
+        return self.jobs_table_view.get_selected_job_name()
+
+    def is_file_selected(self, filename: str = None):
         """Determine whether a file is selected"""
         return self.files_table_view.is_file_selected(filename)
 
