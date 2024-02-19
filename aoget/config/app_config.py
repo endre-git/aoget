@@ -30,6 +30,28 @@ class AppConfig:
 
     app_config = {}
 
+    defaults = {
+        DEBUG: False,
+        SETTINGS_FOLDER: "settings",
+        TARGET_FOLDER_HISTORY_FILE: "target_folder_history.json",
+        URL_HISTORY_FILE: "url_history.json",
+        DATABASE_URL: "sqlite:///aoget.db",
+        URL_CACHE_FOLDER: "url_cache",
+        AUTO_RESOLVE_FILE_SIZES: True,
+        LOG_FILE_PATH: "aoget.log",
+        CRASH_LOG_FILE_PATH: "crash.log",
+        DEFAULT_DOWNLOAD_FOLDER: os.path.join(os.path.expanduser("~"), "Downloads"),
+        AUTO_START_JOBS: True,
+        JOB_AUTONAMING_PATTERN: "{title}",
+        JOB_SUBFOLDER_POLICY: "per-job",
+        LOW_BANDWIDTH_LIMIT: 100,
+        MEDIUM_BANDWIDTH_LIMIT: 1000,
+        HIGH_BANDWIDTH_LIMIT: 5000,
+        OVERWRITE_EXISTING_FILES: True,
+        PER_JOB_DEFAULT_THREAD_COUNT: 3,
+        URL_CACHE_ENABLED: True,
+    }
+
     JOB_NAMING_STRATEGY = {
         0: "none",
         1: "title",
@@ -59,7 +81,7 @@ def get_config_value(key: str) -> str:
     :return:
         The value of the key"""
     if key not in AppConfig.app_config:
-        return None
+        return AppConfig.defaults[key]
     return AppConfig.app_config[key]
 
 

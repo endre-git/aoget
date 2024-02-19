@@ -4,7 +4,7 @@ from PyQt6.QtGui import QDesktopServices
 from PyQt6 import uic
 
 
-ISSUE_REPORT_URL = "https://github.com/kosaendre/aoget/issues/new"
+ISSUE_REPORT_URL = "https://github.com/endre-git/aoget/issues/new"
 
 
 class CrashReportDialog(QDialog):
