@@ -123,6 +123,7 @@ class MainWindowFiles:
         mw.btnFilePriorityPlus.setEnabled(False)
         mw.btnFilePriorityMinus.setEnabled(False)
 
+        # issue #110: redownload currently disabled
         mw.btnFileRedownload.setHidden(True)
 
     def show_files(self, job_name: str) -> None:
@@ -136,8 +137,9 @@ class MainWindowFiles:
         selected_files = mw.controller.get_selected_file_dtos(job_name).values()
         mw.tblFiles.setRowCount(mw.controller.get_largest_fileset_length())
         for i, file in enumerate(selected_files):
-            self.__set_file_at_row(i, file)
+            self.set_file_at_row(i, file)
             mw.tblFiles.setRowHidden(i, False)
+        # part of perf-optimization, we don't delete widgets, just hide the rows
         for i in range(len(selected_files), mw.tblFiles.rowCount()):
             mw.tblFiles.setRowHidden(i, True)
 
@@ -245,6 +247,21 @@ class MainWindowFiles:
         """Returns True if nothing (no job, no file) is selected, False otherwise"""
         mw = self.main_window
         return not mw.is_job_selected() or not self.is_file_selected()
+
+    def __hide_selected_row(self) -> None:
+        """Hide the currently selected row in the files table"""
+        mw = self.main_window
+        with self.file_table_lock:
+            idx = mw.tblFiles.selectionModel().selectedRows()[0].row()
+            mw.tblFiles.setRowHidden(idx, True)
+
+    def __hide_selected_rows(self) -> None:
+        """Hide the currently selected rows in the files table"""
+        mw = self.main_window
+        with self.file_table_lock:
+            selected_row_indexes = mw.tblFiles.selectionModel().selectedRows()
+            for row_index in selected_row_indexes:
+                mw.tblFiles.setRowHidden(row_index.row(), True)
 
     def __on_file_start_download(self) -> None:
         """Start downloading the selected file"""
@@ -384,9 +401,7 @@ class MainWindowFiles:
                 job_name, file_name, delete_from_disk=False
             )
             if ok:
-                with self.file_table_lock:
-                    idx = mw.tblFiles.selectionModel().selectedRows()[0].row()
-                    mw.tblFiles.setRowHidden(idx, True)
+                self.__hide_selected_row()
             else:
                 error_dialog(mw, "Failed to remove from list: " + message)
                 logger.error("Failed to remove from list: %s", message)
@@ -407,10 +422,7 @@ class MainWindowFiles:
                 selected_job_name, selected_files
             )
             self.show_files(selected_job_name)
-            with self.file_table_lock:
-                selected_row_indexes = mw.tblFiles.selectionModel().selectedRows()
-                for row_index in selected_row_indexes:
-                    mw.tblFiles.setRowHidden(row_index.row(), True)
+            self.__hide_selected_rows()
             mw.btnFileRemoveFromList.setEnabled(True)
             if messages:
                 show_warnings(
@@ -443,9 +455,7 @@ class MainWindowFiles:
                 job_name, file_name, delete_from_disk=True
             )
             if ok:
-                with self.file_table_lock:
-                    idx = mw.tblFiles.selectionModel().selectedRows()[0].row()
-                    mw.tblFiles.setRowHidden(idx, True)
+                self.__hide_selected_row()
             else:
                 error_dialog(mw, "Failed to remove: " + message)
                 logger.error("Failed to remove: %s", message)
@@ -467,10 +477,7 @@ class MainWindowFiles:
                 selected_job_name, selected_files, delete_from_disk=True
             )
             self.show_files(selected_job_name)
-            with self.file_table_lock:
-                selected_row_indexes = mw.tblFiles.selectionModel().selectedRows()
-                for row_index in selected_row_indexes:
-                    mw.tblFiles.setRowHidden(row_index.row(), True)
+            self.__hide_selected_rows()
             mw.btnFileRemoveFromList.setEnabled(True)
             if messages:
                 show_warnings(
@@ -592,7 +599,7 @@ class MainWindowFiles:
             return "Low"
         return "Unknown"
 
-    def __set_file_at_row(self, row, file: FileModelDTO) -> None:
+    def set_file_at_row(self, row, file: FileModelDTO) -> None:
         """Set the file at the given row in the files table. Reuses the existing widgets
         in the table if applicable, because creating new widgets is slow."""
         mw = self.main_window
@@ -701,13 +708,10 @@ class MainWindowFiles:
         """Update the file progress of the given file if the right job is selected"""
         mw = self.main_window
         with self.file_table_lock:
-            if (
-                mw.is_job_selected()
-                and file.job_name == mw.tblJobs.selectedItems()[0].text()
-            ):
+            if file.job_name == mw.get_selected_job_name():
                 for row in range(mw.tblFiles.rowCount()):
                     if file.name == mw.tblFiles.item(row, FILE_NAME_IDX).text():
-                        self.__set_file_at_row(row, file)
+                        self.set_file_at_row(row, file)
                         break
                 if self.is_file_selected(file.name):
                     self.__update_file_start_stop_buttons(file.status)
