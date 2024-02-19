@@ -25,7 +25,7 @@ class TestJobDAO(unittest.TestCase):
     def test_create_save_retrieve_job(self):
         # Create a new job
         new_job = Job(
-            name='Test Job', page_url='http://example.com', target_folder='/tmp'
+            name='Test Job', page_url='http://example.com', target_folder='/aoget'
         )
 
         # Save the job using save_job method
@@ -37,18 +37,18 @@ class TestJobDAO(unittest.TestCase):
         # Assert that the retrieved job matches the created job
         self.assertEqual(retrieved_job.name, 'Test Job')
         self.assertEqual(retrieved_job.page_url, 'http://example.com')
-        self.assertEqual(retrieved_job.target_folder, '/tmp')
+        self.assertEqual(retrieved_job.target_folder, '/aoget')
 
     def test_get_all_jobs(self):
         # Create multiple jobs
         self.job_dao.create_job(
-            name='Job 1', page_url='http://example.com', target_folder='/tmp'
+            name='Job 1', page_url='http://example.com', target_folder='/aoget'
         )
         self.job_dao.create_job(
-            name='Job 2', page_url='http://example.com', target_folder='/tmp'
+            name='Job 2', page_url='http://example.com', target_folder='/aoget'
         )
         self.job_dao.create_job(
-            name='Job 3', page_url='http://example.com', target_folder='/tmp'
+            name='Job 3', page_url='http://example.com', target_folder='/aoget'
         )
 
         # Retrieve all jobs
@@ -60,7 +60,7 @@ class TestJobDAO(unittest.TestCase):
     def test_delete_job_by_id(self):
         # Create a job
         new_job = Job(
-            name='Test Job', page_url='http://example.com', target_folder='/tmp'
+            name='Test Job', page_url='http://example.com', target_folder='/aoget'
         )
 
         # Save the job using save_job method
@@ -77,13 +77,13 @@ class TestJobDAO(unittest.TestCase):
     def test_delete_all_jobs(self):
         # Create multiple jobs
         self.job_dao.create_job(
-            name='Job 1', page_url='http://example.com', target_folder='/tmp'
+            name='Job 1', page_url='http://example.com', target_folder='/aoget'
         )
         self.job_dao.create_job(
-            name='Job 2', page_url='http://example.com', target_folder='/tmp'
+            name='Job 2', page_url='http://example.com', target_folder='/aoget'
         )
         self.job_dao.create_job(
-            name='Job 3', page_url='http://example.com', target_folder='/tmp'
+            name='Job 3', page_url='http://example.com', target_folder='/aoget'
         )
 
         # Delete all jobs
