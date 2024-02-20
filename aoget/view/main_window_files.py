@@ -134,8 +134,8 @@ class MainWindowFiles:
             for i in range(0, mw.tblFiles.rowCount()):
                 mw.tblFiles.setRowHidden(i, True)
             return
-        selected_files = mw.controller.get_selected_file_dtos(job_name).values()
-        mw.tblFiles.setRowCount(mw.controller.get_largest_fileset_length())
+        selected_files = mw.controller.files.get_selected_file_dtos(job_name).values()
+        mw.tblFiles.setRowCount(mw.controller.files.get_largest_fileset_length())
         for i, file in enumerate(selected_files):
             self.set_file_at_row(i, file)
             mw.tblFiles.setRowHidden(i, False)
@@ -290,7 +290,7 @@ class MainWindowFiles:
             self.btnFileStartDownload.setEnabled(True)
             return
         job_name, file_name = self.get_current_selection()
-        ok, message = mw.controller.start_download(job_name, file_name)
+        ok, message = mw.controller.files.start_download(job_name, file_name)
         if ok:
             # update files table view to Downloading in the status column
             mw.tblFiles.setItem(
@@ -308,7 +308,7 @@ class MainWindowFiles:
         """Start downloading the currently selected files"""
         mw = self.main_window
         job_name, file_names = self.get_current_multi_selection()
-        mw.controller.start_downloads(job_name, file_names)
+        mw.controller.files.start_downloads(job_name, file_names)
 
     def __single_file_stop_download(self) -> None:
         """Stop downloading the currently selected file"""
@@ -319,7 +319,7 @@ class MainWindowFiles:
             self.btnFileStopDownload.setEnabled(True)
             return
         job_name, file_name = self.get_current_selection()
-        ok, message = mw.controller.stop_download(job_name, file_name)
+        ok, message = mw.controller.files.stop_download(job_name, file_name)
         if ok:
             # update files table view to Downloading in the status column
             mw.tblFiles.setItem(
@@ -337,7 +337,7 @@ class MainWindowFiles:
         """Stop downloading the selected files"""
         mw = self.main_window
         selected_job_name, selected_files = self.get_current_multi_selection()
-        mw.controller.stop_downloads(selected_job_name, selected_files)
+        mw.controller.files.stop_downloads(selected_job_name, selected_files)
 
     def __on_file_redownload(self) -> None:
         """Redownload the selected file"""
@@ -359,7 +359,7 @@ class MainWindowFiles:
                 return
             job_name, file_name = self.get_current_selection()
             self.__reset_rate_and_eta_for_file(file_name)
-            ok, message = mw.controller.redownload_file(job_name, file_name)
+            ok, message = mw.controller.files.redownload_file(job_name, file_name)
             if ok:
                 # update files table view to Downloading in the status column
                 mw.tblFiles.setItem(
@@ -397,7 +397,7 @@ class MainWindowFiles:
             # immediately set the button to disabled, reset if an error occurs later
             mw.btnFileRemoveFromList.setEnabled(False)
             job_name, file_name = self.get_current_selection()
-            ok, message = mw.controller.remove_file_from_job(
+            ok, message = mw.controller.files.remove_file_from_job(
                 job_name, file_name, delete_from_disk=False
             )
             if ok:
@@ -418,7 +418,7 @@ class MainWindowFiles:
             # immediately set the button to disabled, reset if an error occurs later
             mw.btnFileRemoveFromList.setEnabled(False)
             selected_job_name, selected_files = self.get_current_multi_selection()
-            messages = mw.controller.remove_files_from_job(
+            messages = mw.controller.files.remove_files_from_job(
                 selected_job_name, selected_files
             )
             self.show_files(selected_job_name)
@@ -451,7 +451,7 @@ class MainWindowFiles:
             # immediately set the button to disabled, reset if an error occurs later
             mw.btnFileRemoveFromList.setEnabled(False)
             job_name, file_name = self.get_current_selection()
-            ok, message = mw.controller.remove_file_from_job(
+            ok, message = mw.controller.files.remove_file_from_job(
                 job_name, file_name, delete_from_disk=True
             )
             if ok:
@@ -473,7 +473,7 @@ class MainWindowFiles:
             # immediately set the button to disabled, reset if an error occurs later
             mw.btnFileRemoveFromList.setEnabled(False)
             selected_job_name, selected_files = self.get_current_multi_selection()
-            messages = mw.controller.remove_files_from_job(
+            messages = mw.controller.files.remove_files_from_job(
                 selected_job_name, selected_files, delete_from_disk=True
             )
             self.show_files(selected_job_name)
@@ -498,7 +498,7 @@ class MainWindowFiles:
             return
         mw = self.main_window
         job_name, file_name = self.get_current_selection()
-        local_url = mw.controller.resolve_local_file_path(job_name, file_name)
+        local_url = mw.controller.files.resolve_local_file_path(job_name, file_name)
         parent_folder = os.path.dirname(local_url)
         QDesktopServices.openUrl(QUrl.fromLocalFile(parent_folder))
 
@@ -508,7 +508,7 @@ class MainWindowFiles:
             return
         mw = self.main_window
         job_name, file_name = self.get_current_selection()
-        url = mw.controller.resolve_file_url(job_name, file_name)
+        url = mw.controller.files.resolve_file_url(job_name, file_name)
         QApplication.clipboard().setText(url)
 
     def __on_file_open_link(self) -> None:
@@ -517,7 +517,7 @@ class MainWindowFiles:
             return
         mw = self.main_window
         job_name, file_name = self.get_current_selection()
-        url = mw.controller.resolve_file_url(job_name, file_name)
+        url = mw.controller.files.resolve_file_url(job_name, file_name)
         QDesktopServices.openUrl(QUrl(url))
 
     def __on_file_priority_plus(self) -> None:
@@ -526,7 +526,7 @@ class MainWindowFiles:
             return
         mw = self.main_window
         job_name, selected_files = self.get_current_multi_selection()
-        mw.controller.increase_file_priorities(job_name, selected_files)
+        mw.controller.files.increase_file_priorities(job_name, selected_files)
 
     def __on_file_priority_minus(self) -> None:
         """Decrease the priority of the selected file"""
@@ -534,7 +534,7 @@ class MainWindowFiles:
             return
         mw = self.main_window
         job_name, selected_files = self.get_current_multi_selection()
-        mw.controller.decrease_file_priorities(job_name, selected_files)
+        mw.controller.files.decrease_file_priorities(job_name, selected_files)
 
     def __restyleFileProgressBar(self, row: int, style: str) -> None:
         """Restyle the progress bar for the given row in the files table"""

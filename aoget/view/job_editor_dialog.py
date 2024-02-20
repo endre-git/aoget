@@ -298,7 +298,7 @@ class JobEditorDialog(QDialog):
         job_name = self.txtJobName.text()
         if (
             self.mode == JobEditorMode.JOB_EDITED and job_name == self.original_name
-        ) or not self.app_controller.job_exists(job_name):
+        ) or not self.app_controller.jobs.job_exists(job_name):
             self.txtJobName.setStyleSheet(JobEditorDialog.DEFAULT_TEXT_STYLE)
             self.txtJobName.setToolTip("")
             self.job_name_unique = True
