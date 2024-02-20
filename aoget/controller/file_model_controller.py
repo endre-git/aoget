@@ -342,7 +342,7 @@ class FileModelController:
                     os.remove(file_path)
             except Exception as e:
                 logger.error("Could not delete file from disk: %s", e)
-                return False, f"Could not delete {file_name} from disk."
+                return False, "Could not delete " + file_name + " from disk."
 
         # set unselected
         journal.deselect_file(file_name)
