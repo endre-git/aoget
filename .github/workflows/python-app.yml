@@ -16,7 +16,9 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    env: 
+      DISPLAY: ':99.0'
+    
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python 3.10
@@ -34,13 +36,17 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --ignore F821
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - uses: tlambert03/setup-qt-libs@v1
+    - name: build "display"
+      run: |
+        /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1920x1200x24 -ac +extension GLX
 #    - name: Install libegl1 needed by Qt
 #      run: |
 #        sudo apt-get update
 #        sudo apt-get install -y libegl1
-    - name: Delete Qt tests as they don't run on GitHub's Ubuntu servers currently
-      run: |
-        rm -rf tests/test__qt*.py
+#    - name: Delete Qt tests as they don't run on GitHub's Ubuntu servers currently
+#      run: |
+#        rm -rf tests/test__qt*.py
     - name: Test with pytest
       run: |
         python -m pytest
