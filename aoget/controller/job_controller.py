@@ -76,30 +76,13 @@ class JobController:
     def start_job(self, job_name: str) -> None:
         """Start the given job"""
         for file_dto in self.files.get_selected_file_dtos(job_name).values():
-            # TODO delegate to file controller
-            if file_dto.status not in [
-                FileModel.STATUS_DOWNLOADING,
-                FileModel.STATUS_COMPLETED,
-                FileModel.STATUS_QUEUED,
-            ]:
-                self.app.downloads.download_file(job_name, file_dto)
-                self.app.update_cycle.journal_of_job(job_name).update_file_status(
-                    file_name=file_dto.name, status=FileModel.STATUS_QUEUED
-                )
+            self.files.start_download_file_dto(job_name, file_dto)
 
     def stop_job(self, job_name: str) -> None:
         """Stop the given job"""
         if self.app.downloads.is_running_for_job(job_name):
             for file_dto in self.files.get_selected_file_dtos(job_name).values():
-                # TODO delegate to file controller
-                if file_dto.status == FileModel.STATUS_DOWNLOADING:
-                    self.files.stop_download(
-                        job_name, file_dto.name, add_to_journal=False
-                    )
-                elif file_dto.status == FileModel.STATUS_QUEUED:
-                    self.files.stop_download(
-                        job_name, file_dto.name, add_to_journal=True
-                    )
+                self.files.stop_download_file_dto(job_name, file_dto)
 
     def add_thread(self, job_name: str) -> None:
         """Increase the threads for the given job"""
@@ -130,6 +113,11 @@ class JobController:
                 )
                 self.files.stop_download(
                     job_name, victim_file.name, completion_event=stopped
+                )
+            else:
+                logger.error(
+                    f"""Could not find a file to stop for {job_name} to reduce thread
+                    count (still reduced)"""
                 )
         downloader.remove_thread()
         if victim_file is not None:

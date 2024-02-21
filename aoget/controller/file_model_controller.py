@@ -402,3 +402,26 @@ class FileModelController:
     def get_largest_fileset_length(self) -> int:
         """Get the length of the largest fileset"""
         return max(map(lambda fileset: len(fileset), self.app.cache.get_filesets()))
+
+    def start_download_file_dto(self, job_name: str, file_dto: FileModelDTO) -> None:
+        """Download the given file in the given job"""
+        if file_dto.status not in [
+            FileModel.STATUS_DOWNLOADING,
+            FileModel.STATUS_COMPLETED,
+            FileModel.STATUS_QUEUED,
+        ]:
+            self.app.downloads.download_file(job_name, file_dto)
+            self.app.update_cycle.journal_of_job(job_name).update_file_status(
+                file_name=file_dto.name, status=FileModel.STATUS_QUEUED
+            )
+
+    def stop_download_file_dto(self, job_name: str, file_dto: FileModelDTO) -> None:
+        """Stop the download of the given file in the given job"""
+        if file_dto.status == FileModel.STATUS_DOWNLOADING:
+            self.files.stop_download(
+                job_name, file_dto.name, add_to_journal=False
+            )
+        elif file_dto.status == FileModel.STATUS_QUEUED:
+            self.files.stop_download(
+                job_name, file_dto.name, add_to_journal=True
+            )
