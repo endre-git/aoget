@@ -83,7 +83,7 @@ class UpdateCycle:
             )
         )
         if len(deselected_file_dtos) > 0:
-            print('deselected_file_dtos: ' + str(deselected_file_dtos))
+            logger.debug('deselected_file_dtos: ' + str(deselected_file_dtos))
 
         derived_status = (
             Job.STATUS_RUNNING

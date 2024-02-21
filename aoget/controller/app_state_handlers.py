@@ -8,9 +8,10 @@ from web.rate_limiter import RateLimiter
 
 class AppStateHandlers:
     """ "Convenience class to bundle upp the app state handlers so that they can
-    be passed around as a single object"""
+    be passed around as a single object. Also helps to avoid circular imports."""
 
     def __init__(self, db_lock: RLock, main_window) -> None:
+        """Create a new AppStateHandlers object."""
         self.db_lock = db_lock
         self.cache = AppCache()
         self.rate_limiter = RateLimiter()

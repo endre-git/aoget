@@ -8,7 +8,7 @@ def mock_main_window_controller(mocker):
     mock = mocker.Mock()
 
     # Mocking return values for get_file_dto and get_file_event_dtos
-    mock.get_file_dto.return_value = mocker.Mock(
+    mock.files.get_file_dto.return_value = mocker.Mock(
         name='TestFile',
         url='http://example.com/testfile',
         target_path='/path/to/testfile',
@@ -16,7 +16,7 @@ def mock_main_window_controller(mocker):
     )
 
     mock_event_dto = mocker.Mock(timestamp='20210101', event='Downloaded')
-    mock.get_file_event_dtos.return_value = [mock_event_dto]
+    mock.files.get_file_event_dtos.return_value = [mock_event_dto]
 
     return mock
 

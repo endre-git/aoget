@@ -290,9 +290,9 @@ class TestMainWindowFiles(unittest.TestCase):
         self.window.tblFiles.setRowCount(1)
         self.main_window_files.set_file_at_row(0, file_dto)
         self.window.tblFiles.selectRow(0)
-        self.controller_mock.start_download.return_value = (True, None)
+        self.controller_mock.files.start_download.return_value = (True, None)
         self.main_window_files._MainWindowFiles__on_file_start_download()
-        self.controller_mock.start_download.assert_called_with(
+        self.controller_mock.files.start_download.assert_called_with(
             "Test Job", "test_file.txt"
         )
 
@@ -323,7 +323,7 @@ class TestMainWindowFiles(unittest.TestCase):
         self.window.tblFiles.selectRow(0)
         self.window.tblFiles.selectRow(1)
         self.main_window_files._MainWindowFiles__on_file_start_download()
-        self.controller_mock.start_downloads.assert_called_with(
+        self.controller_mock.files.start_downloads.assert_called_with(
             "Test Job", ["test_file.txt", "test_file_2.txt"]
         )
 
@@ -342,9 +342,10 @@ class TestMainWindowFiles(unittest.TestCase):
         self.window.tblFiles.setRowCount(1)
         self.main_window_files.set_file_at_row(0, file_dto)
         self.window.tblFiles.selectRow(0)
-        self.controller_mock.stop_download.return_value = (True, None)
+        self.controller_mock.files = MagicMock()
+        self.controller_mock.files.stop_download.return_value = (True, None)
         self.main_window_files._MainWindowFiles__on_file_stop_download()
-        self.controller_mock.stop_download.assert_called_with(
+        self.controller_mock.files.stop_download.assert_called_with(
             "Test Job", "test_file.txt"
         )
 
@@ -375,7 +376,7 @@ class TestMainWindowFiles(unittest.TestCase):
         self.window.tblFiles.selectRow(0)
         self.window.tblFiles.selectRow(1)
         self.main_window_files._MainWindowFiles__on_file_stop_download()
-        self.controller_mock.stop_downloads.assert_called_with(
+        self.controller_mock.files.stop_downloads.assert_called_with(
             "Test Job", ["test_file.txt", "test_file_2.txt"]
         )
 
@@ -395,9 +396,9 @@ class TestMainWindowFiles(unittest.TestCase):
         self.window.tblFiles.setRowCount(1)
         self.main_window_files.set_file_at_row(0, file_dto)
         self.window.tblFiles.selectRow(0)
-        self.controller_mock.remove_file_from_job.return_value = (True, None)
+        self.controller_mock.files.remove_file_from_job.return_value = (True, None)
         self.main_window_files._MainWindowFiles__on_file_remove_from_list()
-        self.controller_mock.remove_file_from_job.assert_called_with(
+        self.controller_mock.files.remove_file_from_job.assert_called_with(
             "Test Job", "test_file.txt", delete_from_disk=False
         )
         # since response was okay, files should be hidden at this stage
@@ -435,7 +436,7 @@ class TestMainWindowFiles(unittest.TestCase):
         self.window.tblFiles.selectRow(0)
         self.window.tblFiles.selectRow(1)
         self.main_window_files._MainWindowFiles__on_file_remove_from_list()
-        self.controller_mock.remove_files_from_job.assert_called_with(
+        self.controller_mock.files.remove_files_from_job.assert_called_with(
             "Test Job", ["test_file.txt", "test_file_2.txt"]
         )
 
@@ -455,9 +456,9 @@ class TestMainWindowFiles(unittest.TestCase):
         self.window.tblFiles.setRowCount(1)
         self.main_window_files.set_file_at_row(0, file_dto)
         self.window.tblFiles.selectRow(0)
-        self.controller_mock.remove_file_from_job.return_value = (True, None)
+        self.controller_mock.files.remove_file_from_job.return_value = (True, None)
         self.main_window_files._MainWindowFiles__on_file_remove()
-        self.controller_mock.remove_file_from_job.assert_called_with(
+        self.controller_mock.files.remove_file_from_job.assert_called_with(
             "Test Job", "test_file.txt", delete_from_disk=True
         )
         # since response was okay, files should be hidden at this stage
@@ -495,7 +496,7 @@ class TestMainWindowFiles(unittest.TestCase):
         self.window.tblFiles.selectRow(0)
         self.window.tblFiles.selectRow(1)
         self.main_window_files._MainWindowFiles__on_file_remove()
-        self.controller_mock.remove_files_from_job.assert_called_with(
+        self.controller_mock.files.remove_files_from_job.assert_called_with(
             "Test Job", ["test_file.txt", "test_file_2.txt"], delete_from_disk=True
         )
 

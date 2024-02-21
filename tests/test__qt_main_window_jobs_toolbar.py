@@ -52,13 +52,13 @@ class TestMainWindowJobs(unittest.TestCase):
 
     def test_job_start_stop_threads_nothing_selected(self):
         self.main_window_jobs._MainWindowJobs__on_job_start()
-        self.assertFalse(self.controller_mock.start_job.called)
+        self.assertFalse(self.controller_mock.jobs.start_job.called)
         self.main_window_jobs._MainWindowJobs__on_job_stop()
-        self.assertFalse(self.controller_mock.stop_job.called)
+        self.assertFalse(self.controller_mock.jobs.stop_job.called)
         self.main_window_jobs._MainWindowJobs__on_job_threads_plus()
-        self.assertFalse(self.controller_mock.add_thread.called)
+        self.assertFalse(self.controller_mock.jobs.add_thread.called)
         self.main_window_jobs._MainWindowJobs__on_job_threads_minus()
-        self.assertFalse(self.controller_mock.remove_thread.called)
+        self.assertFalse(self.controller_mock.jobs.remove_thread.called)
 
     def test_job_start_stop_threads_one_selected(self):
         self.window.tblJobs.setRowCount(1)
@@ -67,13 +67,13 @@ class TestMainWindowJobs(unittest.TestCase):
         self.window.tblJobs.setItem(0, 0, item)
         self.window.tblJobs.setCurrentItem(item)
         self.main_window_jobs._MainWindowJobs__on_job_start()
-        self.controller_mock.start_job.assert_called_once_with("Test Job")
+        self.controller_mock.jobs.start_job.assert_called_once_with("Test Job")
         self.main_window_jobs._MainWindowJobs__on_job_stop()
-        self.controller_mock.stop_job.assert_called_once_with("Test Job")
+        self.controller_mock.jobs.stop_job.assert_called_once_with("Test Job")
         self.main_window_jobs._MainWindowJobs__on_job_threads_plus()
-        self.controller_mock.add_thread.assert_called_once_with("Test Job")
+        self.controller_mock.jobs.add_thread.assert_called_once_with("Test Job")
         self.main_window_jobs._MainWindowJobs__on_job_threads_minus()
-        self.controller_mock.remove_thread.assert_called_once_with("Test Job")
+        self.controller_mock.jobs.remove_thread.assert_called_once_with("Test Job")
 
     def test_set_job_at_row_job_completed(self):
         job = JobDTO(
@@ -211,7 +211,7 @@ class TestMainWindowJobs(unittest.TestCase):
         self.assertEqual(item.text(), "Test Job")
         QApplication.processEvents()
         self.window.btnJobRemoveFromList.click()
-        self.controller_mock.delete_job.assert_called_once_with("Test Job")
+        self.controller_mock.jobs.delete_job.assert_called_once_with("Test Job")
 
     @patch("aoget.view.main_window_jobs.show_warnings")
     @patch("aoget.view.main_window_jobs.confirmation_dialog", return_value=True)
@@ -239,7 +239,7 @@ class TestMainWindowJobs(unittest.TestCase):
         self.assertEqual(item.text(), "Test Job")
         QApplication.processEvents()
         self.window.btnJobRemove.click()
-        self.controller_mock.delete_job.assert_called_once_with(
+        self.controller_mock.jobs.delete_job.assert_called_once_with(
             "Test Job", delete_from_disk=True
         )
 
@@ -267,7 +267,7 @@ class TestMainWindowJobs(unittest.TestCase):
         self.assertIsNotNone(item)
         self.assertEqual(item.text(), "Test Job")
         QApplication.processEvents()
-        self.controller_mock.get_job_dto_by_name.return_value = job
+        self.controller_mock.jobs.get_job_dto_by_name.return_value = job
         self.window.btnJobExport.click()
         mock_error_dialog.assert_called_once()
 
@@ -299,9 +299,9 @@ class TestMainWindowJobs(unittest.TestCase):
         self.assertIsNotNone(item)
         self.assertEqual(item.text(), "Test Job")
         QApplication.processEvents()
-        self.controller_mock.get_job_dto_by_name.return_value = job
+        self.controller_mock.jobs.get_job_dto_by_name.return_value = job
         self.window.btnJobExport.click()
-        self.controller_mock.export_job.assert_called_once_with("Test Job", "test_file")
+        self.controller_mock.jobs.export_job.assert_called_once_with("Test Job", "test_file")
 
     @patch(
         "aoget.view.main_window_jobs.QFileDialog.getOpenFileName",
@@ -331,10 +331,10 @@ class TestMainWindowJobs(unittest.TestCase):
 
         self.window.tblJobs.clear()
         self.main_window_jobs.setup_ui()
-        self.controller_mock.get_job_dto_by_name.return_value = job
-        self.controller_mock.import_job.return_value = (job, file_dtos)
+        self.controller_mock.jobs.get_job_dto_by_name.return_value = job
+        self.controller_mock.jobs.import_job.return_value = (job, file_dtos)
         self.window.btnJobImport.click()
-        self.controller_mock.import_job.assert_called_once_with("test_file")
+        self.controller_mock.jobs.import_job.assert_called_once_with("test_file")
 
     @patch("aoget.view.main_window_jobs.QDesktopServices.openUrl")
     def test_open_link(self, mock_open_url):
@@ -361,7 +361,7 @@ class TestMainWindowJobs(unittest.TestCase):
         self.assertIsNotNone(item)
         self.assertEqual(item.text(), "Test Job")
         QApplication.processEvents()
-        self.controller_mock.get_job_dto_by_name.return_value = job
+        self.controller_mock.jobs.get_job_dto_by_name.return_value = job
         self.window.btnJobOpenLink.click()
         mock_open_url.assert_called_once_with(QUrl("http://test.com"))
 
@@ -393,8 +393,8 @@ class TestMainWindowJobs(unittest.TestCase):
 
         self.window.tblJobs.clear()
         self.main_window_jobs.setup_ui()
-        self.controller_mock.get_job_dto_by_name.return_value = job
-        self.controller_mock.import_job.return_value = (job, file_dtos)
+        self.controller_mock.jobs.get_job_dto_by_name.return_value = job
+        self.controller_mock.jobs.import_job.return_value = (job, file_dtos)
         self.window.btnJobCreate.click()
 
     @patch(
@@ -425,8 +425,8 @@ class TestMainWindowJobs(unittest.TestCase):
 
         self.window.tblJobs.clear()
         self.main_window_jobs.setup_ui()
-        self.controller_mock.get_job_dto_by_name.return_value = job
-        self.controller_mock.import_job.return_value = (job, file_dtos)
+        self.controller_mock.jobs.get_job_dto_by_name.return_value = job
+        self.controller_mock.jobs.import_job.return_value = (job, file_dtos)
         self.window.btnJobEdit.click()
 
     def tearDown(self):

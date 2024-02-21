@@ -11,6 +11,7 @@ class Downloads:
     def __init__(
         self, app_state_handlers: any
     ):
+        """Create a new Downloads object."""
         self.app = app_state_handlers
         self.job_downloaders = {}
 
