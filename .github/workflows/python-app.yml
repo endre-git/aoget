@@ -49,7 +49,7 @@ jobs:
 #        rm -rf tests/test__qt*.py
     - name: Test with pytest
       run: |
-        gdb --batch --quiet -ex r -ex "thread apply all bt" --args "$(readlink -f $(which python3))" -m pytest"
+        gdb --batch --quiet -ex r -ex "thread apply all bt" --args "$(readlink -f $(which python3))" -m pytest
     - name: Generate coverage report XML
       run:  |
         pip install pytest-cov
