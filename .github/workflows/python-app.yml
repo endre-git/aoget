@@ -47,6 +47,9 @@ jobs:
 #    - name: Delete Qt tests as they don't run on GitHub's Ubuntu servers currently
 #      run: |
 #        rm -rf tests/test__qt*.py
+    - name: Install gdb
+      run: |
+        sudo apt-get install -y gdb
     - name: Test with pytest
       run: |
         gdb --batch --quiet -ex r -ex "thread apply all bt" --args "$(readlink -f $(which python3))" -m pytest
