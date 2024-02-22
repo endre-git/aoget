@@ -104,6 +104,4 @@ class MainWindowController:
 
     def shutdown(self) -> None:
         """Shutdown the controller"""
-        for job_name in self.job_downloaders.keys():
-            self.job_downloaders[job_name].kill()
-        self.journal_daemon.stop()
+        self.handlers.downloads.kill_all()

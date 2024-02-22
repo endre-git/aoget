@@ -14,12 +14,19 @@ class Downloads:
         """Create a new Downloads object."""
         self.app = app_state_handlers
         self.job_downloaders = {}
+        # can be disabled for testing
+        self.start_download_threads = True
 
     def kill_for_job(self, job_name: str) -> None:
         """Kill the download of the given job if it exists."""
         if job_name in self.job_downloaders:
             self.job_downloaders[job_name].kill()
             self.job_downloaders.pop(job_name)
+
+    def kill_all(self) -> None:
+        """Kill all downloads."""
+        for job_name in list(self.job_downloaders.keys()):
+            self.kill_for_job(job_name)
 
     def is_running_for_job(self, job_name: str) -> bool:
         """Check if the download of the given job is running."""
@@ -77,7 +84,8 @@ class Downloads:
                 worker_pool_size=worker_pool_size,
             )
             self.job_downloaders[job_name] = downloader
-            downloader.start_download_threads()
+            if self.start_download_threads:
+                downloader.start_download_threads()
             app.update_cycle.journal_of_job(job_name).update_job_threads(
                 threads_allocated=worker_pool_size,
                 threads_active=downloader.get_active_thread_count(),

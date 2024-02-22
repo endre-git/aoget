@@ -10,7 +10,9 @@ class AppStateHandlers:
     """ "Convenience class to bundle upp the app state handlers so that they can
     be passed around as a single object. Also helps to avoid circular imports."""
 
-    def __init__(self, db_lock: RLock, main_window) -> None:
+    def __init__(
+        self, db_lock: RLock, main_window, start_journal_daemon: bool = True
+    ) -> None:
         """Create a new AppStateHandlers object."""
         self.db_lock = db_lock
         self.cache = AppCache()
@@ -18,5 +20,7 @@ class AppStateHandlers:
         self.downloads = Downloads(self)
         self.update_cycle = UpdateCycle(self, main_window)
         self.journal_daemon = JournalDaemon(
-            update_interval_seconds=1, journal_processor=self.update_cycle
+            update_interval_seconds=1,
+            journal_processor=self.update_cycle,
+            start_daemon=start_journal_daemon,
         )

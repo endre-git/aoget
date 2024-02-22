@@ -22,7 +22,9 @@ class FileModelController:
         self.db_lock = app_state_handlers.db_lock
 
     def get_selected_file_dtos(self, job_name: str = None, job_id: int = -1) -> dict:
-        """Get all selected files as DTOs by mapping each to a DTO and returning the list"""
+        """Get all selected files as DTOs by mapping each to a DTO and returning the list.
+        Also updates the cache to have the selected files of the job (no merge or anything,
+        an explicit set)."""
         app_cache = self.app.cache
         if job_name is None and job_id == -1:
             raise ValueError("Either job_name or job_id must be set.")
@@ -59,9 +61,10 @@ class FileModelController:
             )
             return file_dtos
 
-    # TODO why is this not cached?
     def get_file_event_dtos(self, job_name: str, file_name: str) -> list:
-        """Get all file events as DTOs by mapping each to a DTO and returning the list"""
+        """Get all file events as DTOs by mapping each to a DTO and returning the list.
+        Not cached as this is the golden source for File Details dialog and whatever
+        else that needs a DB-view of the event history."""
         with self.db_lock:
             job_id = get_job_dao().get_job_by_name(job_name).id
             file_id = get_file_model_dao().get_file_model_by_name(job_id, file_name).id
@@ -80,9 +83,10 @@ class FileModelController:
             file_model = get_file_model_dao().get_file_model_by_name(job_id, file_name)
             return FileModelDTO.from_model(file_model, job_name)
 
-    # direct DB link, doesn't load from cache, won't update cache
     def get_file_dtos_by_job_id(self, job_id: int) -> list:
-        """Get all file DTOs by job id"""
+        """Get all file DTOs by job id. Direct DB link, doesn't load from cache, won't
+        update cache. Note that these are all files, not the selected ones, which are
+        relevant for downloading."""
         with self.db_lock:
             job_name = get_job_dao().get_job_by_id(job_id).name
             file_models = get_file_model_dao().get_files_by_job_id(job_id)
@@ -144,8 +148,8 @@ class FileModelController:
             return False, "Could not delete file from disk."
         return self.start_download(job_name, file_name)
 
-    def add_files_to_job(self, job_id: int, file_dtos: list) -> None:
-        """Add files to a job"""
+    def set_files_of_job(self, job_id: int, file_dtos: list) -> None:
+        """Add files to a job. Updates the cache."""
         with self.db_lock:
             job = get_job_dao().get_job_by_id(job_id)
             selected_count = 0
@@ -170,7 +174,7 @@ class FileModelController:
             )
             self.app.cache.set_cached_files(job.name, selected_files)
 
-    def update_selected_files(self, job_id: int, file_dtos_by_name: dict) -> None:
+    def update_selected_files_of_job(self, job_id: int, file_dtos_by_name: dict) -> None:
         """Update selected files"""
         with self.db_lock:
             job = get_job_dao().get_job_by_id(job_id)
@@ -326,7 +330,7 @@ class FileModelController:
         journal = self.app.update_cycle.journal_of_job(job_name)
         if downloads.is_file_queued(job_name, file_name):
             # download not active, but might be queued already
-            self.job_downloaders[job_name].cancel_download(file_name)
+            downloads.get_downloader(job_name).cancel_download(file_name)
         elif downloads.is_file_downloading(job_name, file_name):
             stopped_event = Event()
             # stop the current download and wait for it to conclude

@@ -114,13 +114,13 @@ class JobEditorController:
         for extension in self.files_by_extension.keys():
             for file in self.files_by_extension[extension]:
                 file_dtos.append(file)
-        self.app_controller.files.add_files_to_job(job_id, file_dtos)
+        self.app_controller.files.set_files_of_job(job_id, file_dtos)
 
     def update_job(self):
         """Update the job. This is used when the job is being edited"""
         self.__create_job()
         self.app_controller.jobs.update_job_from_dto(self.job)
-        self.app_controller.files.update_selected_files(self.job.id, self.files_by_name)
+        self.app_controller.files.update_selected_files_of_job(self.job.id, self.files_by_name)
 
     def load_job(self, job_name: str) -> JobDTO:
         """Load the given job."""
