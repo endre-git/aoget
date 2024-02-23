@@ -2,6 +2,7 @@ import logging
 from db.aogetdb import get_job_dao, get_file_model_dao, get_file_event_dao
 from model.job_updates import JobUpdates
 from model.job import Job
+from model.file_model import FileModel
 from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 from controller.derived_field_calculator import DerivedFieldCalculator
@@ -62,6 +63,140 @@ class UpdateCycle:
         self.journal.clear()
         self.__update_rate_limits()
 
+    def __update_job_in_db(
+        self, job_name: str, job_updates: JobUpdates, derived_status: str
+    ) -> Job:
+        """Update the job in the database as per the in-cycle job updates."""
+        job = get_job_dao().get_job_by_name(job_name)
+        if job is None:
+            logger.debug("Stale job update for: %s", job_name)
+            return
+        job.status = (
+            derived_status if job.status is not Job.STATUS_COMPLETED else job.status
+        )
+        if job_updates.job_update is not None:
+            job_updates.job_update.merge_into_model(job)
+            job_updates.job_update.update_from_model(job)
+        else:
+            job_updates.job_update = JobDTO.from_model(job)
+        return job
+
+    def __update_file_model_in_db(
+        self, job: Job, file_model_dto: FileModelDTO
+    ) -> FileModelDTO:
+        """Update the file model in the database as per the in-cycle file model updates."""
+        job_id = job.id
+        file_model = get_file_model_dao().get_file_model_by_name(
+            job_id, file_model_dto.name
+        )
+        db_size = file_model.size_bytes if file_model else 0
+        if (
+            file_model_dto.size_bytes is not None
+            and db_size is None
+            or db_size <= 0
+            and db_size != file_model_dto.size_bytes
+        ):
+            job.selected_files_with_known_size += 1
+            job.total_size_bytes += file_model_dto.size_bytes
+        if file_model is None:
+            if file_model_dto.deleted:
+                logger.warn(
+                    "Tried to delete an already deleted file model: %s",
+                    file_model_dto.name,
+                )
+            else:
+                # TODO create and add the new model, and set it to file_model_dto
+                logger.error("Tried to update non-existent file.")
+        else:
+            file_model_dto.merge_into_model(file_model)
+
+        if file_model is not None:
+            # back-populate DTO fields from DB for UI display
+            file_model_dto.update_from_model(file_model)
+        return file_model_dto
+
+    def __update_file_events_in_db(
+        self, job: Job, file_name: str, job_updates: JobUpdates, event_dtos: list
+    ) -> None:
+        """Update the file events in the database as per the in-cycle file event updates."""
+        file_model_of_event = get_file_model_dao().get_file_model_by_name(
+            job.id, file_name
+        )
+        if file_model_of_event is None:
+            logger.error("File model not found for file event: %s", file_name)
+            return
+        for event_dto in event_dtos:
+            event = event_dto.build_model(file_model_of_event)
+            get_file_event_dao().add_file_event(event, commit=False)
+            if file_name in job_updates.file_model_updates:
+                job_updates.file_model_updates[file_name].last_event = event.event
+                job_updates.file_model_updates[file_name].last_event_timestamp = (
+                    event.timestamp
+                )
+        if file_name not in job_updates.file_model_updates:
+            # backpopulate to update object for UI display
+            job_updates.file_model_updates[file_name] = FileModelDTO.from_model(
+                file_model_of_event, job.name
+            )
+
+    def __back_populate_file_updates(
+        self, job: Job, file_model_dto: FileModelDTO, job_updates: JobUpdates
+    ) -> None:
+        """Updates are always partial, so we need to back-populate the cached DTOs with the
+        full state from the DB."""
+        cache = self.app.cache
+        job_name = job.name
+        file_model = get_file_model_dao().get_file_model_by_name(
+            job.id, file_model_dto.name
+        )
+        if file_model is None:
+            logger.error(
+                "File model not found for file model DTO: %s",
+                file_model_dto.name,
+            )
+            return
+        file_model_dto.update_from_model(file_model)
+
+        # sync up the local cache state
+        if not cache.is_cached_job(job_name):
+            logger.warn("Job %s not in state cache, assumably got deleted", job_name)
+            return
+        if not file_model_dto.selected and cache.is_cached_file(
+            job_name, file_model_dto.name
+        ):
+            cache.drop_file(job_name, file_model_dto.name)
+            DerivedFieldCalculator.file_deselected_in_job(
+                job_updates.job_update, file_model_dto
+            )
+            job_updates.job_update.merge_into_model(job)
+        else:
+            cache.set_cached_file(job_name, file_model_dto.name, file_model_dto)
+
+    def __update_cached_job_fields(self, job: Job, job_updates: JobUpdates) -> None:
+        """Update the cached fields of the job object both in DB and in cached DTO."""
+        # back-populate cached fields to job update DTO for UI display
+        job_updates.job_update.total_size_bytes = job.total_size_bytes
+        job_updates.job_update.selected_files_with_known_size = (
+            job.selected_files_with_known_size
+        )
+        job_updates.job_update.selected_files_count = job.selected_files_count
+
+        # downloaded bytes is a cache field, so we need to update it in the job object
+        downloaded_bytes = (
+            get_file_model_dao().get_total_downloaded_bytes_for_job(job.id) or 0
+        )
+        job.downloaded_bytes = downloaded_bytes
+        job_updates.job_update.downloaded_bytes = downloaded_bytes
+        if job.total_size_bytes == job.downloaded_bytes:
+            job.status = Job.STATUS_COMPLETED
+            job_updates.job_update.status = Job.STATUS_COMPLETED
+
+        # downloaded files count
+        completed_files = (
+            get_file_model_dao().get_completed_file_count_for_job_id(job.id) or 0
+        )
+        job_updates.job_update.files_done = completed_files
+
     def process_job_updates(self, cycle_job_updates: JobUpdates, merge=True) -> None:
         app = self.app
         """Process the cycle updates for a single job."""
@@ -75,16 +210,6 @@ class UpdateCycle:
         else:
             job_updates = cycle_job_updates
 
-        # filter file dtos that are not selected
-        deselected_file_dtos = list(
-            filter(
-                lambda file: not file.selected,
-                cycle_job_updates.file_model_updates.values(),
-            )
-        )
-        if len(deselected_file_dtos) > 0:
-            logger.debug('deselected_file_dtos: ' + str(deselected_file_dtos))
-
         derived_status = (
             Job.STATUS_RUNNING
             if app.downloads.is_job_downloading(job_name)
@@ -96,132 +221,23 @@ class UpdateCycle:
         # update db
         with app.db_lock:
             # merge job updates into db
-            job = get_job_dao().get_job_by_name(job_name)
-            if job is None:
-                logger.debug("Stale job update for: %s", job_name)
-                return
-            job.status = (
-                derived_status if job.status is not Job.STATUS_COMPLETED else job.status
-            )
-            if job_updates.job_update is not None:
-                job_updates.job_update.merge_into_model(job)
-                job_updates.job_update.update_from_model(job)
-            else:
-                job_updates.job_update = JobDTO.from_model(job)
+            job = self.__update_job_in_db(job_name, job_updates, derived_status)
 
             job_updates.job_update.threads_active = active_thread_count
             job_updates.job_update.threads_allocated = allocated_thread_count
-            # we increment the size with any size update that came in. It'd be more consistent if we
-            # computed the size on the total fileset after each tick, but that'd be non-performant.
-            job_size_bytes_increment = 0
 
             # merge file model updates into db
             for file_model_dto in job_updates.file_model_updates.values():
-                job_id = get_job_dao().get_job_by_name(job_name).id
-                file_model = get_file_model_dao().get_file_model_by_name(
-                    job_id, file_model_dto.name
-                )
-                db_size = file_model.size_bytes if file_model else 0
-                if (
-                    file_model_dto.size_bytes is not None
-                    and db_size != file_model_dto.size_bytes
-                ):
-                    job.selected_files_with_known_size += 1
-                    job_size_bytes_increment += file_model_dto.size_bytes
-                if file_model is None:
-                    if file_model_dto.deleted:
-                        logger.warn(
-                            "Tried to delete an already deleted file model: %s",
-                            file_model_dto.name,
-                        )
-                    else:
-                        # TODO create and add the new model, and set it to file_model
-                        logger.error("Branch not implemented")
-                else:
-                    file_model_dto.merge_into_model(file_model)
-
-                if file_model is not None:
-                    # back-populate DTO fields from DB for UI display
-                    file_model_dto.update_from_model(file_model)
+                self.__update_file_model_in_db(job, file_model_dto)
 
             for file_name, event_dtos in job_updates.file_event_updates.items():
-                file_model_of_event = get_file_model_dao().get_file_model_by_name(
-                    job.id, file_name
-                )
-                if file_model_of_event is None:
-                    logger.error("File model not found for file event: %s", file_name)
-                    continue
-                for event_dto in event_dtos:
-                    event = event_dto.build_model(file_model_of_event)
-                    get_file_event_dao().add_file_event(event, commit=False)
-                    if file_name in job_updates.file_model_updates:
-                        job_updates.file_model_updates[file_name].last_event = (
-                            event.event
-                        )
-                        job_updates.file_model_updates[
-                            file_name
-                        ].last_event_timestamp = event.timestamp
-                if file_name not in job_updates.file_model_updates:
-                    # backpopulate to update object for UI display
-                    job_updates.file_model_updates[file_name] = FileModelDTO.from_model(
-                        file_model_of_event, job_name
-                    )
+                self.__update_file_events_in_db(job, file_name, job_updates, event_dtos)
 
             # back-populate most recent file event to every file model DTO for UI display
             for file_model_dto in job_updates.file_model_updates.values():
-                file_model = get_file_model_dao().get_file_model_by_name(
-                    job.id, file_model_dto.name
-                )
-                if file_model is None:
-                    logger.error(
-                        "File model not found for file model DTO: %s",
-                        file_model_dto.name,
-                    )
-                    continue
-                file_model_dto.update_from_model(file_model)
+                self.__back_populate_file_updates(job, file_model_dto, job_updates)
 
-                # sync up the local cache state
-                if not app.cache.is_cached_job(job_name):
-                    logger.warn(
-                        "Job %s not in state cache, assumably got deleted", job_name
-                    )
-                    return
-                if not file_model_dto.selected and app.cache.is_cached_file(
-                    job_name, file_model_dto.name
-                ):
-                    app.cache.drop_file(job_name, file_model_dto.name)
-                    DerivedFieldCalculator.file_deselected_in_job(
-                        job_updates.job_update, file_model_dto
-                    )
-                    job_updates.job_update.merge_into_model(job)
-                else:
-                    app.cache.set_cached_file(
-                        job_name, file_model_dto.name, file_model_dto
-                    )
-
-            # update the job-level size fields
-            job.total_size_bytes += job_size_bytes_increment
-            job_updates.job_update.total_size_bytes = job.total_size_bytes
-            job_updates.job_update.selected_files_with_known_size = (
-                job.selected_files_with_known_size
-            )
-            job_updates.job_update.selected_files_count = job.selected_files_count
-
-            # downloaded bytes is a cache field, so we need to update it in the job object
-            downloaded_bytes = (
-                get_file_model_dao().get_total_downloaded_bytes_for_job(job.id) or 0
-            )
-            job.downloaded_bytes = downloaded_bytes
-            job_updates.job_update.downloaded_bytes = downloaded_bytes
-            if job.total_size_bytes == job.downloaded_bytes:
-                job.status = Job.STATUS_COMPLETED
-                job_updates.job_update.status = Job.STATUS_COMPLETED
-
-            # downloaded files count
-            completed_files = (
-                get_file_model_dao().get_completed_file_count_for_job_id(job.id) or 0
-            )
-            job_updates.job_update.files_done = completed_files
+            self.__update_cached_job_fields(job, job_updates)
 
             # commit db
             get_job_dao().save_job(job)
