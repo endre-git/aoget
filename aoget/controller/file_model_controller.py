@@ -184,11 +184,11 @@ class FileModelController:
                     file.selected = file_dto.selected
                 else:
                     file.selected = False
-            selected_file_list = list(
+            selected_file_names = list(
                 filter(lambda file: file.selected, file_dtos_by_name.values())
             )
             selected_files = dict(
-                map(lambda file: (file.name, file), selected_file_list)
+                map(lambda file: (file.name, file), selected_file_names)
             )
             job.selected_files_count = len(selected_files)
             self.app.cache.set_cached_files(job.name, selected_files)
@@ -422,10 +422,10 @@ class FileModelController:
     def stop_download_file_dto(self, job_name: str, file_dto: FileModelDTO) -> None:
         """Stop the download of the given file in the given job"""
         if file_dto.status == FileModel.STATUS_DOWNLOADING:
-            self.files.stop_download(
+            self.stop_download(
                 job_name, file_dto.name, add_to_journal=False
             )
         elif file_dto.status == FileModel.STATUS_QUEUED:
-            self.files.stop_download(
+            self.stop_download(
                 job_name, file_dto.name, add_to_journal=True
             )
