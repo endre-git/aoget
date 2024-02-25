@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from aoget.controller.update_cycle import UpdateCycle
+from aoget.model.job import Job
+from aoget.model.dto.job_dto import JobDTO
 
 
 class TestUpdateCycle:
@@ -50,3 +52,67 @@ class TestUpdateCycle:
             cycle_job_updates
         )
 
+    @patch("aoget.controller.update_cycle.get_job_dao")
+    def test_update_job_in_db(self, mock_get_job_dao, update_cycle):
+        # create mock DB as retrieved from DB
+        test_job = Job(
+            id=100,
+            name="test_job",
+            status="Not Running",
+            page_url="http://example.com",
+            target_folder="fake_path",
+        )
+        mock_get_job_dao.return_value.get_job_by_name.return_value = test_job
+
+        # create job update which updates some fields
+        mock_job_update = JobDTO(id=-1, name="test_job", total_size_bytes=10000)
+
+        update_cycle.job_updates = MagicMock()
+        update_cycle.job_updates.job_update = mock_job_update
+        # assume that the returned result reflects updates
+        updated_job = update_cycle._UpdateCycle__update_job_in_db(
+            "test_job", update_cycle.job_updates, "Running"
+        )
+        assert updated_job.total_size_bytes == 10000
+
+    @patch("aoget.controller.update_cycle.get_job_dao")
+    def test_update_job_in_db_stale_update(self, mock_get_job_dao, update_cycle):
+        # create mock DB as retrieved from DB
+        mock_get_job_dao.return_value.get_job_by_name.return_value = None
+
+        # create job update which updates some fields
+        mock_job_update = JobDTO(id=-1, name="test_job", total_size_bytes=10000)
+
+        update_cycle.job_updates = MagicMock()
+        update_cycle.job_updates.job_update = mock_job_update
+        # assume that the returned result reflects updates
+        updated_job = update_cycle._UpdateCycle__update_job_in_db(
+            "test_job", update_cycle.job_updates, "Running"
+        )
+        # all updates ignored
+        assert updated_job is None
+
+    @patch("aoget.controller.update_cycle.get_job_dao")
+    def test_update_job_in_db_no_update_equals_db_state(self, mock_get_job_dao, update_cycle):
+        # create mock DB as retrieved from DB
+        test_job = Job(
+            id=100,
+            name="test_job",
+            status="Not Running",
+            page_url="http://example.com",
+            target_folder="fake_path",
+        )
+        mock_get_job_dao.return_value.get_job_by_name.return_value = test_job
+
+        # create job update which updates some fields
+
+        update_cycle.job_updates = MagicMock()
+        update_cycle.job_updates.job_update = None
+        # assume that the returned result reflects updates
+        updated_job = update_cycle._UpdateCycle__update_job_in_db(
+            "test_job", update_cycle.job_updates, "Running"
+        )
+
+        assert updated_job.name == "test_job"
+        assert updated_job.status == "Running"
+        assert updated_job.page_url == "http://example.com"
