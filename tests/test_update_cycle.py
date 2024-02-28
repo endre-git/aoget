@@ -1,8 +1,10 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from aoget.controller.update_cycle import UpdateCycle
+from aoget.model.job_updates import JobUpdates
 from aoget.model.job import Job
 from aoget.model.dto.job_dto import JobDTO
+from aoget.model.file_model import FileModel
 
 
 class TestUpdateCycle:
@@ -93,7 +95,9 @@ class TestUpdateCycle:
         assert updated_job is None
 
     @patch("aoget.controller.update_cycle.get_job_dao")
-    def test_update_job_in_db_no_update_equals_db_state(self, mock_get_job_dao, update_cycle):
+    def test_update_job_in_db_no_update_equals_db_state(
+        self, mock_get_job_dao, update_cycle
+    ):
         # create mock DB as retrieved from DB
         test_job = Job(
             id=100,
@@ -116,3 +120,58 @@ class TestUpdateCycle:
         assert updated_job.name == "test_job"
         assert updated_job.status == "Running"
         assert updated_job.page_url == "http://example.com"
+
+    @patch("aoget.controller.update_cycle.get_job_dao")
+    @patch("aoget.controller.update_cycle.get_file_model_dao")
+    @patch("aoget.controller.update_cycle.get_file_event_dao")
+    def test_update_tick(
+        self,
+        mock_get_file_event_dao,
+        mock_get_file_model_dao,
+        mock_get_job_dao,
+        update_cycle,
+    ):
+
+        job1 = Job(
+            id=100,
+            name="test_job1",
+            status="Not Running",
+            page_url="http://example.com",
+            target_folder="fake_path",
+        )
+        job2 = Job(
+            id=101,
+            name="test_job2",
+            status="Not Running",
+            page_url="http://example.com",
+            target_folder="fake_path",
+        )
+        file1 = FileModel(job2, 'http://example.com/file1')
+        file2 = FileModel(job2, 'http://example.com/file2')
+
+        mock_get_job_dao.return_value.get_job_by_name.side_effect = (
+            lambda *args, **kwargs: (job1 if args[0] == "test_job1" else job2)
+        )
+        mock_get_file_model_dao.return_value.get_file_model_by_name.side_effect = (
+            lambda *args, **kwargs: (file1 if args[1] == "file1" else file2)
+        )
+
+        # the journal in update cycle
+        own_journal = {"test_job1": JobUpdates("test_job1")}
+        own_journal["test_job1"].update_file_status("file1", "Stopped")
+        # the journal coming with the update tick (emitted by journal daemon normally)
+        tick_journal = {
+            "test_job1": JobUpdates("test_job1"),
+            "test_job2": JobUpdates("test_job2"),
+        }
+        tick_journal["test_job1"].update_job_threads(10, 0)
+        tick_journal["test_job2"].update_file_status("file1", "Downloading")
+        tick_journal["test_job2"].update_file_status("file2", "Downloading")
+        tick_journal["test_job2"].update_file_download_progress("file1", 1000, 10000)
+        tick_journal["test_job2"].update_file_download_progress("file2", 2000, 10000)
+        update_cycle.journal = own_journal
+        update_cycle.update_tick(tick_journal)
+        assert file1.downloaded_bytes == 1000
+        assert file2.downloaded_bytes == 2000
+        assert file2.status == "Downloading"
+        assert job1.threads_allocated == 10

@@ -2,7 +2,6 @@ import logging
 from db.aogetdb import get_job_dao, get_file_model_dao, get_file_event_dao
 from model.job_updates import JobUpdates
 from model.job import Job
-from model.file_model import FileModel
 from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 from controller.derived_field_calculator import DerivedFieldCalculator
@@ -91,13 +90,18 @@ class UpdateCycle:
         )
         db_size = file_model.size_bytes if file_model else 0
         if (
-            file_model_dto.size_bytes is not None
-            and db_size is None
-            or db_size <= 0
-            and db_size != file_model_dto.size_bytes
-        ):
-            job.selected_files_with_known_size += 1
-            job.total_size_bytes += file_model_dto.size_bytes
+            file_model_dto.size_bytes is not None and file_model_dto.size_bytes > -1
+        ) and (db_size is None or db_size < 0):
+            job.selected_files_with_known_size = (
+                1
+                if job.selected_files_with_known_size is None
+                else job.selected_files_with_known_size + 1
+            )
+            job.total_size_bytes = (
+                file_model_dto.size_bytes
+                if job.total_size_bytes is None
+                else job.total_size_bytes + file_model_dto.size_bytes
+            )
         if file_model is None:
             if file_model_dto.deleted:
                 logger.warn(
@@ -105,8 +109,12 @@ class UpdateCycle:
                     file_model_dto.name,
                 )
             else:
-                # TODO create and add the new model, and set it to file_model_dto
-                logger.error("Tried to update non-existent file.")
+                logger.error(
+                    "Tried to update non-existent file: "
+                    + file_model_dto.name
+                    + " in job "
+                    + job.name
+                )
         else:
             file_model_dto.merge_into_model(file_model)
 
