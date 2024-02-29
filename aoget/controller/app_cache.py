@@ -60,4 +60,5 @@ class AppCache:
 
     def drop_file(self, job_name: str, file_name: str) -> None:
         """Delete the given file entry from the cache"""
-        del self.file_dto_cache[job_name][file_name]
+        if job_name in self.file_dto_cache and file_name in self.file_dto_cache[job_name]:
+            del self.file_dto_cache[job_name][file_name]
