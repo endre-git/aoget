@@ -30,7 +30,7 @@ class Downloads:
 
     def is_running_for_job(self, job_name: str) -> bool:
         """Check if the download of the given job is running."""
-        return job_name in self.job_downloaders
+        return job_name in self.job_downloaders.keys()
 
     def is_file_queued(self, job_name: str, file_name: str) -> bool:
         """Check if the given file is queued for download."""
@@ -106,10 +106,16 @@ class Downloads:
 
     def get_allocated_thread_count(self, job_name: str) -> int:
         """Get the allocated thread count for the given job."""
-        # TODO this is actually wrong, the allocated thread is independent of running state
         if not self.is_running_for_job(job_name):
-            return 0
-        return self.get_downloader(job_name).worker_pool_size
+            with self.app.db_lock:
+                job = get_job_dao().get_job_by_name(job_name)
+                if job is None:
+                    raise ValueError("Unknown job: " + job_name)
+                if job.threads_allocated is None or job.threads_allocated < 1:
+                    return get_config_value(AppConfig.PER_JOB_DEFAULT_THREAD_COUNT)
+                return job.threads_allocated
+        else:
+            return self.get_downloader(job_name).worker_pool_size
 
     def is_job_resuming(self, job_name: str) -> bool:
         """Check if the given job is resuming."""
