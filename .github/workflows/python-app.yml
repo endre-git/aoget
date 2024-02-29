@@ -16,13 +16,27 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    env:
+      # Display must be available globally for linux to know where xvfb is
+      DISPLAY: ":99.0"
+      QT_SELECT: "qt6"
+    
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.10
+    - name: Set up Python 3.11
       uses: actions/setup-python@v3
       with:
-        python-version: "3.10"
+        python-version: "3.11"
+    - uses: tlambert03/setup-qt-libs@v1
+    - name: Additional libraries for qt
+      if: runner.os == 'Linux'
+      run: |
+        # Stuff copied wildly from several stackoverflow posts
+        sudo apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xinput0 libxcb-xfixes0 libxcb-shape0 libglib2.0-0 libgl1-mesa-dev
+        sudo apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
+    - name: build "display"
+      run: |
+        /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1920x1200x24 -ac +extension GLX
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -34,16 +48,16 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --ignore F821
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-#    - name: Install libegl1 needed by Qt
-#      run: |
-#        sudo apt-get update
-#        sudo apt-get install -y libegl1
     - name: Delete Qt tests as they don't run on GitHub's Ubuntu servers currently
       run: |
         rm -rf tests/test__qt*.py
+    - name: Install gdb
+      run: |
+        sudo apt-get install -y gdb
     - name: Test with pytest
       run: |
-        python -m pytest
+        gdb --batch --quiet -ex r -ex "thread apply all bt" --args "$(readlink -f $(which python3))" -m pytest
+        
     - name: Generate coverage report XML
       run:  |
         pip install pytest-cov
@@ -56,4 +70,4 @@ jobs:
       uses: codecov/codecov-action@v4.0.1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        slug: kosaendre/aoget
+        slug: endre-git/aoget

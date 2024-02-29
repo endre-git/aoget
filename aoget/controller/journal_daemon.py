@@ -12,7 +12,12 @@ class JournalDaemon:
     different threads - on a single thread. Also implements throttling of progress updates to
     avoid stale update reporting."""
 
-    def __init__(self, update_interval_seconds: int = 1, journal_processor: any = None):
+    def __init__(
+        self,
+        update_interval_seconds: int = 1,
+        journal_processor: any = None,
+        start_daemon: bool = True,
+    ):
         """Create a progress reporter.
         :param job_monitor:
             The job monitor to report progress to. If None, no progress will be reported.
@@ -25,7 +30,8 @@ class JournalDaemon:
         # holds the previous snapshot of the journal to calculate derived fields
         self.__snapshot = {}  # type: Dict[str, JobUpdates]
         flush_thread = threading.Thread(target=self.__append_journal, daemon=True)
-        flush_thread.start()
+        if start_daemon:
+            flush_thread.start()
 
     def __append_journal(self) -> None:
         """Update the observers with the current progress."""

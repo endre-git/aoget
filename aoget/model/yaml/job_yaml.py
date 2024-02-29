@@ -34,7 +34,7 @@ def write_job_yaml(job: Job, path: str) -> None:
         yaml.dump(job_dict, f, sort_keys=False)
 
 
-def read_from_yaml(path: str) -> (JobDTO, list):
+def read_from_yaml(path: str) -> tuple[JobDTO, list]:
     with open(path, "r") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
         job_dto = JobDTO(

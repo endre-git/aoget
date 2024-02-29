@@ -132,7 +132,7 @@ class MainWindowJobs:
     def update_table(self):
         """Update the jobs table with the current job list."""
         mw = self.main_window
-        jobs = mw.controller.get_job_dtos()
+        jobs = mw.controller.jobs.get_job_dtos()
         mw.tblJobs.setRowCount(len(jobs))
 
         for i, job in enumerate(jobs):
@@ -195,7 +195,7 @@ class MainWindowJobs:
         selected_job_name = mw.tblJobs.selectedItems()[0].text()
         self.update_job_toolbar()
         mw.show_files(selected_job_name)
-        mw.controller.job_post_select(selected_job_name)
+        mw.controller.jobs.job_post_select(selected_job_name)
 
     def __on_job_start(self):
         """Start the selected job"""
@@ -203,28 +203,28 @@ class MainWindowJobs:
             return
         mw = self.main_window
         job_name = mw.tblJobs.selectedItems()[0].text()
-        mw.controller.start_job(job_name)
+        mw.controller.jobs.start_job(job_name)
 
     def __on_job_stop(self):
         if not self.is_job_selected():
             return
         mw = self.main_window
         job_name = mw.tblJobs.selectedItems()[0].text()
-        mw.controller.stop_job(job_name)
+        mw.controller.jobs.stop_job(job_name)
 
     def __on_job_threads_plus(self):
         if not self.is_job_selected():
             return
         mw = self.main_window
         current_job = mw.tblJobs.selectedItems()[0].text()
-        mw.controller.add_thread(current_job)
+        mw.controller.jobs.add_thread(current_job)
 
     def __on_job_threads_minus(self):
         if not self.is_job_selected():
             return
         mw = self.main_window
         current_job = mw.tblJobs.selectedItems()[0].text()
-        mw.controller.remove_thread(current_job)
+        mw.controller.jobs.remove_thread(current_job)
 
     def __on_create_new_job(self):
         """Create a new job"""
@@ -235,7 +235,7 @@ class MainWindowJobs:
         dlg = JobEditorDialog(mw.controller)
         val = dlg.exec()
         if val == 1:
-            self.__update_jobs_table()
+            self.update_table()
             newly_selected_job = (
                 mw.tblJobs.selectedItems()[0].text() if self.is_job_selected() else None
             )
@@ -244,9 +244,9 @@ class MainWindowJobs:
                 and newly_selected_job != selected_job_name
             ):
                 mw.show_files(newly_selected_job)
-                mw.controller.job_post_select(newly_selected_job, is_new=True)
+                mw.controller.jobs.job_post_select(newly_selected_job, is_new=True)
             elif get_config_value(AppConfig.AUTO_START_JOBS):
-                mw.controller.start_job(dlg.controller.job.name)
+                mw.controller.jobs.start_job(dlg.controller.job.name)
 
     def __on_edit_job(self):
         """Edit the selected job"""
@@ -254,7 +254,7 @@ class MainWindowJobs:
             return
         mw = self.main_window
         job_name = mw.tblJobs.selectedItems()[0].text()
-        if mw.controller.is_job_downloading(job_name):
+        if mw.controller.jobs.is_job_downloading(job_name):
             error_dialog(
                 mw, "Job is running. Please stop all downloads before editing."
             )
@@ -278,7 +278,7 @@ class MainWindowJobs:
             Files will not be deleted.</p>""",
         ):
             try:
-                messages = mw.controller.delete_job(job_name)
+                messages = mw.controller.jobs.delete_job(job_name)
                 if messages:
                     show_warnings(
                         mw, "Removed job with the following warnings:", messages
@@ -305,7 +305,7 @@ class MainWindowJobs:
             Files <b>will</b> be deleted.</p>""",
         ):
             try:
-                messages = mw.controller.delete_job(job_name, delete_from_disk=True)
+                messages = mw.controller.jobs.delete_job(job_name, delete_from_disk=True)
                 if messages:
                     show_warnings(
                         mw, "Removed job with the following warnings:", messages
@@ -325,7 +325,7 @@ class MainWindowJobs:
             return
         mw = self.main_window
         job_name = mw.tblJobs.selectedItems()[0].text()
-        job_dto = mw.controller.get_job_dto_by_name(job_name)
+        job_dto = mw.controller.jobs.get_job_dto_by_name(job_name)
         if job_dto.is_size_not_resolved():
             error_dialog(
                 mw,
@@ -337,7 +337,8 @@ class MainWindowJobs:
         file, _ = QFileDialog.getSaveFileName(
             mw, "Export Job", "", "YAML files (*.yaml)"
         )
-        mw.controller.export_job(job_name, file)
+        if file:
+            mw.controller.jobs.export_job(job_name, file)
 
     def __on_job_import(self):
         """Import a job"""
@@ -350,13 +351,13 @@ class MainWindowJobs:
         )
         if file:
             try:
-                job_dto, file_dtos = mw.controller.import_job(file)
+                job_dto, file_dtos = mw.controller.jobs.import_job(file)
                 dlg = JobEditorDialog(
                     mw.controller, job_dto=job_dto, file_dtos=file_dtos
                 )
                 val = dlg.exec()
                 if val == 1:
-                    self.__update_jobs_table()
+                    self.update_table()
                     newly_selected_job = (
                         self.tblJobs.selectedItems()[0].text()
                         if self.__is_job_selected()
@@ -367,9 +368,9 @@ class MainWindowJobs:
                         and newly_selected_job != selected_job_name
                     ):
                         mw.show_files(newly_selected_job)
-                        mw.controller.job_post_select(newly_selected_job, is_new=True)
+                        mw.controller.jobs.job_post_select(newly_selected_job, is_new=True)
                     elif get_config_value(AppConfig.AUTO_START_JOBS):
-                        mw.controller.start_job(dlg.controller.job.name)
+                        mw.controller.jobs.start_job(dlg.controller.job.name)
             except Exception as e:
                 error_dialog(mw, "Failed to import job: " + str(e))
                 logger.error("Failed to import job: %s", file, exc_info=True)
@@ -381,7 +382,7 @@ class MainWindowJobs:
             return
         mw = self.main_window
         job_name = mw.tblJobs.selectedItems()[0].text()
-        job_dto = mw.controller.get_job_dto_by_name(job_name)
+        job_dto = mw.controller.jobs.get_job_dto_by_name(job_name)
         if job_dto and job_dto.page_url:
             QDesktopServices.openUrl(QUrl(job_dto.page_url))
         else:
@@ -407,7 +408,7 @@ class MainWindowJobs:
             It will be done in the background, with failing files being updated as the
             process goes.</p>""",
         ):
-            mw.controller.health_check(job_name, self.message_signal)
+            mw.controller.jobs.health_check(job_name)
 
     def set_job_at_row(self, row, job: JobDTO):
         """Set the job at the given row in the jobs table"""
@@ -526,7 +527,7 @@ class MainWindowJobs:
                                      job start button.""",
             )
         # update the job in the table with the db state
-        self.set_job_at_row(idx, mw.controller.get_job_dto_by_name(job_name))
+        self.set_job_at_row(idx, mw.controller.jobs.get_job_dto_by_name(job_name))
         self.resuming_jobs.remove(job_name)
         self.update_job_toolbar()
         mw.update_file_toolbar()

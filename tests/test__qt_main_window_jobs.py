@@ -42,7 +42,7 @@ class TestMainWindowJobs(unittest.TestCase):
   
     @patch("aoget.view.main_window_jobs.MainWindowJobs.set_job_at_row")
     def test_update_table_empty_list(self, mock_set_job_at_row):
-        self.controller_mock.get_job_dtos.return_value = []
+        self.controller_mock.jobs.get_job_dtos.return_value = []
         self.main_window_jobs.update_table()
         self.assertEqual(self.window.tblJobs.rowCount(), 0)
         self.assertFalse(mock_set_job_at_row.called)
@@ -50,7 +50,7 @@ class TestMainWindowJobs(unittest.TestCase):
     @patch("aoget.view.main_window_jobs.MainWindowJobs.set_job_at_row")
     def test_update_table_one_job(self, mock_set_job_at_row):
         job = JobDTO(id=-1, name="Test Job", status="Running")
-        self.controller_mock.get_job_dtos.return_value = [job]
+        self.controller_mock.jobs.get_job_dtos.return_value = [job]
         self.main_window_jobs.update_table()
         self.assertEqual(self.window.tblJobs.rowCount(), 1)
         mock_set_job_at_row.assert_called_once_with(0, job)
@@ -62,7 +62,7 @@ class TestMainWindowJobs(unittest.TestCase):
             JobDTO(id=2, name="Job2", status="Paused"),
             JobDTO(id=3, name="Job3", status="Completed")
         ]
-        self.controller_mock.get_job_dtos.return_value = jobs
+        self.controller_mock.jobs.get_job_dtos.return_value = jobs
         self.main_window_jobs.update_table()
         self.assertEqual(self.window.tblJobs.rowCount(), 3)
         calls = [call(i, job) for i, job in enumerate(jobs)]

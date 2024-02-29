@@ -84,7 +84,7 @@ class JobEditorController:
 
     def __load_files(self, job_id: int):
         """Load the files for the given job id. All, not just selected ones."""
-        files = self.app_controller.get_file_dtos_by_job_id(job_id)
+        files = self.app_controller.files.get_file_dtos_by_job_id(job_id)
         self.files_by_extension = defaultdict(list)
         for file in files:
             self.files_by_name[file.name] = file
@@ -108,31 +108,31 @@ class JobEditorController:
             return
 
         self.__create_job()
-        job_id = self.app_controller.create_job_from_dto(self.job)
+        job_id = self.app_controller.jobs.create_job_from_dto(self.job)
         # add all files to the job
         file_dtos = []
         for extension in self.files_by_extension.keys():
             for file in self.files_by_extension[extension]:
                 file_dtos.append(file)
-        self.app_controller.add_files_to_job(job_id, file_dtos)
+        self.app_controller.files.set_files_of_job(job_id, file_dtos)
 
     def update_job(self):
         """Update the job. This is used when the job is being edited"""
         self.__create_job()
-        self.app_controller.update_job_from_dto(self.job)
-        self.app_controller.update_selected_files(self.job.id, self.files_by_name)
+        self.app_controller.jobs.update_job_from_dto(self.job)
+        self.app_controller.files.update_selected_files_of_job(self.job.id, self.files_by_name)
 
     def load_job(self, job_name: str) -> JobDTO:
         """Load the given job."""
-        self.job = self.app_controller.get_job_dto_by_name(job_name)
+        self.job = self.app_controller.jobs.get_job_dto_by_name(job_name)
         self.page_url = self.job.page_url
         self.__load_files(self.job.id)
         return self.job
 
     def all_files_in_job_folders(self) -> list:
         """Get all file names from the job's folders."""
-        return self.app_controller.all_files_in_job_folders()
+        return self.app_controller.files.all_files_in_job_folders()
 
     def all_files_in_jobs(self) -> list:
         """Get all file names from the job's folders."""
-        return self.app_controller.all_files_in_jobs()
+        return self.app_controller.files.all_files_in_jobs()
