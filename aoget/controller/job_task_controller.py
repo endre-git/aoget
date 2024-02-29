@@ -34,14 +34,14 @@ class JobTaskController:
                 file_models_with_unknown_size = (
                     get_file_model_dao().get_selected_files_with_unknown_size(job_id)
                 )
-            if len(file_models_with_unknown_size) > 0:
-                # map them to DTOs and add them to the list
-                files_with_unknown_size = list(
-                    map(
-                        lambda file: FileModelDTO.from_model(file, job_name),
-                        file_models_with_unknown_size,
+                if len(file_models_with_unknown_size) > 0:
+                    # map them to DTOs and add them to the list
+                    files_with_unknown_size = list(
+                        map(
+                            lambda file: FileModelDTO.from_model(file, job_name),
+                            file_models_with_unknown_size,
+                        )
                     )
-                )
         if len(files_with_unknown_size) > 0:
             self.app.downloads.get_downloader(job_name).resolve_file_sizes(
                 job_name, files_with_unknown_size
