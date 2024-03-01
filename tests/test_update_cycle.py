@@ -121,6 +121,17 @@ class TestUpdateCycle:
         assert updated_job.status == "Running"
         assert updated_job.page_url == "http://example.com"
 
+
+    @patch("aoget.controller.update_cycle.get_job_dao")
+    def test_process_updates_but_job_is_stale(self, mock_get_job_dao, update_cycle):
+        mock_get_job_dao.return_value.get_job_by_name.return_value = None
+        update_cycle.journal = {"test_job": MagicMock()}
+        update_cycle.job_updates = MagicMock()
+        update_cycle.job_updates.job_update = None
+
+        update_cycle.process_job_updates(MagicMock(), merge=False)
+        mock_get_job_dao.return_value.save_job.assert_not_called()
+
     @patch("aoget.controller.update_cycle.get_job_dao")
     @patch("aoget.controller.update_cycle.get_file_model_dao")
     @patch("aoget.controller.update_cycle.get_file_event_dao")

@@ -228,11 +228,11 @@ class UpdateCycle:
             )
             job = self.__update_job_in_db(job_name, job_updates, derived_status)
             if job is None:
-                logger.warn("Skipping journal processing for stale job: %s", job_name)
-                return            
+                logger.warning("Skipping journal processing for stale job: %s", job_name)
+                return
             active_thread_count = app.downloads.get_active_thread_count(job_name)
             allocated_thread_count = app.downloads.get_allocated_thread_count(job_name)
-            
+
             job_updates.job_update.threads_active = active_thread_count
             job_updates.job_update.threads_allocated = allocated_thread_count
 
