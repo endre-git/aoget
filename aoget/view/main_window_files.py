@@ -130,18 +130,22 @@ class MainWindowFiles:
         """Shows the files for the selected job.
         :param job_name: The name of the selected job."""
         mw = self.main_window
+        mw.tblFiles.setUpdatesEnabled(False)
+        mw.tblFiles.blockSignals(True)
         if job_name is None:
             for i in range(0, mw.tblFiles.rowCount()):
                 mw.tblFiles.setRowHidden(i, True)
-            return
-        selected_files = mw.controller.files.get_selected_file_dtos(job_name).values()
-        mw.tblFiles.setRowCount(mw.controller.files.get_largest_fileset_length())
-        for i, file in enumerate(selected_files):
-            self.set_file_at_row(i, file)
-            mw.tblFiles.setRowHidden(i, False)
-        # part of perf-optimization, we don't delete widgets, just hide the rows
-        for i in range(len(selected_files), mw.tblFiles.rowCount()):
-            mw.tblFiles.setRowHidden(i, True)
+        else:
+            selected_files = mw.controller.files.get_selected_file_dtos(job_name).values()
+            mw.tblFiles.setRowCount(mw.controller.files.get_largest_fileset_length())
+            for i, file in enumerate(selected_files):
+                self.set_file_at_row(i, file)
+                mw.tblFiles.setRowHidden(i, False)
+            # part of perf-optimization, we don't delete widgets, just hide the rows
+            for i in range(len(selected_files), mw.tblFiles.rowCount()):
+                mw.tblFiles.setRowHidden(i, True)
+        mw.tblFiles.blockSignals(False)
+        mw.tblFiles.setUpdatesEnabled(True)
 
     def get_current_file_status(self) -> str:
         """Get the status of the currently selected file"""
@@ -603,115 +607,113 @@ class MainWindowFiles:
         """Set the file at the given row in the files table. Reuses the existing widgets
         in the table if applicable, because creating new widgets is slow."""
         mw = self.main_window
-        with self.file_table_lock:
-            # NAME
-            name_table_item = mw.tblFiles.item(row, FILE_NAME_IDX)
-            if name_table_item is None:
-                name_table_item = QTableWidgetItem(file.name)
-                mw.tblFiles.setItem(row, FILE_NAME_IDX, name_table_item)
-            else:
-                name_table_item.setText(file.name)
-            name_table_item.setToolTip(file.name)
-            # SIZE
-            size_str = (
-                human_filesize(file.size_bytes)
-                if file.size_bytes is not None and file.size_bytes > -1
-                else ""
-            )
-            size_table_item = mw.tblFiles.item(row, FILE_SIZE_IDX)
-            if size_table_item is None:
-                mw.tblFiles.setItem(row, FILE_SIZE_IDX, SizeWidgetItem(size_str))
-            else:
-                size_table_item.setText(size_str)
-            # PRIORITY
-            priority_str = self.__priority_str(file.priority)
-            priority_table_item = mw.tblFiles.item(row, FILE_PRIORITY_IDX)
-            if priority_table_item is None:
-                priority_table_item = PriorityWidgetItem(priority_str)
-                mw.tblFiles.setItem(row, FILE_PRIORITY_IDX, priority_table_item)
-            else:
-                priority_table_item.setText(priority_str)
-            # STATUS
-            status_table_item = mw.tblFiles.item(row, FILE_STATUS_IDX)
-            if status_table_item is None:
-                status_table_item = FileStatusWidgetItem(file.status)
-                mw.tblFiles.setItem(row, FILE_STATUS_IDX, status_table_item)
-            else:
-                status_table_item.setText(file.status)
-            # PROGRESS
-            progress_bar = mw.tblFiles.cellWidget(row, FILE_PROGRESS_IDX)
-            if progress_bar is None:
-                progress_bar = QProgressBar()
-                mw.tblFiles.setCellWidget(row, FILE_PROGRESS_IDX, progress_bar)
-            progress_bar.setValue(
-                file.percent_completed
-                if file.percent_completed is not None and file.percent_completed > -1
-                else 0
-            )
-            if file.status == FileModel.STATUS_DOWNLOADING:
-                # ETA
-                eta_str = human_eta(file.eta_seconds)
-                eta_table_item = mw.tblFiles.item(row, FILE_ETA_IDX)
-                if eta_table_item is None:
-                    eta_table_item = QTableWidgetItem(eta_str)
-                    mw.tblFiles.setItem(
-                        row,
-                        FILE_ETA_IDX,
-                        eta_table_item,
-                    )
-                else:
-                    eta_table_item.setText(eta_str)
-                # RATE
-                rate_str = human_rate(file.rate_bytes_per_sec)
-                rate_table_item = mw.tblFiles.item(row, FILE_RATE_IDX)
-                if rate_table_item is None:
-                    rate_table_item = RateWidgetItem(rate_str)
-                    mw.tblFiles.setItem(
-                        row,
-                        FILE_RATE_IDX,
-                        rate_table_item,
-                    )
-                else:
-                    rate_table_item.setText(rate_str)
-                self.__restyleFileProgressBar(row, PROGRESS_BAR_ACTIVE_STYLE)
-            else:
-                self.__reset_rate_and_eta_for_row(row)
-                self.__restyleFileProgressBar(row, PROGRESS_BAR_PASSIVE_STYLE)
-
-            # LAST UPDATED
-            last_updated_timestamp_str = (
-                human_timestamp_from(file.last_event_timestamp)
-                if file.last_event_timestamp is not None
-                else ""
-            )
-            last_updated_table_item = mw.tblFiles.item(row, FILE_LAST_UPDATED_IDX)
-            if last_updated_table_item is None:
-                last_updated_table_item = QTableWidgetItem(last_updated_timestamp_str)
+        # NAME
+        name_table_item = mw.tblFiles.item(row, FILE_NAME_IDX)
+        if name_table_item is None:
+            name_table_item = QTableWidgetItem(file.name)
+            mw.tblFiles.setItem(row, FILE_NAME_IDX, name_table_item)
+        else:
+            name_table_item.setText(file.name)
+        name_table_item.setToolTip(file.name)
+        # SIZE
+        size_str = (
+            human_filesize(file.size_bytes)
+            if file.size_bytes is not None and file.size_bytes > -1
+            else ""
+        )
+        size_table_item = mw.tblFiles.item(row, FILE_SIZE_IDX)
+        if size_table_item is None:
+            mw.tblFiles.setItem(row, FILE_SIZE_IDX, SizeWidgetItem(size_str))
+        else:
+            size_table_item.setText(size_str)
+        # PRIORITY
+        priority_str = self.__priority_str(file.priority)
+        priority_table_item = mw.tblFiles.item(row, FILE_PRIORITY_IDX)
+        if priority_table_item is None:
+            priority_table_item = PriorityWidgetItem(priority_str)
+            mw.tblFiles.setItem(row, FILE_PRIORITY_IDX, priority_table_item)
+        else:
+            priority_table_item.setText(priority_str)
+        # STATUS
+        status_table_item = mw.tblFiles.item(row, FILE_STATUS_IDX)
+        if status_table_item is None:
+            status_table_item = FileStatusWidgetItem(file.status)
+            mw.tblFiles.setItem(row, FILE_STATUS_IDX, status_table_item)
+        else:
+            status_table_item.setText(file.status)
+        # PROGRESS
+        progress_bar = mw.tblFiles.cellWidget(row, FILE_PROGRESS_IDX)
+        if progress_bar is None:
+            progress_bar = QProgressBar()
+            mw.tblFiles.setCellWidget(row, FILE_PROGRESS_IDX, progress_bar)
+        progress_bar.setValue(
+            file.percent_completed
+            if file.percent_completed is not None and file.percent_completed > -1
+            else 0
+        )
+        if file.status == FileModel.STATUS_DOWNLOADING:
+            # ETA
+            eta_str = human_eta(file.eta_seconds)
+            eta_table_item = mw.tblFiles.item(row, FILE_ETA_IDX)
+            if eta_table_item is None:
+                eta_table_item = QTableWidgetItem(eta_str)
                 mw.tblFiles.setItem(
                     row,
-                    FILE_LAST_UPDATED_IDX,
-                    QTableWidgetItem(last_updated_timestamp_str),
+                    FILE_ETA_IDX,
+                    eta_table_item,
                 )
             else:
-                last_updated_table_item.setText(last_updated_timestamp_str)
-            # LAST EVENT
-            last_event_str = file.last_event or ""
-            last_event_table_item = mw.tblFiles.item(row, FILE_LAST_EVENT_IDX)
-            if last_event_table_item is None:
-                last_event_table_item = QTableWidgetItem(last_event_str)
-                mw.tblFiles.setItem(row, FILE_LAST_EVENT_IDX, last_event_table_item)
+                eta_table_item.setText(eta_str)
+            # RATE
+            rate_str = human_rate(file.rate_bytes_per_sec)
+            rate_table_item = mw.tblFiles.item(row, FILE_RATE_IDX)
+            if rate_table_item is None:
+                rate_table_item = RateWidgetItem(rate_str)
+                mw.tblFiles.setItem(
+                    row,
+                    FILE_RATE_IDX,
+                    rate_table_item,
+                )
             else:
-                last_event_table_item.setText(last_event_str)
-            last_event_table_item.setToolTip(last_event_str)
+                rate_table_item.setText(rate_str)
+            self.__restyleFileProgressBar(row, PROGRESS_BAR_ACTIVE_STYLE)
+        else:
+            self.__reset_rate_and_eta_for_row(row)
+            self.__restyleFileProgressBar(row, PROGRESS_BAR_PASSIVE_STYLE)
+
+        # LAST UPDATED
+        last_updated_timestamp_str = (
+            human_timestamp_from(file.last_event_timestamp)
+            if file.last_event_timestamp is not None
+            else ""
+        )
+        last_updated_table_item = mw.tblFiles.item(row, FILE_LAST_UPDATED_IDX)
+        if last_updated_table_item is None:
+            last_updated_table_item = QTableWidgetItem(last_updated_timestamp_str)
+            mw.tblFiles.setItem(
+                row,
+                FILE_LAST_UPDATED_IDX,
+                QTableWidgetItem(last_updated_timestamp_str),
+            )
+        else:
+            last_updated_table_item.setText(last_updated_timestamp_str)
+        # LAST EVENT
+        last_event_str = file.last_event or ""
+        last_event_table_item = mw.tblFiles.item(row, FILE_LAST_EVENT_IDX)
+        if last_event_table_item is None:
+            last_event_table_item = QTableWidgetItem(last_event_str)
+            mw.tblFiles.setItem(row, FILE_LAST_EVENT_IDX, last_event_table_item)
+        else:
+            last_event_table_item.setText(last_event_str)
+        last_event_table_item.setToolTip(last_event_str)
 
     def update_file(self, file: FileModelDTO):
         """Update the file progress of the given file if the right job is selected"""
         mw = self.main_window
-        with self.file_table_lock:
-            if file.job_name == mw.get_selected_job_name():
-                for row in range(mw.tblFiles.rowCount()):
-                    if file.name == mw.tblFiles.item(row, FILE_NAME_IDX).text():
-                        self.set_file_at_row(row, file)
-                        break
-                if self.is_file_selected(file.name):
-                    self.__update_file_start_stop_buttons(file.status)
+        if file.job_name == mw.get_selected_job_name():
+            for row in range(mw.tblFiles.rowCount()):
+                if file.name == mw.tblFiles.item(row, FILE_NAME_IDX).text():
+                    self.set_file_at_row(row, file)
+                    break
+            if self.is_file_selected(file.name):
+                self.__update_file_start_stop_buttons(file.status)

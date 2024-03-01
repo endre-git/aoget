@@ -37,36 +37,10 @@ class Job(Base):
     files: Mapped[List["FileModel"]] = relationship(back_populates="job",
                                                     cascade="all, delete, delete-orphan")
 
-    def __is_file_downloaded(self, file: FileModel) -> bool:
-        """Determine whether the given file is downloaded.
-        :param file:
-            The file to check
-        :return:
-            True if the file is downloaded, False otherwise"""
-        return os.path.isfile(os.path.join(self.target_folder, file.name))
-
     def __len__(self) -> int:
         """Get the number of files in the job.
         :return: The number of files in the fileset"""
         return len(self.get_selected_filenames())
-
-    def ingest_links(self, ao_page) -> None:
-        """Ingest the links from the ao_page into the job's fileset"""
-        for extension, files in ao_page.files_by_extension.items():
-            for url in files:
-                self.add_file(FileModel(self, url))
-
-    def resolve_files_to_download(self) -> list:
-        """Resolve the files to download by comparing the files in the job's
-        fileset with the files on disk.
-            :return:
-                A list of files to download"""
-        files_to_download = []
-        for filename in self.get_selected_filenames():
-            file = self.get_file_by_name(filename)
-            if not self.__is_file_downloaded(file):
-                files_to_download.append(file)
-        return files_to_download
 
     def set_files(self, filemodels: list) -> None:
         """Set the filemodels in the fileset.

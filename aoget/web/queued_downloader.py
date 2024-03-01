@@ -55,6 +55,9 @@ class FileProgressSignals(DownloadSignals):
         if status in self.status_listeners:
             listener = self.status_listeners.pop(status)
             listener.set()
+            logger.info(
+                f"Signaled listener for status: {status} of filename {self.filename}"
+            )
 
     def register_status_listener(self, event: threading.Event, status: str) -> None:
         """Register a listener for a status update. If called multiple times, the last listener
@@ -357,6 +360,7 @@ class QueuedDownloader:
             try:
                 # there might be some "remnant stopping" states if the app
                 # crashed / was killed, so set them all to Stopped
+                t1 = time.time()
                 for file in files.values():
                     if file.status == FileModel.STATUS_STOPPING:
                         logger.debug(
@@ -366,6 +370,11 @@ class QueuedDownloader:
                         self.monitor.update_file_status(
                             job_name, file.name, FileModel.STATUS_STOPPED
                         )
+                logger.info(
+                    "Finished setting stopping files to Stopped in %s",
+                    human_duration(time.time() - t1),
+                )
+                t1 = time.time()
 
                 for file in files.values():
                     if file.status == FileModel.STATUS_DOWNLOADING:
@@ -377,6 +386,12 @@ class QueuedDownloader:
                             job_name, file.name, "Resumed after app-restart."
                         )
                         file_controller.start_download(job_name, file.name)
+                logger.info(
+                    "Finished resuming downloading files for job %s in %s",
+                    job_name,
+                    human_duration(time.time() - t1),
+                )
+                t1 = time.time()
 
                 for file in files.values():
                     if file.status == FileModel.STATUS_QUEUED:
@@ -388,6 +403,12 @@ class QueuedDownloader:
                             job_name, file.name, "Re-queued after app-restart."
                         )
                         file_controller.start_download(job_name, file.name)
+                logger.info(
+                    "Finished re-queuing files for job %s in %s",
+                    job_name,
+                    human_duration(time.time() - t1),
+                )
+                t1 = time.time()
 
                 for file in files.values():
                     if file.status == FileModel.STATUS_COMPLETED:
@@ -416,6 +437,11 @@ class QueuedDownloader:
                                 "Local file corrupted (smaller than expected).",
                             )
                 callback.emit(job_name, Job.RESUME_SUCCESS, "")
+                logger.info(
+                    "Finished checking local files for job %s in %s",
+                    job_name,
+                    human_duration(time.time() - t1),
+                )
 
             except Exception as e:
                 logger.error("Failed to resume files for job %s", job_name, exc_info=e)
@@ -601,7 +627,7 @@ class QueuedDownloader:
             logger.debug(
                 "Finished resolving file sizes in background for %d files of job %s",
                 len(filemodels),
-                job_name
+                job_name,
             )
             with self.size_resolver_lock:
                 self.resolved_all_file_sizes = True

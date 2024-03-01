@@ -7,7 +7,7 @@ def setup_logging():
     # Create a logger
     logger = logging.getLogger()
     level = (
-        logging.DEBUG if get_config_value(AppConfig.DEBUG) == "true" else logging.INFO
+        logging.DEBUG if get_config_value(AppConfig.DEBUG) is True else logging.INFO
     )
     logger.setLevel(level)
 
