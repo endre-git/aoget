@@ -163,6 +163,7 @@ class JobController:
             t0 = time.time()
             self.app.update_cycle.drop_job(job_name)
             self.app.cache.drop_job(job_name)
+            self.app.journal_daemon.drop_job(job_name)
             logger.info(
                 "Deleting journal and file cache took %s seconds.", time.time() - t0
             )

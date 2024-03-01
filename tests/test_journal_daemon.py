@@ -53,3 +53,8 @@ class TestJournalDaemon:
     def test_stop(self, daemon):
         daemon.stop()
         assert daemon._JournalDaemon__stopped
+
+    def test_drop_job(self, daemon):
+        daemon.update_download_progress("job1", "file1", 500, 1000)
+        daemon.drop_job("job1")
+        assert "job1" not in daemon._JournalDaemon__journal

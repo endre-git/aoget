@@ -218,16 +218,15 @@ class UpdateCycle:
         else:
             job_updates = cycle_job_updates
 
-        derived_status = (
-            Job.STATUS_RUNNING
-            if app.downloads.is_job_downloading(job_name)
-            else Job.STATUS_NOT_RUNNING
-        )
-        active_thread_count = app.downloads.get_active_thread_count(job_name)
-        allocated_thread_count = app.downloads.get_allocated_thread_count(job_name)
-
         # update db
         with app.db_lock:
+            derived_status = (
+                Job.STATUS_RUNNING
+                if app.downloads.is_job_downloading(job_name)
+                else Job.STATUS_NOT_RUNNING
+            )
+            active_thread_count = app.downloads.get_active_thread_count(job_name)
+            allocated_thread_count = app.downloads.get_allocated_thread_count(job_name)
             # merge job updates into db
             job = self.__update_job_in_db(job_name, job_updates, derived_status)
             if job is None:
