@@ -122,6 +122,14 @@ class JournalDaemon:
         with self.__lock:
             self.__journal_of_job(jobname).update_job_files_done(files_done)
 
+    def drop_job(self, jobname: str) -> None:
+        """Drop the given job from the journal.
+        :param jobname:
+            The name of the job"""
+        with self.__lock:
+            if jobname in self.__journal:
+                self.__journal.pop(jobname, None)
+
     def __journal_of_job(self, jobname: str) -> JobUpdates:
         """Get the journal of a job.
         :param jobname:

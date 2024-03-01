@@ -15,7 +15,9 @@ class FileEvent(Base):
     file_id: Mapped[int] = mapped_column(
         ForeignKey("file_model.id", ondelete="CASCADE")
     )
-    file: Mapped["FileModel"] = relationship(back_populates="history_entries")  # noqa: F821
+    file: Mapped["FileModel"] = relationship(
+        back_populates="history_entries"
+    )  # noqa: F821
     timestamp: Mapped[str] = mapped_column(nullable=False)
     event: Mapped[str] = mapped_column(nullable=False)
 

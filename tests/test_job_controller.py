@@ -200,6 +200,8 @@ class TestJobController:
 
     def test_delete_job(self, job_controller, mock_app_state_handlers):
         with patch("aoget.controller.job_controller.get_job_dao") as mock_dao:
+            journal = MagicMock()
+            mock_app_state_handlers.journal_daemon = journal
             job_controller.delete_job("Test Job")
             downloads = mock_app_state_handlers.downloads
             update_cycle = mock_app_state_handlers.update_cycle
@@ -208,6 +210,7 @@ class TestJobController:
             update_cycle.drop_job.assert_called_once_with("Test Job")
             cache.drop_job.assert_called_once_with("Test Job")
             mock_dao.return_value.delete_job_by_name.assert_called_once_with("Test Job")
+            journal.drop_job.assert_called_once_with("Test Job")
 
     def test_delete_job_with_files(
         self, job_controller, mock_app_state_handlers, mock_file_controller
