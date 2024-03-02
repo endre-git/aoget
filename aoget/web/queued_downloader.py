@@ -218,7 +218,7 @@ class QueuedDownloader:
     def __stop_workers(self, sync=False) -> None:
         """Stop the workers by putting None (poison pill) on the queue and joining the threads"""
         for i in self.threads:
-            self.queue.posion_pill()
+            self.queue.poison_pill()
         if sync:
             for t in self.threads:
                 t.join()
@@ -230,7 +230,7 @@ class QueuedDownloader:
         while True:
             try:
                 file_to_download = self.queue.pop_file()
-                if FileQueue.is_posion_pill(file_to_download):
+                if FileQueue.is_poison_pill(file_to_download):
                     logger.debug("Worker received poison pill, stopping.")
                     return
                 logger.debug("Worker took file: %s", file_to_download.name)
@@ -285,7 +285,7 @@ class QueuedDownloader:
         """Kill a thread from the worker pool."""
         self.worker_pool_size -= 1
         if len(self.threads) > 1:
-            self.queue.posion_pill()
+            self.queue.poison_pill()
 
     def set_rate_limit(self, rate_limit_bps: int) -> None:
         """Set the rate limit for the downloaders.
