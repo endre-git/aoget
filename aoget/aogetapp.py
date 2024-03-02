@@ -22,13 +22,6 @@ logger = logging.getLogger(__name__)
 def setup_config():
     try:
         load_config_from_file("config.json")
-        logging.basicConfig(
-            level=(
-                logging.INFO
-                if get_config_value(AppConfig.DEBUG) == "false"
-                else logging.DEBUG
-            )
-        )
         setup_logging()
         suppress_lib_logs()
         url_cache_rel_path = get_config_value(AppConfig.URL_CACHE_FOLDER)

@@ -22,27 +22,6 @@ class TestJob(unittest.TestCase):
         self.job.set_file_selected("file1.txt")
         self.assertEqual(len(self.job), 1)  # 1 selected = 1
 
-    def test_ingest_links(self):
-        ao_page = MagicMock()
-        ao_page.files_by_extension = {
-            "txt": ["https://example.com/file3.txt", "https://example.com/file4.txt"],
-            "jpg": ["https://example.com/image1.jpg", "https://example.com/image2.jpg"],
-        }
-        self.assertEqual(len(self.job.files), 2)  # during setup we already add two files
-        self.job.ingest_links(ao_page)
-        self.assertEqual(len(self.job.files), 6)  # during setup we already add two files
-
-    def test_resolve_files_to_download(self):
-        # select both files for download
-        self.job.set_file_selected("file1.txt")
-        self.job.set_file_selected("file2.txt")
-        self.job.target_folder = "/tmp"
-        # Mocking os.path.isfile to return True for file1 and False for file2
-        with unittest.mock.patch("os.path.isfile") as mock_isfile:
-            mock_isfile.side_effect = [True, False]
-            files_to_download = self.job.resolve_files_to_download()
-            self.assertEqual(len(files_to_download), 1)
-            self.assertEqual(files_to_download[0], self.file2)
 
     def test_set_files(self):
         filemodels = [

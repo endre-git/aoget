@@ -4,7 +4,6 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "name": "Python: AOGet",
             "type": "python",
@@ -15,14 +14,18 @@
             "env": {"PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/aoget/:${workspaceFolder}/aoget/tests/"}
         },
         {
-            "name": "Python: Crawler sample",
+            "name": "Python: Profile AOGet",
             "type": "python",
             "request": "launch",
-            "program": "aoget/web/sample.py",
+            "program": "aoget/aogetapp.py",
+            "args": [
+                "-m",
+                "cProfile",
+                "-o",
+                "${workspaceFolder}/profile_output.prof"
+            ],
             "console": "integratedTerminal",
-            "justMyCode": true,
             "env": {"PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/aoget/:${workspaceFolder}/aoget/tests/"}
-        }
-
+        },
     ]
 }

@@ -17,11 +17,11 @@ class FileQueue(queue.PriorityQueue):
         # it's always discarded
         self.REMOVED = FileModelDTO(job_name="_removed_", name="_removed_", priority=0)
 
-    def is_posion_pill(entry: FileModelDTO) -> bool:
+    def is_poison_pill(entry: FileModelDTO) -> bool:
         """Returns True if the tested entry is a poison pill, False otherwise."""
         return entry.name is not None and entry.name == FileQueue.POISON_PILL.name
 
-    def posion_pill(self) -> None:
+    def poison_pill(self) -> None:
         """Put an entry to the queue which is by convention a poison pill."""
         self.put_file(FileQueue.POISON_PILL)
 
