@@ -156,6 +156,17 @@ class JobUpdates:
             file_event_dto = FileEventDTO(timestamp=timestamp_str(), event=event)
             self.file_event_updates[file_name].append(file_event_dto)
 
+    def add_file_events(self, events: dict) -> None:
+        """Add a list of file events to the journal.
+        :param file_name: The name of the file the events are for
+        :param events: The events to add to the journal in a dictionary with the file
+        name as the key and the event as the value.
+        """
+        with self.lock:
+            for file_name, event in events.items():
+                file_event_dto = FileEventDTO(timestamp=timestamp_str(), event=event)
+                self.file_event_updates[file_name].append(file_event_dto)
+
     def update_file_download_progress(
         self, file_name: str, written: int, total: int
     ) -> None:

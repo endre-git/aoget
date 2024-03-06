@@ -158,6 +158,13 @@ class QueuedDownloader:
             self.job.name, file.name, FileModel.STATUS_QUEUED
         )
 
+    def download_files(self, files: list) -> None:
+        """Download the given files.
+        :param files:
+            The files to download"""
+        self.files_in_queue.extend([file.name for file in files])
+        self.queue.put_all(files)
+
     def cancel_download(self, filename: str) -> None:
         """Cancel the download of the given file.
         :param filename:
@@ -348,6 +355,20 @@ class QueuedDownloader:
             self.signals[filename] = signal
         return signal
 
+    def __requeue_queued_files(self, job_name: str, files: list, file_controller: any) -> None:
+        """Re-queue files that were queued at the last app run. Invoked once, when the app starts."""
+        files_to_queue = []
+        events = {}
+        for file in files.values():
+            if file.status == FileModel.STATUS_QUEUED:
+                logger.debug(
+                    "File %s was queued at last app run, will re-queue now.",
+                    file.name,
+                )
+                events[file.name] = "Re-queued after app-restart."
+        self.download_files(files_to_queue)
+        self.monitor.add_file_events(job_name, events)
+
     def resume_files(self, files: list, file_controller: any, callback: any) -> None:
         """Resume files as per the last app run. Invoked once, when the app starts."""
         job_name = self.job.name
@@ -393,16 +414,8 @@ class QueuedDownloader:
                 )
                 t1 = time.time()
 
-                for file in files.values():
-                    if file.status == FileModel.STATUS_QUEUED:
-                        logger.debug(
-                            "File %s was queued at last app run, will re-queue now.",
-                            file.name,
-                        )
-                        self.monitor.add_file_event(
-                            job_name, file.name, "Re-queued after app-restart."
-                        )
-                        file_controller.start_download(job_name, file.name)
+                # optimization: queued files can be numerous, so we batch-process them
+                self.__requeue_queued_files(job_name, files, file_controller)
                 logger.info(
                     "Finished re-queuing files for job %s in %s",
                     job_name,
