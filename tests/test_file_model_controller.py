@@ -639,3 +639,20 @@ class TestFileModelController:
             job_dao_mock.return_value.get_all_jobs.return_value = [test_job]
             files = file_model_controller.all_files_in_jobs()
             assert len(files) == 3
+
+    def test_get_file_dtos_by_job_id(self, file_model_controller):
+        with patch('aoget.controller.file_model_controller.get_file_model_dao'), patch(
+            'aoget.controller.file_model_controller.get_job_dao'
+        ) as job_dao_mock:
+            test_job = Job(
+                id=-1,
+                name="test_job",
+                status="Not Running",
+                page_url="http://example.com",
+                target_folder="fake_path",
+            )
+
+            file_model_controller.app.cache = AppCache()
+            job_dao_mock.return_value.get_job_by_id.return_value = test_job
+            file_model_controller.get_file_dtos_by_job_id(-1)
+            assert not file_model_controller.app.cache.is_cached_job('test_job')

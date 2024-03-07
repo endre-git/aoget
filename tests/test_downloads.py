@@ -25,7 +25,7 @@ class TestDownloads(unittest.TestCase):
             target_folder="fake_path",
         )
         mock_get_job_dao.return_value.get_job_by_name.return_value = test_job
-        
+
         job_name = "test_job"
         self.downloads.get_downloader(job_name)
         self.assertTrue(job_name in self.downloads.job_downloaders)
@@ -38,7 +38,7 @@ class TestDownloads(unittest.TestCase):
             status="Not Running",
             page_url="http://example.com",
             target_folder="fake_path",
-            threads_allocated=2
+            threads_allocated=2,
         )
         mock_get_job_dao.return_value.get_job_by_name.return_value = test_job
         job_name = "test_job"
@@ -53,7 +53,7 @@ class TestDownloads(unittest.TestCase):
             status="Not Running",
             page_url="http://example.com",
             target_folder="fake_path",
-            threads_allocated=2
+            threads_allocated=2,
         )
         mock_get_job_dao.return_value.get_job_by_name.return_value = test_job
         job_name = "test_job"
@@ -73,7 +73,7 @@ class TestDownloads(unittest.TestCase):
             status="Not Running",
             page_url="http://example.com",
             target_folder="fake_path",
-            threads_allocated=2
+            threads_allocated=2,
         )
         mock_get_job_dao.return_value.get_job_by_name.return_value = test_job
         downloader = self.downloads.get_downloader("test_job")
@@ -109,6 +109,7 @@ class TestDownloads(unittest.TestCase):
         self.downloads.job_downloaders = {"test_job": downloader}
         self.downloads.shutdown_for_job("test_job")
         downloader.shutdown.assert_called()
+
 
 if __name__ == '__main__':
     unittest.main()
