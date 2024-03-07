@@ -82,6 +82,33 @@ class TestDownloads(unittest.TestCase):
         thread_count = self.downloads.get_active_thread_count("test_job")
         assert thread_count == 1  # would be 2, but none running in test
 
+    def test_download_files(self):
+        job_name = "test_job"
+        file_dtos = ["file1", "file2"]
+        downloader = MagicMock()
+        self.downloads.get_downloader = MagicMock(return_value=downloader)
+        self.downloads.download_files(job_name, file_dtos)
+        downloader.download_files.assert_called_with(file_dtos)
+
+    def test_download_file(self):
+        job_name = "test_job"
+        file_dto = MagicMock()
+        downloader = MagicMock()
+        self.downloads.get_downloader = MagicMock(return_value=downloader)
+        self.downloads.download_file(job_name, file_dto)
+        downloader.download_file.assert_called_with(file_dto)
+
+    def test_shutdown_all(self):
+        downloader = MagicMock()
+        self.downloads.job_downloaders = {"test_job": downloader}
+        self.downloads.shutdown_all()
+        downloader.shutdown.assert_called()
+
+    def test_shutdown_for_job(self):
+        downloader = MagicMock()
+        self.downloads.job_downloaders = {"test_job": downloader}
+        self.downloads.shutdown_for_job("test_job")
+        downloader.shutdown.assert_called()
 
 if __name__ == '__main__':
     unittest.main()
