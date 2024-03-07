@@ -27,6 +27,7 @@ class AppConfig:
     OVERWRITE_EXISTING_FILES = "overwrite-existing-files"
     PER_JOB_DEFAULT_THREAD_COUNT = "per-job-default-thread-count"
     URL_CACHE_ENABLED = "url-cache-enabled"
+    DOWNLOAD_RETRY_ATTEMPTS = "download-retry-attempts"
 
     app_config = {}
 
@@ -50,6 +51,7 @@ class AppConfig:
         OVERWRITE_EXISTING_FILES: True,
         PER_JOB_DEFAULT_THREAD_COUNT: 3,
         URL_CACHE_ENABLED: True,
+        DOWNLOAD_RETRY_ATTEMPTS: 5,
     }
 
     JOB_NAMING_STRATEGY = {

@@ -11,7 +11,7 @@
     "default-download-folder": "C:\\AoGet",
     "low-bandwidth-limit": 100,
     "medium-bandwidth-limit": 1024,
-    "high-bandwidth-limit": 5120,
+    "high-bandwidth-limit": 5192,
     "job-autonaming-pattern": "url",
     "job-subfolder-policy": "per-job",
     "per-job-default-thread-count": 10,

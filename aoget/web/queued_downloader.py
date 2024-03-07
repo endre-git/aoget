@@ -83,6 +83,7 @@ class QueuedDownloader:
         job: JobDTO,
         monitor: JournalDaemon,  # Blank monitor suppresses progress reporting
         worker_pool_size: int = 3,
+        download_retry_attempts: int = 5,
     ):
         """Create a download queue for a job.
         :param job:
@@ -95,6 +96,7 @@ class QueuedDownloader:
         self.job = job
         self.monitor = monitor
         self.worker_pool_size = worker_pool_size
+        self.download_retry_attempts = download_retry_attempts
         self.queue = FileQueue()
         self.threads = []
         self.signals = {}
@@ -313,7 +315,7 @@ class QueuedDownloader:
             local_path=os.path.join(self.job.target_folder, file_to_download.name),
             signals=signal,
             file_size=file_size,
-            attempts=5,
+            attempts=self.download_retry_attempts,
         )
         logger.debug("Worker finished with file: %s", file_to_download.name)
         self.__post_download(file_to_download, new_status=result_state)
