@@ -309,10 +309,11 @@ class QueuedDownloader:
             if file_to_download.name in self.resolved_file_sizes:
                 file_size = self.resolved_file_sizes[file_to_download.name]
         result_state = download_file(
-            file_to_download.url,
-            os.path.join(self.job.target_folder, file_to_download.name),
-            signal,
-            file_size,
+            url=file_to_download.url,
+            local_path=os.path.join(self.job.target_folder, file_to_download.name),
+            signals=signal,
+            file_size=file_size,
+            attempts=5,
         )
         logger.debug("Worker finished with file: %s", file_to_download.name)
         self.__post_download(file_to_download, new_status=result_state)
