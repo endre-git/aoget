@@ -211,7 +211,7 @@ class MainWindow(QMainWindow):
     def close_app(self):
         if confirmation_dialog(
             self,
-            "Are you sure you want to quit? All downloads will be stopped.",
+            "Are you sure you want to quit?",
             "Quit?",
         ):
             self.shutdown_overlay.show()

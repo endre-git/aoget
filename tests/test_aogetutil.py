@@ -62,6 +62,13 @@ class TestAogetutil(unittest.TestCase):
         result = dehumanized_filesize(file_size_str)
         self.assertEqual(result, expected_result)
 
+        # Test case for a human readable filesize of 462 bytes
+        file_size_str = "462.0B"
+        expected_result = 462
+        result = dehumanized_filesize(file_size_str)
+        self.assertEqual(result, expected_result)
+
+
         # Test case for a human readable filesize of 1 kilobyte
         file_size_str = "1KB"
         expected_result = 1024
