@@ -75,8 +75,8 @@ class JobController:
 
     def start_job(self, job_name: str) -> None:
         """Start the given job"""
-        for file_dto in self.files.get_selected_file_dtos(job_name).values():
-            self.files.start_download_file_dto(job_name, file_dto)
+        file_dtos = self.files.get_selected_file_dtos(job_name).values()
+        self.files.start_download_file_dtos(job_name, file_dtos)
 
     def stop_job(self, job_name: str) -> None:
         """Stop the given job"""

@@ -91,6 +91,10 @@ class Downloads:
                 threads_active=downloader.get_active_thread_count(),
             )
 
+    def download_files(self, job_name: str, file_dtos: list) -> None:
+        """Download the given files."""
+        self.get_downloader(job_name).download_files(file_dtos)
+
     def download_file(self, job_name: str, file_dto: FileModelDTO) -> None:
         """Download the given file."""
         self.get_downloader(job_name).download_file(file_dto)

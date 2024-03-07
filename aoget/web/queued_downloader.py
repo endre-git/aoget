@@ -140,15 +140,9 @@ class QueuedDownloader:
         self.size_resolver_cancelled = True
         self.files_in_queue.clear()
         if len(self.files_downloading) > 0:
-            wait_events = []
             signals = self.signals.values()
             for signal in signals:
-                wait_event = threading.Event()
-                signal.register_status_listener(wait_event, FileModel.STATUS_STOPPED)
                 signal.cancel(shutdown=True)
-                wait_events.append(wait_event)
-            for event in wait_events:
-                event.wait(2)
 
     def download_file(self, file: FileModelDTO) -> None:
         """Download the given file.
@@ -364,7 +358,7 @@ class QueuedDownloader:
             self.signals[filename] = signal
         return signal
 
-    def __requeue_queued_files(self, job_name: str, files: list, file_controller: any) -> None:
+    def __requeue_queued_files(self, job_name: str, files: list) -> None:
         """Re-queue files that were queued at the last app run. Invoked once, when the app starts."""
         files_to_queue = []
         events = {}
@@ -425,7 +419,7 @@ class QueuedDownloader:
                 t1 = time.time()
 
                 # optimization: queued files can be numerous, so we batch-process them
-                self.__requeue_queued_files(job_name, files, file_controller)
+                self.__requeue_queued_files(job_name, files)
                 logger.info(
                     "Finished re-queuing files for job %s in %s",
                     job_name,

@@ -122,9 +122,7 @@ class TestJobController:
         }
         job_controller.start_job("Test Job")
         mock_file_controller.get_selected_file_dtos.assert_called_once_with("Test Job")
-        mock_file_controller.start_download_file_dto.assert_called_once_with(
-            "Test Job", file_dto
-        )
+        mock_file_controller.start_download_file_dtos.assert_called_once()
 
     def test_stop_job(
         self, job_controller, mock_app_state_handlers, mock_file_controller
@@ -206,7 +204,7 @@ class TestJobController:
             downloads = mock_app_state_handlers.downloads
             update_cycle = mock_app_state_handlers.update_cycle
             cache = mock_app_state_handlers.cache
-            downloads.kill_for_job.assert_called_once_with("Test Job")
+            downloads.shutdown_for_job.assert_called_once_with("Test Job")
             update_cycle.drop_job.assert_called_once_with("Test Job")
             cache.drop_job.assert_called_once_with("Test Job")
             mock_dao.return_value.delete_job_by_name.assert_called_once_with("Test Job")
@@ -261,7 +259,7 @@ class TestJobController:
             ),)
 
             # mock_os_remove.assert_called_once_with("fake_path")
-            downloads.kill_for_job.assert_called_once_with("Test Job")
+            downloads.shutdown_for_job.assert_called_once_with("Test Job")
             update_cycle.drop_job.assert_called_once_with("Test Job")
             cache.drop_job.assert_called_once_with("Test Job")
             mock_dao.return_value.delete_job_by_name.assert_called_once_with("Test Job")
