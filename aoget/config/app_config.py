@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-VERSION = "0.9.0"
+VERSION = "0.9.1"
 
 
 class AppConfig:

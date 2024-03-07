@@ -67,13 +67,17 @@ def dehumanized_filesize(file_size_str: str) -> int:
     suffixes = ["KB", "MB", "GB", "TB"]
     file_size_str = file_size_str.strip()
     # if the last two characters are not digits:
-    if len(file_size_str) > 2 and not file_size_str[-2:].isdigit():
+    if (
+        len(file_size_str) > 2
+        and not file_size_str[-2].isdigit()
+        and not file_size_str[-1].isdigit()
+    ):
         for i, suffix in enumerate(suffixes):
             if file_size_str.endswith(suffix):
-                return int(float(file_size_str[:-len(suffix)]) * (1024 ** (i+1)))
+                return int(float(file_size_str[: -len(suffix)]) * (1024 ** (i + 1)))
     elif len(file_size_str) >= 2 and file_size_str.endswith("B"):
-        return int(file_size_str[:-1])
-    return int(file_size_str)
+        return int(float(file_size_str[:-1]))
+    return int(float(file_size_str))
 
 
 def human_rate(rate_bytes_per_second: float) -> str:
