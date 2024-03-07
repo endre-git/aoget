@@ -136,7 +136,7 @@ class JobController:
             Whether to delete the files from disk"""
         messages = []
         t0 = time.time()
-        self.app.downloads.kill_for_job(job_name)
+        self.app.downloads.shutdown_for_job(job_name)
         logger.info("Stopping downloader took %s seconds.", time.time() - t0)
         t0 = time.time()
 
