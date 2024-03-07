@@ -58,3 +58,39 @@ class TestJournalDaemon:
         daemon.update_download_progress("job1", "file1", 500, 1000)
         daemon.drop_job("job1")
         assert "job1" not in daemon._JournalDaemon__journal
+
+    def test_add_file_event(self, daemon):
+        daemon.add_file_event("job1", "file1", "Completed downloading.")
+        assert (
+            daemon._JournalDaemon__journal["job1"]
+            .file_event_updates["file1"][0]
+            .event
+            == "Completed downloading."
+        )
+
+    def test_add_file_events(self, daemon):
+        events = {
+            "file1": "Started downloading.",
+            "file2": "Completed downloading.",
+        }
+        daemon.add_file_events("job1", events)
+        assert (
+            daemon._JournalDaemon__journal["job1"]
+            .file_event_updates["file1"][0]
+            .event
+            == "Started downloading."
+        )
+        assert (
+            daemon._JournalDaemon__journal["job1"]
+            .file_event_updates["file2"][0]
+            .event
+            == "Completed downloading."
+        )
+
+    def test_update_job_files_done(self, daemon):
+        daemon.update_job_files_done("job1", 10)
+        assert daemon._JournalDaemon__journal["job1"].job_update.files_done == 10
+
+    def test_update_job_donwloaded_bytes(self, daemon):
+        daemon.update_job_downloaded_bytes("job1", 1000)
+        assert daemon._JournalDaemon__journal["job1"].job_update.downloaded_bytes == 1000

@@ -174,7 +174,9 @@ class FileModelController:
             )
             self.app.cache.set_cached_files(job.name, selected_files)
 
-    def update_selected_files_of_job(self, job_id: int, file_dtos_by_name: dict) -> None:
+    def update_selected_files_of_job(
+        self, job_id: int, file_dtos_by_name: dict
+    ) -> None:
         """Update selected files"""
         with self.db_lock:
             job = get_job_dao().get_job_by_id(job_id)
@@ -419,13 +421,25 @@ class FileModelController:
                 file_name=file_dto.name, status=FileModel.STATUS_QUEUED
             )
 
+    def start_download_file_dtos(self, job_name: str, file_dtos: list) -> None:
+        """Download the files in the given job which are not already running,
+        completed or queued."""
+        non_running_file_dtos = list(
+            filter(
+                lambda file: file.status
+                not in [
+                    FileModel.STATUS_DOWNLOADING,
+                    FileModel.STATUS_COMPLETED,
+                    FileModel.STATUS_QUEUED,
+                ],
+                file_dtos,
+            )
+        )
+        self.app.downloads.download_files(job_name, non_running_file_dtos)
+
     def stop_download_file_dto(self, job_name: str, file_dto: FileModelDTO) -> None:
         """Stop the download of the given file in the given job"""
         if file_dto.status == FileModel.STATUS_DOWNLOADING:
-            self.stop_download(
-                job_name, file_dto.name, add_to_journal=False
-            )
+            self.stop_download(job_name, file_dto.name, add_to_journal=False)
         elif file_dto.status == FileModel.STATUS_QUEUED:
-            self.stop_download(
-                job_name, file_dto.name, add_to_journal=True
-            )
+            self.stop_download(job_name, file_dto.name, add_to_journal=True)

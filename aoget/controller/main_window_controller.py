@@ -104,4 +104,4 @@ class MainWindowController:
 
     def shutdown(self) -> None:
         """Shutdown the controller"""
-        self.handlers.downloads.kill_all()
+        self.handlers.downloads.shutdown_all()

@@ -65,3 +65,16 @@ def test_cancel_download(queued_downloader, file_model_dto):
     queued_downloader.cancel_download(file_model_dto.name)
     assert file_model_dto.name not in queued_downloader.files_in_queue
 
+
+def test_download_files(queued_downloader, file_model_dto):
+    queued_downloader.download_files([file_model_dto])
+    queued_downloader.queue.poison_pill()
+    queued_downloader.start_download_threads()
+    queued_downloader.stop()
+
+
+def test_update_priority(queued_downloader, file_model_dto):
+    queued_downloader.download_file(file_model_dto)
+    file_model_dto.priority = 1
+    queued_downloader.update_priority(file_model_dto)
+    assert queued_downloader.queue.pop_file().priority == 1

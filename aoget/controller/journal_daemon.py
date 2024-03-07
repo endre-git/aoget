@@ -93,6 +93,15 @@ class JournalDaemon:
         with self.__lock:
             self.__journal_of_job(jobname).update_file_size(filename, size)
 
+    def add_file_events(self, jobname: str, events: dict) -> None:
+        """Add events to the given filename.
+        :param jobname:
+            The name of the job
+        :param events:
+            The events to add in a dict of filename: event list pairs"""
+        with self.__lock:
+            self.__journal_of_job(jobname).add_file_events(events)
+
     def add_file_event(self, jobname: str, filename: str, event: str) -> None:
         """Add an event to the given filename.
         :param jobname:

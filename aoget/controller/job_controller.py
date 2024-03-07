@@ -75,8 +75,8 @@ class JobController:
 
     def start_job(self, job_name: str) -> None:
         """Start the given job"""
-        for file_dto in self.files.get_selected_file_dtos(job_name).values():
-            self.files.start_download_file_dto(job_name, file_dto)
+        file_dtos = self.files.get_selected_file_dtos(job_name).values()
+        self.files.start_download_file_dtos(job_name, file_dtos)
 
     def stop_job(self, job_name: str) -> None:
         """Stop the given job"""
@@ -136,7 +136,7 @@ class JobController:
             Whether to delete the files from disk"""
         messages = []
         t0 = time.time()
-        self.app.downloads.kill_for_job(job_name)
+        self.app.downloads.shutdown_for_job(job_name)
         logger.info("Stopping downloader took %s seconds.", time.time() - t0)
         t0 = time.time()
 

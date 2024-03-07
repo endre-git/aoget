@@ -1,4 +1,5 @@
 import queue
+from typing import List
 from model.dto.file_model_dto import FileModelDTO
 
 
@@ -25,12 +26,17 @@ class FileQueue(queue.PriorityQueue):
         """Put an entry to the queue which is by convention a poison pill."""
         self.put_file(FileQueue.POISON_PILL)
 
+    def put_all(self, files: List[FileModelDTO]) -> None:
+        """Put all files into the queue with the given priority.
+        :param files:
+            The files to put into the queue"""
+        for file in files:
+            self.put_file(file)
+
     def put_file(self, file: FileModelDTO) -> None:
-        """Put a file into the queue with the given priority.
+        """Put a file into the queue.
         :param file:
-            The file to put into the queue
-        :param priority:
-            The priority of the file"""
+            The file to put into the queue"""
         if file is None:
             raise ValueError(
                 "Can't add None to this queue. Use .poison_pill() instead."

@@ -17,16 +17,16 @@ class Downloads:
         # can be disabled for testing
         self.start_download_threads = True
 
-    def kill_for_job(self, job_name: str) -> None:
+    def shutdown_for_job(self, job_name: str) -> None:
         """Kill the download of the given job if it exists."""
         if job_name in self.job_downloaders:
-            self.job_downloaders[job_name].kill()
+            self.job_downloaders[job_name].shutdown()
             self.job_downloaders.pop(job_name)
 
-    def kill_all(self) -> None:
+    def shutdown_all(self) -> None:
         """Kill all downloads."""
         for job_name in list(self.job_downloaders.keys()):
-            self.kill_for_job(job_name)
+            self.shutdown_for_job(job_name)
 
     def is_running_for_job(self, job_name: str) -> bool:
         """Check if the download of the given job is running."""
@@ -90,6 +90,10 @@ class Downloads:
                 threads_allocated=worker_pool_size,
                 threads_active=downloader.get_active_thread_count(),
             )
+
+    def download_files(self, job_name: str, file_dtos: list) -> None:
+        """Download the given files."""
+        self.get_downloader(job_name).download_files(file_dtos)
 
     def download_file(self, job_name: str, file_dto: FileModelDTO) -> None:
         """Download the given file."""

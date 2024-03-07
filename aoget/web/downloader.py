@@ -61,9 +61,15 @@ class DownloadSignals(ABC):
             The event that occurred"""
         pass
 
-    def cancel(self) -> None:
-        """Cancel the download."""
+    def cancel(self, shutdown: bool = False) -> None:
+        """Cancel the download.
+        Parameters:
+        ----------
+        shutdown: bool
+            Metadata. Indicates whether this cancellation happens as part of
+            downloader (application) shutdown."""
         self.cancelled = True
+        self.shutdown = shutdown
 
     def set_rate_limit(self, rate_limit_bps: int) -> None:
         """Set the rate limit in bytes per second.
