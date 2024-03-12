@@ -196,7 +196,8 @@ def download_file(
             if result != STATUS_FAILED:
                 return result
         except Exception as e:
-            logger.error(f"Downloading {url} failed in attempt #{current_attempt + 1}: {e}", e)
+            logger.error(f"Downloading {url} failed in attempt #{current_attempt + 1}: {e}")
+            logger.exception(e)
             signals.on_event(f"Download attempt {current_attempt + 1} failed: {e}")
         current_attempt += 1
 
