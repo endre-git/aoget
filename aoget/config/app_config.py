@@ -27,6 +27,7 @@ class AppConfig:
     OVERWRITE_EXISTING_FILES = "overwrite-existing-files"
     PER_JOB_DEFAULT_THREAD_COUNT = "per-job-default-thread-count"
     URL_CACHE_ENABLED = "url-cache-enabled"
+    DOWNLOAD_RETRY_ATTEMPTS = "download-retry-attempts"
 
     app_config = {}
 
@@ -42,7 +43,7 @@ class AppConfig:
         CRASH_LOG_FILE_PATH: "crash.log",
         DEFAULT_DOWNLOAD_FOLDER: os.path.join(os.path.expanduser("~"), "Downloads"),
         AUTO_START_JOBS: True,
-        JOB_AUTONAMING_PATTERN: "{title}",
+        JOB_AUTONAMING_PATTERN: "title",
         JOB_SUBFOLDER_POLICY: "per-job",
         LOW_BANDWIDTH_LIMIT: 100,
         MEDIUM_BANDWIDTH_LIMIT: 1000,
@@ -50,6 +51,7 @@ class AppConfig:
         OVERWRITE_EXISTING_FILES: True,
         PER_JOB_DEFAULT_THREAD_COUNT: 3,
         URL_CACHE_ENABLED: True,
+        DOWNLOAD_RETRY_ATTEMPTS: 5,
     }
 
     JOB_NAMING_STRATEGY = {
@@ -97,9 +99,8 @@ def set_config_value(key: str, value: any, save: bool = False):
         save_config_to_file()
 
 
-def save_config_to_file():
+def save_config_to_file(config_file: str = "config.json"):
     """Save the current configuration to the config file."""
-    config_file = "config.json"
     logger.info(f"Saving config to file: '{config_file}'.")
     with open(config_file, 'w') as file:
         json.dump(AppConfig.app_config, file, indent=4)
@@ -115,15 +116,14 @@ def load_config_from_file(filename: str) -> dict:
         with open(filename, 'r') as config_file:
             app_config = json.load(config_file)
             AppConfig.app_config = app_config
-        validate()
+        validate(filename)
     except FileNotFoundError as e:
         logger.error(f"Config file '{filename}' not found.")
         raise FileNotFoundError(f"Config file '{filename}' not found.") from e
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON format in config: {e}")
-        raise json.JSONDecodeError(
-            f"Invalid JSON format in config: {e}"
-        ) from e
+        e.msg = f"Invalid JSON format in config: {e.msg}"
+        raise e
     except Exception as e:
         logger.error(f"Error loading config: {e}")
         raise Exception(f"Error loading config: {e}") from e
@@ -171,7 +171,7 @@ def validate_bandwidth_config():
         )
 
 
-def validate():
+def validate(filename: str):
     debug = get_config_value(AppConfig.DEBUG)
     if debug is None:
         debug = False
@@ -181,7 +181,7 @@ def validate():
             f"Invalid value for {AppConfig.DEBUG} in the current configuration: {debug} Must be 'true' or 'false'."
         )
     if not os.path.exists(get_config_value(AppConfig.SETTINGS_FOLDER)):
-        os.path.mkdirs(get_config_value(AppConfig.SETTINGS_FOLDER))
+        os.makedirs(get_config_value(AppConfig.SETTINGS_FOLDER))
         logger.info(
             "Created settings folder: " + get_config_value(AppConfig.SETTINGS_FOLDER)
         )
@@ -212,4 +212,4 @@ def validate():
         url_cache_enabled = True
         set_config_value(AppConfig.URL_CACHE_ENABLED, url_cache_enabled)
 
-    save_config_to_file()  # defaults filled in, let's save it
+    save_config_to_file(filename)  # defaults filled in, let's save it

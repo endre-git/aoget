@@ -110,6 +110,11 @@ class TestDownloads(unittest.TestCase):
         self.downloads.shutdown_for_job("test_job")
         downloader.shutdown.assert_called()
 
+    def test_set_retry_attempts(self):
+        self.downloads.set_retry_attempts(9)
+        for downloader in self.downloads.job_downloaders.values():
+            downloader.set_retry_attempts.assert_called_with(9)
+
 
 if __name__ == '__main__':
     unittest.main()

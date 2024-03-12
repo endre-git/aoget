@@ -235,8 +235,9 @@ class MainWindow(QMainWindow):
 
     def open_settings(self):
         dlg = AppSettingsDialog()
-        dlg.exec()
-        self.__setup_bandwidth_limit_menu()
+        if dlg.exec():
+            self.__setup_bandwidth_limit_menu()
+            self.controller.actualize_config()
 
     def open_github_page(self):
         QDesktopServices.openUrl(QUrl("https://github.com/endre-git/aoget/"))

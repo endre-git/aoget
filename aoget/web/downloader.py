@@ -128,11 +128,7 @@ def __downloader(
             chunk_size = len(chunk)
             written += chunk_size
 
-            if (
-                signals
-                and signals.rate_limit_bps
-                and signals.rate_limit_bps > 0
-            ):
+            if signals and signals.rate_limit_bps and signals.rate_limit_bps > 0:
                 time_to_sleep = chunk_size / signals.rate_limit_bps
                 if time_to_sleep <= 1:
                     time.sleep(chunk_size / signals.rate_limit_bps)
@@ -177,6 +173,40 @@ def __downloader(
 
 
 def download_file(
+    url: str,
+    local_path: str,
+    signals: DownloadSignals = None,
+    attempts: int = 5,
+    file_size: int = -1,
+) -> str:
+    """Download a file from the internet.
+    Parameters
+    ----------
+    url: str
+        Remote resource (file) url
+    local_path: str
+        Local path where to store the file
+    progress_observer: ProgressObserver
+        Observer for download progress
+    """
+    current_attempt = 0
+    while current_attempt < attempts:
+        try:
+            result = __attempt_download_file(url, local_path, signals, file_size)
+            if result != STATUS_FAILED:
+                return result
+        except Exception as e:
+            logger.error(f"Downloading {url} failed in attempt #{current_attempt + 1}: {e}")
+            logger.exception(e)
+            signals.on_event(f"Download attempt {current_attempt + 1} failed: {e}")
+        current_attempt += 1
+
+    logger.error(f"Downloading {url} failed after {attempts} attempts, giving up.")
+    signals.on_event(f"Retries exceeded ({attempts}), giving up.")
+    return STATUS_FAILED
+
+
+def __attempt_download_file(
     url: str, local_path: str, signals: DownloadSignals = None, file_size: int = -1
 ) -> str:
     """Execute the correct download operation.

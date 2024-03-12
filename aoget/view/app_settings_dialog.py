@@ -7,6 +7,7 @@ from config.app_config import (
     set_config_value,
     get_config_value,
     save_config_to_file,
+    load_config_from_file
 )
 from view import ERROR_TEXT_STYLE, DEFAULT_TEXT_STYLE
 
@@ -61,7 +62,7 @@ class AppSettingsDialog(QDialog):
         )
         self.spinHighBandwidth.valueChanged.connect(
             lambda: set_config_value(
-                AppConfig.HIGH_BANDWIDTH_LIMIT, self.spinHighBandwidth.value(), True
+                AppConfig.HIGH_BANDWIDTH_LIMIT, self.spinHighBandwidth.value()
             )
         )
         self.spinMediumBandwidth.setValue(
@@ -70,8 +71,7 @@ class AppSettingsDialog(QDialog):
         self.spinMediumBandwidth.valueChanged.connect(
             lambda: set_config_value(
                 AppConfig.MEDIUM_BANDWIDTH_LIMIT,
-                self.spinMediumBandwidth.value(),
-                True,
+                self.spinMediumBandwidth.value()
             )
         )
         self.spinLowBandwidth.setValue(
@@ -79,7 +79,7 @@ class AppSettingsDialog(QDialog):
         )
         self.spinLowBandwidth.valueChanged.connect(
             lambda: set_config_value(
-                AppConfig.LOW_BANDWIDTH_LIMIT, self.spinLowBandwidth.value(), True
+                AppConfig.LOW_BANDWIDTH_LIMIT, self.spinLowBandwidth.value()
             )
         )
         self.spinThreadsPerJob.setValue(
@@ -88,14 +88,23 @@ class AppSettingsDialog(QDialog):
         self.spinThreadsPerJob.valueChanged.connect(
             lambda: set_config_value(
                 AppConfig.PER_JOB_DEFAULT_THREAD_COUNT,
-                self.spinThreadsPerJob.value(),
+                self.spinThreadsPerJob.value()
+            )
+        )
+        self.spinRetriesPerFile.setValue(
+            int(get_config_value(AppConfig.DOWNLOAD_RETRY_ATTEMPTS))
+        )
+        self.spinRetriesPerFile.valueChanged.connect(
+            lambda: set_config_value(
+                AppConfig.DOWNLOAD_RETRY_ATTEMPTS,
+                self.spinRetriesPerFile.value(),
                 True,
             )
         )
         self.chkJobAutoStart.setChecked(get_config_value(AppConfig.AUTO_START_JOBS))
         self.chkJobAutoStart.clicked.connect(
             lambda: set_config_value(
-                AppConfig.AUTO_START_JOBS, self.chkJobAutoStart.isChecked(), True
+                AppConfig.AUTO_START_JOBS, self.chkJobAutoStart.isChecked()
             )
         )
         self.chkOverwriteFiles.setChecked(
@@ -111,10 +120,16 @@ class AppSettingsDialog(QDialog):
         self.chkUrlCaching.setChecked(get_config_value(AppConfig.URL_CACHE_ENABLED))
         self.chkUrlCaching.clicked.connect(
             lambda: set_config_value(
-                AppConfig.URL_CACHE_ENABLED, self.chkUrlCaching.isChecked(), True
+                AppConfig.URL_CACHE_ENABLED, self.chkUrlCaching.isChecked()
             )
         )
         self.txtTargetFolder.textChanged.connect(self.__on_target_folder_updated)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).clicked.connect(
+            self.__on_ok_clicked
+        )
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(
+            self.__on_cancel_clicked
+        )
 
     def __on_target_folder_updated(self):
         if not os.path.isabs(self.txtTargetFolder.text()):
@@ -130,7 +145,6 @@ class AppSettingsDialog(QDialog):
             set_config_value(
                 AppConfig.DEFAULT_DOWNLOAD_FOLDER,
                 self.txtTargetFolder.text(),
-                save=True
             )
 
     def __browse_target_folder(self):
@@ -143,18 +157,25 @@ class AppSettingsDialog(QDialog):
         file = QDir.toNativeSeparators(file)
         self.txtTargetFolder.setText(file)
         set_config_value(AppConfig.DEFAULT_DOWNLOAD_FOLDER, file)
-        save_config_to_file()
 
     def __job_naming_strategy_changed(self, index: int):
         """Handle the change of the job naming strategy."""
         set_config_value(
             AppConfig.JOB_AUTONAMING_PATTERN, AppConfig.JOB_NAMING_STRATEGY[index]
         )
-        save_config_to_file()
 
     def __job_folder_strategy_changed(self, index: int):
         """Handle the change of the job folder strategy."""
         set_config_value(
             AppConfig.JOB_SUBFOLDER_POLICY, AppConfig.JOB_FOLDER_STRATEGY[index]
         )
+
+    def __on_ok_clicked(self):
+        """Handle the OK button click."""
         save_config_to_file()
+        self.accept()
+
+    def __on_cancel_clicked(self):
+        """Handle the cancel button click."""
+        load_config_from_file("config.json")
+        self.reject()

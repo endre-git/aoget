@@ -78,10 +78,12 @@ class Downloads:
                 if job_dto.threads_allocated
                 else get_config_value(AppConfig.PER_JOB_DEFAULT_THREAD_COUNT)
             )
+            retry_attempts = get_config_value(AppConfig.DOWNLOAD_RETRY_ATTEMPTS)
             downloader = QueuedDownloader(
                 job=job_dto,
                 monitor=app.journal_daemon,
                 worker_pool_size=worker_pool_size,
+                download_retry_attempts=retry_attempts,
             )
             self.job_downloaders[job_name] = downloader
             if self.start_download_threads:
@@ -138,3 +140,8 @@ class Downloads:
     def get_all_active_job_names(self) -> list:
         """Get all active job names"""
         return list(self.job_downloaders.keys())
+
+    def set_retry_attempts(self, retry_attempts: int) -> None:
+        """Set the retry attempts for all downloaders"""
+        for downloader in self.job_downloaders.values():
+            downloader.download_retry_attempts = retry_attempts

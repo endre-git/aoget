@@ -27,7 +27,7 @@ class MainWindowController:
         self.jobs = JobController(
             app_state_handlers=app_state_handlers,
             resume_callback=self.main_window.job_resumed_signal,
-            message_callback=self.main_window.message_signal
+            message_callback=self.main_window.message_signal,
         )
         self.files = FileModelController(app_state_handlers=app_state_handlers)
         self.update_cycle = app_state_handlers.update_cycle
@@ -89,6 +89,12 @@ class MainWindowController:
     def set_global_bandwidth_limit(self, rate_limit_bps: int) -> None:
         """Set the global bandwidth limit"""
         self.handlers.rate_limiter.set_global_rate_limit(rate_limit_bps)
+
+    def actualize_config(self) -> None:
+        """Apply the configuration as it is in the current state of AppConfig"""
+        self.handlers.downloads.set_retry_attempts(
+            get_config_value(AppConfig.DOWNLOAD_RETRY_ATTEMPTS)
+        )
 
     def on_resolver_finished(self, job_name: str) -> None:
         """Called when a resolver has finished"""

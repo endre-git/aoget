@@ -13,6 +13,9 @@ class TestProgressObserver(DownloadSignals):
     def on_update_progress(self, written: int, total: int) -> None:
         pass
 
+    def on_event(self, event: str) -> None:
+        self.event = event
+
 
 class TestDownloader(unittest.TestCase):
     def setUp(self):
@@ -87,6 +90,64 @@ class TestDownloader(unittest.TestCase):
 
         result = validate_file(self.local_path, expected_hash)
         self.assertFalse(result)
+
+    def test_download_file_already_downloaded(self):
+        progress_observer = TestProgressObserver()
+        with patch("aoget.web.downloader.requests") as mock_requests:
+            mock_head = MagicMock()
+            mock_head.headers = {"content-length": str(self.file_size)}
+            mock_requests.head.return_value = mock_head
+            mock_get = MagicMock()
+            mock_get.iter_content.return_value = [b"chunk1", b"chunk2"]
+            mock_requests.get.return_value = mock_get
+
+            download_file(self.url, self.local_path, progress_observer)
+
+            file = Path(self.local_path)
+            self.assertTrue(file.exists())
+            self.assertEqual(file.stat().st_size, self.file_size)
+
+            # Call the download_file method again
+            download_file(self.url, self.local_path, progress_observer)
+
+            # Assert that the file size is still the same
+            self.assertEqual(file.stat().st_size, self.file_size)
+            self.assertEqual(progress_observer.event, "File was already on disk and complete.")
+
+    def test_five_attempts(self):
+        progress_observer = TestProgressObserver()
+        with patch("aoget.web.downloader.requests") as mock_requests:
+            mock_head = MagicMock()
+            mock_head.headers = {"content-length": str(self.file_size)}
+            mock_requests.head.return_value = mock_head
+
+            mock_get = MagicMock()
+            mock_get.iter_content.return_value = [b"chunk1", b"chunk2"]
+            mock_requests.get.return_value = mock_get
+
+            # Create a partially downloaded file
+            file = Path(self.local_path)
+            with file.open("wb") as f:
+                f.write(b"partial_data")
+
+            # Mock the __download_attempt method to raise an exception 4 times
+            with patch(
+                "aoget.web.downloader.__attempt_download_file"
+            ) as mock_download_attempt:
+                mock_download_attempt.side_effect = [Exception("error")] * 4
+
+                # Call the download_file method
+                download_file(self.url, self.local_path, progress_observer)
+
+                # Assert that the __download_attempt method was called 5 times
+                self.assertEqual(mock_download_attempt.call_count, 5)
+
+            # Assert that the file size is still the same as the partial download
+            self.assertEqual(file.stat().st_size, len(b"partial_data"))
+
+            # Assert that the file content is still the same as the partial download
+            with file.open("rb") as f:
+                self.assertEqual(f.read(), b"partial_data")
 
     def test_cycle_timings_1(self):
         written = 100
