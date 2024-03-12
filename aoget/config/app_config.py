@@ -43,7 +43,7 @@ class AppConfig:
         CRASH_LOG_FILE_PATH: "crash.log",
         DEFAULT_DOWNLOAD_FOLDER: os.path.join(os.path.expanduser("~"), "Downloads"),
         AUTO_START_JOBS: True,
-        JOB_AUTONAMING_PATTERN: "{title}",
+        JOB_AUTONAMING_PATTERN: "title",
         JOB_SUBFOLDER_POLICY: "per-job",
         LOW_BANDWIDTH_LIMIT: 100,
         MEDIUM_BANDWIDTH_LIMIT: 1000,
