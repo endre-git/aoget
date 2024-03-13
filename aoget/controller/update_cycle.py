@@ -249,7 +249,7 @@ class UpdateCycle:
             job_updates.job_update.status = derived_status
 
     def __update_calculated_job_fields(self, job: Job, job_updates: JobUpdates) -> None:
-        """Update the cached fields of the job object both in DB and in cached DTO."""
+        """Update the cached fields of the job object both the model and the DTO."""
         # back-populate cached fields to job update DTO for UI display
         job_updates.job_update.total_size_bytes = job.total_size_bytes
         job_updates.job_update.selected_files_with_known_size = (
@@ -259,7 +259,12 @@ class UpdateCycle:
 
         # downloaded bytes is a cache field, so we need to update it in the job object
         downloaded_bytes = (
-            get_file_model_dao().get_total_downloaded_bytes_for_job(job.id) or 0
+            # sum up the downloaded bytes of all files in cache
+            sum(
+                file.downloaded_bytes
+                for file in self.app.cache.get_cached_files(job.name).values()
+                if file.downloaded_bytes is not None
+            )
         )
         job.downloaded_bytes = downloaded_bytes
         job_updates.job_update.downloaded_bytes = downloaded_bytes
@@ -269,7 +274,12 @@ class UpdateCycle:
 
         # downloaded files count
         completed_files = (
-            get_file_model_dao().get_completed_file_count_for_job_id(job.id) or 0
+            # count the files that are completed in cache
+            sum(
+                1
+                for file in self.app.cache.get_cached_files(job.name).values()
+                if file.status == FileModel.STATUS_COMPLETED
+            )
         )
         job_updates.job_update.files_done = completed_files
         self.__infer_job_status(job, job_updates)

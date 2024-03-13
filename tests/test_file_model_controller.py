@@ -751,5 +751,7 @@ class TestFileModelController:
             file_model_controller.stop_download_file_dtos(
                 "test_job", [file_dto_1, file_dto_2, file_dto_3]
             )
-            dl.dequeue_files.assert_called_once_with("test_job", [file_dto_2, file_dto_3])
+            dl.dequeue_files.assert_called_once_with(
+                "test_job", [file_dto_2, file_dto_3]
+            )
             dl.stop_active_downloads.assert_called_once_with("test_job", [file_dto_1])
