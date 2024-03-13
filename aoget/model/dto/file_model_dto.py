@@ -70,7 +70,7 @@ class FileModelDTO:
             last_event_timestamp=file_model.get_latest_history_timestamp(),
             last_event=file_model.get_latest_history_entry().event,
             target_path=file_model.get_target_path(),
-            priority=file_model.priority
+            priority=file_model.priority,
         )
         file_model_dto.set_percent_completed()
         return file_model_dto
@@ -94,38 +94,64 @@ class FileModelDTO:
             "deleted": self.deleted,
         }
 
-    def merge(self, other_file_model_dto):
+    def __merge_static_fields(self, other_file_model_dto):
+        """Merge the static fields from the other file model DTO into this one. The static fields
+        are those that are not updated during the download process, such as the name, extension,
+        selected, URL, priority, and target path. The other file model DTO's fields take
+        precedence over this one's fields, if they are not None or empty."""
         if other_file_model_dto.name:
             self.name = other_file_model_dto.name
         if other_file_model_dto.extension:
             self.extension = other_file_model_dto.extension
-        self.selected = other_file_model_dto.selected if not other_file_model_dto.selected else self.selected
+        self.selected = (
+            other_file_model_dto.selected
+            if not other_file_model_dto.selected
+            else self.selected
+        )
         if other_file_model_dto.url:
             self.url = other_file_model_dto.url
+        if other_file_model_dto.priority:
+            self.priority = other_file_model_dto.priority
+        if other_file_model_dto.target_path:
+            self.target_path = other_file_model_dto.target_path
+
+    def __merge_dynamic_fields(self, other_file_model_dto):
+        """Merge the dynamic fields from the other file model DTO into this one. The dynamic fields
+        are those that are updated during the download process, such as the size, downloaded bytes,
+        status, rate, ETA, percent completed, last event timestamp, and last event. The other file
+        model DTO's fields take precedence over this one's fields, if they are not None or empty.
+        """
         if other_file_model_dto.size_bytes and other_file_model_dto.size_bytes > -1:
             self.size_bytes = other_file_model_dto.size_bytes
-        if other_file_model_dto.downloaded_bytes and other_file_model_dto.downloaded_bytes > -1:
+        if (
+            other_file_model_dto.downloaded_bytes
+            and other_file_model_dto.downloaded_bytes > -1
+        ):
             self.downloaded_bytes = other_file_model_dto.downloaded_bytes
         if other_file_model_dto.status:
             self.status = other_file_model_dto.status
         if other_file_model_dto.deleted:
             self.deleted = other_file_model_dto.deleted
-        if other_file_model_dto.percent_completed and other_file_model_dto.percent_completed > -1:
+        if (
+            other_file_model_dto.percent_completed
+            and other_file_model_dto.percent_completed > -1
+        ):
             self.percent_completed = other_file_model_dto.percent_completed
-        if other_file_model_dto.priority:
-            self.priority = other_file_model_dto.priority
-        if other_file_model_dto.target_path:
-            self.target_path = other_file_model_dto.target_path
         if other_file_model_dto.last_event_timestamp:
             self.last_event_timestamp = other_file_model_dto.last_event_timestamp
         if other_file_model_dto.last_event:
             self.last_event = other_file_model_dto.last_event
-        if other_file_model_dto.priority:
-            self.priority = other_file_model_dto.priority
-        if other_file_model_dto.rate_bytes_per_sec and other_file_model_dto.rate_bytes_per_sec > -1:
+        if (
+            other_file_model_dto.rate_bytes_per_sec
+            and other_file_model_dto.rate_bytes_per_sec > -1
+        ):
             self.rate_bytes_per_sec = other_file_model_dto.rate_bytes_per_sec
         if other_file_model_dto.eta_seconds and other_file_model_dto.eta_seconds > -1:
             self.eta_seconds = other_file_model_dto.eta_seconds
+
+    def merge(self, other_file_model_dto):
+        self.__merge_static_fields(other_file_model_dto)
+        self.__merge_dynamic_fields(other_file_model_dto)
         self.set_percent_completed()
         return self
 
