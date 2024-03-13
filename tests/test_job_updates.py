@@ -1,5 +1,5 @@
 import unittest
-from aoget.model.job_updates import JobUpdates, JobDTO, FileModelDTO, FileEventDTO
+from aoget.model.job_updates import JobUpdates, JobDTO, FileModelDTO
 
 
 class TestJobUpdates(unittest.TestCase):
@@ -84,6 +84,22 @@ class TestJobUpdates(unittest.TestCase):
             self.job_updates.file_event_updates["file1.txt"][0].event,
             "Completed downloading.",
         )
+
+    def test_merge_file_size_in_second(self):
+        job_updates_1 = JobUpdates("test_job")
+        job_updates_2 = JobUpdates("test_job")
+        job_updates_2.update_file_size("file1.txt", 1000)
+        job_updates_1.merge(job_updates_2)
+        assert job_updates_1.file_model_updates["file1.txt"].size_bytes == 1000
+
+    def test_merge_file_size_for_existing_file(self):
+        job_updates_1 = JobUpdates("test_job")
+        job_updates_2 = JobUpdates("test_job")
+        job_updates_1.update_file_status("file1.txt", "Completed")
+        job_updates_2.update_file_size("file1.txt", 1000)
+        job_updates_1.merge(job_updates_2)
+        assert job_updates_1.file_model_updates["file1.txt"].size_bytes == 1000
+        assert job_updates_1.file_model_updates["file1.txt"].status == "Completed"
 
 
 if __name__ == "__main__":

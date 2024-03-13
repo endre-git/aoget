@@ -81,7 +81,7 @@ class Downloads:
             retry_attempts = get_config_value(AppConfig.DOWNLOAD_RETRY_ATTEMPTS)
             downloader = QueuedDownloader(
                 job=job_dto,
-                monitor=app.journal_daemon,
+                journal_daemon=app.journal_daemon,
                 worker_pool_size=worker_pool_size,
                 download_retry_attempts=retry_attempts,
             )
@@ -96,6 +96,14 @@ class Downloads:
     def download_files(self, job_name: str, file_dtos: list) -> None:
         """Download the given files."""
         self.get_downloader(job_name).download_files(file_dtos)
+
+    def dequeue_files(self, job_name: str, file_dtos: list) -> None:
+        """Dequeue the given files."""
+        self.get_downloader(job_name).dequeue_files(file_dtos)
+
+    def stop_active_downloads(self, job_name: str, file_dtos: list) -> None:
+        """Stop the active downloads for the given files."""
+        self.get_downloader(job_name).stop_active_downloads(file_dtos)
 
     def download_file(self, job_name: str, file_dto: FileModelDTO) -> None:
         """Download the given file."""

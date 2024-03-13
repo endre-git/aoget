@@ -7,7 +7,7 @@ from web.rate_limiter import RateLimiter
 
 
 class AppStateHandlers:
-    """ "Convenience class to bundle upp the app state handlers so that they can
+    """ "Convenience class to bundle up the app state handlers so that they can
     be passed around as a single object. Also helps to avoid circular imports."""
 
     def __init__(
@@ -15,6 +15,7 @@ class AppStateHandlers:
     ) -> None:
         """Create a new AppStateHandlers object."""
         self.db_lock = db_lock
+        self.main_window = main_window
         self.cache = AppCache()
         self.rate_limiter = RateLimiter()
         self.downloads = Downloads(self)
@@ -24,3 +25,10 @@ class AppStateHandlers:
             journal_processor=self.update_cycle,
             start_daemon=start_journal_daemon,
         )
+        self.job_locks = {}
+
+    def job_lock(self, job_name: str) -> RLock:
+        """Get the lock for the given job name."""
+        if job_name not in self.job_locks:
+            self.job_locks[job_name] = RLock()
+        return self.job_locks[job_name]

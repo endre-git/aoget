@@ -33,6 +33,13 @@ class FileQueue(queue.PriorityQueue):
         for file in files:
             self.put_file(file)
 
+    def remove_all(self, files: List[FileModelDTO]) -> None:
+        """Remove all files from the queue.
+        :param files:
+            The files to remove"""
+        for file in files:
+            self.remove_file(file)
+
     def put_file(self, file: FileModelDTO) -> None:
         """Put a file into the queue.
         :param file:
@@ -51,17 +58,18 @@ class FileQueue(queue.PriorityQueue):
         """Remove a file from the queue.
         :param file:
             The file to remove"""
+        if file.name not in self.entry_finder:
+            return
         entry = self.entry_finder.pop(file.name)
         entry[-1] = self.REMOVED
 
     def pop_file(self) -> FileModelDTO:
         """Pop a file from the queue.
         :return:
-            The priority and file"""
+            The file"""
         _, file = self.get()
-        if file is not self.REMOVED:
-            if file is not None:
-                del self.entry_finder[file.name]
-            return file
-        else:
-            return self.pop_file()
+        while file is self.REMOVED:
+            _, file = self.get()
+        if file is not None:
+            del self.entry_finder[file.name]
+        return file

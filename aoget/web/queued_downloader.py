@@ -81,20 +81,20 @@ class QueuedDownloader:
     def __init__(
         self,
         job: JobDTO,
-        monitor: JournalDaemon,  # Blank monitor suppresses progress reporting
+        journal_daemon: JournalDaemon,  # Blank monitor suppresses progress reporting
         worker_pool_size: int = 3,
         download_retry_attempts: int = 5,
     ):
         """Create a download queue for a job.
         :param job:
             The job to download
-        :param monitor:
-            The monitor to report progress to. Defaults to a blank monitor that suppresses
-            progress reporting.
+        :param journal_daemon:
+            The journal daemon picking up progress updates. Defaults to a blank instance that
+            suppresses progress reporting.
         :param worker_pool_size:
             The number of workers to use for downloading files. Defaults to 3."""
         self.job = job
-        self.monitor = monitor
+        self.journal_daemon = journal_daemon
         self.worker_pool_size = worker_pool_size
         self.download_retry_attempts = download_retry_attempts
         self.queue = FileQueue()
@@ -152,7 +152,7 @@ class QueuedDownloader:
             The file to download"""
         self.files_in_queue.append(file.name)
         self.queue.put_file(file)
-        self.monitor.update_file_status(
+        self.journal_daemon.update_file_status(
             self.job.name, file.name, FileModel.STATUS_QUEUED
         )
 
@@ -163,6 +163,23 @@ class QueuedDownloader:
         self.files_in_queue.extend([file.name for file in files])
         self.queue.put_all(files)
         logger.info(f"Added {len(files)} files to the queue for job {self.job.name}")
+
+    def dequeue_files(self, files: list) -> None:
+        """Dequeue the given files.
+        :param files:
+            The files to dequeue"""
+        for file in files:
+            if file.name in self.files_in_queue:
+                self.files_in_queue.remove(file.name)
+        self.queue.remove_all(files)
+
+    def stop_active_downloads(self, files: list) -> None:
+        """Stop the active downloads of the given files.
+        :param files:
+            The files to stop"""
+        for file in files:
+            if file.name in self.files_downloading:
+                self.signals[file.name].cancel(shutdown=False)
 
     def cancel_download(self, filename: str) -> None:
         """Cancel the download of the given file.
@@ -337,7 +354,7 @@ class QueuedDownloader:
             Whether the download was successful or not"""
         signals = self.signals[file.name]
         if new_status == FileModel.STATUS_STOPPED and signals.shutdown:
-            self.monitor.add_file_event(
+            self.journal_daemon.add_file_event(
                 self.job.name, file.name, "Stopped due to app shutdown."
             )
         else:
@@ -357,7 +374,7 @@ class QueuedDownloader:
         )
         signal = self.signals[filename] if filename in self.signals else None
         if signal is None:
-            signal = FileProgressSignals(self.job.name, filename, self.monitor)
+            signal = FileProgressSignals(self.job.name, filename, self.journal_daemon)
             self.signals[filename] = signal
         return signal
 
@@ -374,7 +391,7 @@ class QueuedDownloader:
                 files_to_queue.append(file)
                 events[file.name] = "Re-queued after app-restart."
         self.download_files(files_to_queue)
-        self.monitor.add_file_events(job_name, events)
+        self.journal_daemon.add_file_events(job_name, events)
 
     def resume_files(self, files: list, file_controller: any, callback: any) -> None:
         """Resume files as per the last app run. Invoked once, when the app starts."""
@@ -395,7 +412,7 @@ class QueuedDownloader:
                             "File %s was stopping at last app run, will set to Stopped.",
                             file.name,
                         )
-                        self.monitor.update_file_status(
+                        self.journal_daemon.update_file_status(
                             job_name, file.name, FileModel.STATUS_STOPPED
                         )
                 logger.info(
@@ -410,7 +427,7 @@ class QueuedDownloader:
                             "File %s was downloaded at last app run, will resume now.",
                             file.name,
                         )
-                        self.monitor.add_file_event(
+                        self.journal_daemon.add_file_event(
                             job_name, file.name, "Resumed after app-restart."
                         )
                         file_controller.start_download(job_name, file.name)
@@ -446,12 +463,12 @@ class QueuedDownloader:
                             continue
                         if local_size == -1:
                             file.status = FileModel.STATUS_INVALID
-                            self.monitor.add_file_event(
+                            self.journal_daemon.add_file_event(
                                 job_name, file.name, "Local file is missing."
                             )
                         elif local_size < file.downloaded_bytes:
                             file.status = FileModel.STATUS_INVALID
-                            self.monitor.add_file_event(
+                            self.journal_daemon.add_file_event(
                                 job_name,
                                 file.name,
                                 "Local file corrupted (smaller than expected).",
@@ -510,13 +527,13 @@ class QueuedDownloader:
                     # if completed, assumed size must match size on disk
                     if filemodel.status == FileModel.STATUS_COMPLETED:
                         if filemodel.size_bytes != local_size:
-                            self.monitor.update_file_status(
+                            self.journal_daemon.update_file_status(
                                 job_name,
                                 filemodel.name,
                                 FileModel.STATUS_INVALID,
                                 err="Size mismatch despite Completed state.",
                             )
-                            self.monitor.update_download_progress(
+                            self.journal_daemon.update_download_progress(
                                 job_name,
                                 filemodel.name,
                                 local_size,
@@ -533,14 +550,14 @@ class QueuedDownloader:
                         and filemodel.downloaded_bytes > 0
                     ):
                         if filemodel.downloaded_bytes != local_size:
-                            self.monitor.update_file_status(
+                            self.journal_daemon.update_file_status(
                                 job_name,
                                 filemodel.name,
                                 FileModel.STATUS_INVALID,
                                 err="Size mismatch for ongoing download.",
                             )
                             if filemodel.size_bytes > 0:
-                                self.monitor.update_download_progress(
+                                self.journal_daemon.update_download_progress(
                                     job_name,
                                     filemodel.name,
                                     local_size,
@@ -557,7 +574,7 @@ class QueuedDownloader:
                         filemodel.name,
                         exc_info=e,
                     )
-                    self.monitor.update_file_status(
+                    self.journal_daemon.update_file_status(
                         job_name,
                         filemodel.name,
                         FileModel.STATUS_FAILED,
@@ -568,7 +585,7 @@ class QueuedDownloader:
             # the following won't work in the current approach since
             # actively downloading files are not checked
             # self.monitor.update_job_downloaded_bytes(job_name, total_size_local)
-            self.monitor.update_job_files_done(job_name, files_indeed_done)
+            self.journal_daemon.update_job_files_done(job_name, files_indeed_done)
 
             logger.debug(
                 "Finished checking health in background for %d files",
@@ -619,9 +636,9 @@ class QueuedDownloader:
                     if filemodel.size_bytes is not None and filemodel.size_bytes > 0:
                         continue
                     try:
-                        filemodel.size_bytes = resolve_remote_file_size(filemodel.url)
-                        self.monitor.update_file_size(
-                            job_name, filemodel.name, filemodel.size_bytes
+                        size_bytes = resolve_remote_file_size(filemodel.url)
+                        self.journal_daemon.update_file_size(
+                            job_name, filemodel.name, size_bytes
                         )
                         with self.size_resolver_lock:
                             self.resolved_file_sizes[filemodel.name] = (
@@ -633,7 +650,7 @@ class QueuedDownloader:
                             filemodel.name,
                             exc_info=e,
                         )
-                        self.monitor.add_file_event(
+                        self.journal_daemon.add_file_event(
                             job_name, filemodel.name, "Size resolver failed: " + str(e)
                         )
                         had_failures = True

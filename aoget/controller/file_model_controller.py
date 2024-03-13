@@ -7,6 +7,7 @@ from model.file_model import FileModel
 from model.dto.file_model_dto import FileModelDTO
 from model.dto.file_event_dto import FileEventDTO
 from util.disk_util import get_all_file_names_from_folders
+from util.aogetutil import human_duration
 
 logger = logging.getLogger(__name__)
 
@@ -424,18 +425,35 @@ class FileModelController:
     def start_download_file_dtos(self, job_name: str, file_dtos: list) -> None:
         """Download the files in the given job which are not already running,
         completed or queued."""
-        non_running_file_dtos = list(
-            filter(
-                lambda file: file.status
-                not in [
-                    FileModel.STATUS_DOWNLOADING,
-                    FileModel.STATUS_COMPLETED,
-                    FileModel.STATUS_QUEUED,
-                ],
-                file_dtos,
+        with self.app.job_lock(job_name):
+            t0 = time.time()
+            journal = self.app.update_cycle.journal_of_job(job_name)
+            non_running_file_dtos = list(
+                filter(
+                    lambda file: file.status
+                    not in [
+                        FileModel.STATUS_DOWNLOADING,
+                        FileModel.STATUS_COMPLETED,
+                        FileModel.STATUS_QUEUED,
+                    ],
+                    file_dtos,
+                )
             )
-        )
-        self.app.downloads.download_files(job_name, non_running_file_dtos)
+            file_events = {}
+            file_statuses = {}
+            for file_dto in non_running_file_dtos:
+                file_events[file_dto.name] = "Added to queue."
+                file_statuses[file_dto.name] = FileModel.STATUS_QUEUED
+            journal.add_file_events(file_events)
+            journal.update_file_statuses(file_statuses)
+            logger.info("Updated journal in %s seconds.", human_duration(time.time() - t0))
+            t0 = time.time()
+            self.app.downloads.download_files(job_name, non_running_file_dtos)
+            logger.info(
+                "Started downloads for %d files in %s seconds.",
+                len(non_running_file_dtos),
+                human_duration(time.time() - t0),
+            )
 
     def stop_download_file_dto(self, job_name: str, file_dto: FileModelDTO) -> None:
         """Stop the download of the given file in the given job"""
@@ -443,3 +461,50 @@ class FileModelController:
             self.stop_download(job_name, file_dto.name, add_to_journal=False)
         elif file_dto.status == FileModel.STATUS_QUEUED:
             self.stop_download(job_name, file_dto.name, add_to_journal=True)
+
+    def stop_download_file_dtos(self, job_name: str, file_dtos: list) -> None:
+        """Stop the downloads of the given files in the given job"""
+        with self.app.job_lock(job_name):
+            t0 = time.time()
+            downloads = self.app.downloads
+            journal = self.app.update_cycle.journal_of_job(job_name)
+            queued_file_dtos = list(
+                filter(
+                    lambda file: file.status == FileModel.STATUS_QUEUED,
+                    file_dtos,
+                )
+            )
+            file_events = {}
+            for file_dto in queued_file_dtos:
+                file_events[file_dto.name] = FileModel.STATUS_STOPPED
+            journal.add_file_events(file_events)
+            journal.update_file_statuses(file_events)
+            logger.info(
+                "Updated journal for queued files in %s seconds.",
+                human_duration(time.time() - t0),
+            )
+            t0 = time.time()
+            downloads.dequeue_files(job_name, queued_file_dtos)
+            logger.info("Dequeued files in %s seconds.", human_duration(time.time() - t0))
+
+            t0 = time.time()
+            downloading_file_dtos = list(
+                filter(
+                    lambda file: file.status == FileModel.STATUS_DOWNLOADING,
+                    file_dtos,
+                )
+            )
+            file_events = {}
+            for file_dto in downloading_file_dtos:
+                file_events[file_dto.name] = FileModel.STATUS_STOPPING
+            journal.add_file_events(file_events)
+            journal.update_file_statuses(file_events)
+            logger.info(
+                "Updated journal for active downloads in %s seconds.",
+                human_duration(time.time() - t0),
+            )
+            t0 = time.time()
+            downloads.stop_active_downloads(job_name, downloading_file_dtos)
+            logger.info(
+                "Stopped active downloads in %s seconds.", human_duration(time.time() - t0)
+            )

@@ -37,7 +37,7 @@ def file_model_dto():
 @pytest.fixture
 def queued_downloader(job_dto, mock_journal_daemon):
     return QueuedDownloader(
-        job=job_dto, monitor=mock_journal_daemon, worker_pool_size=1
+        job=job_dto, journal_daemon=mock_journal_daemon, worker_pool_size=1
     )
 
 

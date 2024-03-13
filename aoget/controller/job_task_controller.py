@@ -1,6 +1,9 @@
+import logging
 from db.aogetdb import get_job_dao, get_file_model_dao
 from model.dto.file_model_dto import FileModelDTO
 from controller.app_state_handlers import AppStateHandlers
+
+logger = logging.getLogger(__name__)
 
 
 class JobTaskController:
@@ -31,6 +34,10 @@ class JobTaskController:
                     )
                 )
             else:
+                logger.warning(
+                    "Job %s is not in cache, fetching files with unknown size from db.",
+                    job_name,
+                )
                 file_models_with_unknown_size = (
                     get_file_model_dao().get_selected_files_with_unknown_size(job_id)
                 )

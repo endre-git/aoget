@@ -1,7 +1,10 @@
+import logging
 from typing import Dict
 from model.dto.file_model_dto import FileModelDTO
 from model.dto.job_dto import JobDTO
 from model.job_updates import JobUpdates
+
+logger = logging.getLogger(__name__)
 
 
 class DerivedFieldCalculator(object):
@@ -59,9 +62,14 @@ class DerivedFieldCalculator(object):
         current_file.percent_completed = percent_completed
 
     def file_deselected_in_job(job_dto, file_model):
-        job_dto.selected_files_count -= 1
-        if file_model.size_bytes and file_model.size_bytes > 0:
-            job_dto.selected_files_with_known_size -= 1
-            job_dto.total_size_bytes -= file_model.size_bytes
-        if file_model.downloaded_bytes and file_model.downloaded_bytes > 0:
-            job_dto.downloaded_bytes -= file_model.downloaded_bytes
+        if job_dto.selected_files_count is not None:
+            job_dto.selected_files_count -= 1
+            if file_model.size_bytes and file_model.size_bytes > 0:
+                job_dto.selected_files_with_known_size -= 1
+                job_dto.total_size_bytes -= file_model.size_bytes
+            if file_model.downloaded_bytes and file_model.downloaded_bytes > 0:
+                job_dto.downloaded_bytes -= file_model.downloaded_bytes
+        else:
+            logger.error(
+                "file_deselected_in_job: job_dto.selected_files_count is None"
+            )
