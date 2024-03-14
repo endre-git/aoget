@@ -63,25 +63,24 @@ class JobUpdates:
         # no need to copy file events as no value is derived from them
         return snapshot
 
-    def merge(self, other) -> None:
+    def merge(self, other_job_updates) -> None:
         """Merge the other journal into this one. This is used for incremental updates."""
         with self.lock:
-            if other.job_update:
+            if other_job_updates.job_update:
                 if self.job_update:
-                    self.job_update.merge(other.job_update)
+                    self.job_update.merge(other_job_updates.job_update)
                 else:
-                    self.job_update = other.job_update
-            for file_name, file_model_update in self.file_model_updates.items():
-                if file_name in other.file_model_updates:
-                    file_model_update.merge(other.file_model_updates[file_name])
-            for file_model_update in other.file_model_updates.values():
-                if file_model_update.name in self.file_model_updates:
-                    self.file_model_updates[file_model_update.name].merge(
-                        file_model_update
-                    )
+                    self.job_update = other_job_updates.job_update
+            for file_name, self_file_model_update in self.file_model_updates.items():
+                if file_name in other_job_updates.file_model_updates:
+                    self_file_model_update.merge(other_job_updates.file_model_updates[file_name])
+            for other_file_model_update in other_job_updates.file_model_updates.values():
+                name = other_file_model_update.name
+                if name in self.file_model_updates:
+                    self.file_model_updates[name].merge(other_file_model_update)
                 else:
-                    self.file_model_updates[file_model_update.name] = file_model_update
-            for file_name, file_event_updates in other.file_event_updates.items():
+                    self.file_model_updates[name] = other_file_model_update
+            for file_name, file_event_updates in other_job_updates.file_event_updates.items():
                 self.file_event_updates[file_name].extend(file_event_updates)
 
     def add_job_update(self, job_dto: JobDTO) -> None:
@@ -103,6 +102,14 @@ class JobUpdates:
         else:
             self.job_update.threads_allocated = threads_allocated
             self.job_update.threads_active = threads_active
+
+    def update_job_status(self, status: str) -> None:
+        """Update the status of the job.
+        :param status: The new status of the job"""
+        if not self.job_update:
+            self.job_update = JobDTO(id=-1, name=self.job_name, status=status)
+        else:
+            self.job_update.status = status
 
     def update_job_downloaded_bytes(self, downloaded_bytes: int) -> None:
         """Update the number of bytes downloaded for the job.
@@ -202,6 +209,13 @@ class JobUpdates:
             self.add_file_event(file_name, "Started downloading.")
         elif status == FileModel.STATUS_INVALID:
             self.add_file_event(file_name, "Invalid file.")
+
+    def update_file_statuses(self, statuses: dict) -> None:
+        """Update the statuses of files.
+        :param statuses: The statuses to update in a dictionary with the file name as the key
+        and the status as the value."""
+        for file_name, status in statuses.items():
+            self.update_file_status(file_name, status)
 
     def update_file_size(self, file_name: str, size: int) -> None:
         """Update the size of a file.

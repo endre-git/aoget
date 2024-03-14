@@ -35,6 +35,10 @@ class AppCache:
         """Get all job names in the cache"""
         return self.file_dto_cache.keys()
 
+    def get_cached_file(self, job_name: str, file_name: str) -> FileModelDTO:
+        """Get the file for the given job name and file name"""
+        return self.file_dto_cache[job_name][file_name]
+
     def get_cached_files(self, job_name: str) -> Dict[str, FileModelDTO]:
         """Get all files for the given job name"""
         return self.file_dto_cache[job_name]

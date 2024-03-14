@@ -656,3 +656,102 @@ class TestFileModelController:
             job_dao_mock.return_value.get_job_by_id.return_value = test_job
             file_model_controller.get_file_dtos_by_job_id(-1)
             assert not file_model_controller.app.cache.is_cached_job('test_job')
+
+    def test_start_download_file_dtos(self, file_model_controller):
+        with patch('aoget.controller.file_model_controller.get_file_model_dao'), patch(
+            'aoget.controller.file_model_controller.get_job_dao'
+        ) as job_dao_mock:
+            test_job = Job(
+                id=-1,
+                name="test_job",
+                status="Not Running",
+                page_url="http://example.com",
+                target_folder="fake_path",
+            )
+
+            file_dto_1 = FileModelDTO(
+                job_name='test_job',
+                url='http://example.com/file_name',
+                name='file_name',
+                status='Downloading',
+                selected=False,
+                size_bytes=100,
+            )
+            file_dto_2 = FileModelDTO(
+                job_name='test_job',
+                url='http://example.com/file_name2',
+                name='file_name2',
+                status='Stopped',
+                selected=False,
+                size_bytes=100,
+            )
+            file_dto_3 = FileModelDTO(
+                job_name='test_job',
+                url='http://example.com/file_name3',
+                name='file_name3',
+                status='Stopped',
+                selected=True,
+                size_bytes=100,
+            )
+            cache = AppCache()
+            dl = MagicMock()
+            file_model_controller.app.downloads = dl
+            dl.is_running_for_job.return_value = True
+            file_model_controller.app.cache = cache
+            job_dao_mock.return_value.get_job_by_id.return_value = test_job
+            file_model_controller.start_download_file_dtos(
+                "test_job", [file_dto_1, file_dto_2, file_dto_3]
+            )
+            dl.download_files.assert_called_once_with(
+                "test_job", [file_dto_2, file_dto_3]
+            )
+
+    def test_stop_download_file_dtos(self, file_model_controller):
+        with patch('aoget.controller.file_model_controller.get_file_model_dao'), patch(
+            'aoget.controller.file_model_controller.get_job_dao'
+        ) as job_dao_mock:
+            test_job = Job(
+                id=-1,
+                name="test_job",
+                status="Not Running",
+                page_url="http://example.com",
+                target_folder="fake_path",
+            )
+
+            file_dto_1 = FileModelDTO(
+                job_name='test_job',
+                url='http://example.com/file_name',
+                name='file_name',
+                status='Downloading',
+                selected=False,
+                size_bytes=100,
+            )
+            file_dto_2 = FileModelDTO(
+                job_name='test_job',
+                url='http://example.com/file_name2',
+                name='file_name2',
+                status='In queue',
+                selected=False,
+                size_bytes=100,
+            )
+            file_dto_3 = FileModelDTO(
+                job_name='test_job',
+                url='http://example.com/file_name3',
+                name='file_name3',
+                status='In queue',
+                selected=True,
+                size_bytes=100,
+            )
+            cache = AppCache()
+            dl = MagicMock()
+            file_model_controller.app.downloads = dl
+            dl.is_running_for_job.return_value = True
+            file_model_controller.app.cache = cache
+            job_dao_mock.return_value.get_job_by_id.return_value = test_job
+            file_model_controller.stop_download_file_dtos(
+                "test_job", [file_dto_1, file_dto_2, file_dto_3]
+            )
+            dl.dequeue_files.assert_called_once_with(
+                "test_job", [file_dto_2, file_dto_3]
+            )
+            dl.stop_active_downloads.assert_called_once_with("test_job", [file_dto_1])

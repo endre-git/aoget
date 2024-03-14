@@ -2,9 +2,11 @@ import logging
 from db.aogetdb import get_job_dao, get_file_model_dao, get_file_event_dao
 from model.job_updates import JobUpdates
 from model.job import Job
+from model.file_model import FileModel
 from model.dto.job_dto import JobDTO
 from model.dto.file_model_dto import FileModelDTO
 from controller.derived_field_calculator import DerivedFieldCalculator
+from util.runtime_stats import RuntimeStats
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,8 @@ class UpdateCycle:
         self.journal = {}
         self.app = app_state_handlers
         self.main_window = main_window
+        self.tick_count = 0
+        self.stats = RuntimeStats()
 
     def journal_of_job(self, job_name: str) -> JobUpdates:
         """Get the journal of a job.
@@ -48,46 +52,56 @@ class UpdateCycle:
         if job_name in self.journal:
             del self.journal[job_name]
 
-    def update_tick(self, journal: dict):
+    def update_tick(self, async_journal: dict):
         """Called by the ticker to process the updates"""
+        self.stats.check_in("tick")
+        self.tick_count += 1
         # join the keysets of the journal and the current job updates
-        all_job_names = set(journal.keys()).union(set(self.journal.keys()))
+        all_job_names = set(async_journal.keys()).union(set(self.journal.keys()))
         for jobname in all_job_names:
-            if jobname in journal and jobname in self.journal:
-                self.process_job_updates(journal[jobname], merge=True)
-            elif jobname in self.journal:
-                self.process_job_updates(self.journal[jobname], merge=False)
-            else:
-                self.process_job_updates(journal[jobname], merge=True)
+            with self.app.job_lock(jobname):
+                self.stats.check_in("process_job_updates")
+                if jobname in async_journal and jobname in self.journal:
+                    self.process_job_updates(async_journal[jobname], merge=True)
+                elif jobname in self.journal:
+                    self.process_job_updates(self.journal[jobname], merge=False)
+                else:
+                    self.process_job_updates(async_journal[jobname], merge=True)
+                self.stats.check_out("process_job_updates")
         self.journal.clear()
         self.__update_rate_limits()
+        self.stats.check_out("tick")
+        logger.debug(f"Tick #{self.tick_count} stats: totals={self.stats.get_totals()}")
 
-    def __update_job_in_db(
-        self, job_name: str, job_updates: JobUpdates, derived_status: str
-    ) -> Job:
+    def __update_job_in_db(self, job_name: str, job_updates: JobUpdates) -> Job:
         """Update the job in the database as per the in-cycle job updates."""
+        self.stats.check_in("__update_job_in_db")
         job = get_job_dao().get_job_by_name(job_name)
         if job is None:
             logger.debug("Stale job update for: %s", job_name)
             return
         job.status = (
-            derived_status if job.status is not Job.STATUS_COMPLETED else job.status
+            job_updates.job_update.status
+            if job_updates.job_update and job_updates.job_update.status
+            else job.status
         )
         if job_updates.job_update is not None:
             job_updates.job_update.merge_into_model(job)
             job_updates.job_update.update_from_model(job)
         else:
             job_updates.job_update = JobDTO.from_model(job)
+        self.stats.check_out("__update_job_in_db")
         return job
 
-    def __update_file_model_in_db(
-        self, job: Job, file_model_dto: FileModelDTO
-    ) -> FileModelDTO:
+    def __update_file_model(self, job: Job, file_model_dto: FileModelDTO) -> FileModel:
         """Update the file model in the database as per the in-cycle file model updates."""
+        self.stats.check_in("__update_file_model_in_db")
         job_id = job.id
+        self.stats.check_in("get_file_model_by_name")
         file_model = get_file_model_dao().get_file_model_by_name(
             job_id, file_model_dto.name
         )
+        self.stats.check_out("get_file_model_by_name")
         db_size = file_model.size_bytes if file_model else 0
         if (
             file_model_dto.size_bytes is not None and file_model_dto.size_bytes > -1
@@ -116,54 +130,69 @@ class UpdateCycle:
                     + job.name
                 )
         else:
+            self.stats.check_in("merge_into_model")
             file_model_dto.merge_into_model(file_model)
+            self.stats.check_out("merge_into_model")
 
-        if file_model is not None:
-            # back-populate DTO fields from DB for UI display
-            file_model_dto.update_from_model(file_model)
-        return file_model_dto
+        self.stats.check_in("merge (with cache)")
+        if self.app.cache.is_cached_file(job.name, file_model_dto.name):
+            cached_file = self.app.cache.get_cached_file(job.name, file_model_dto.name)
+            cached_file.merge(file_model_dto)
+            file_model_dto.merge(cached_file)
+        self.stats.check_out("merge (with cache)")
+        self.stats.check_out("__update_file_model_in_db")
+        return file_model
 
     def __update_file_events_in_db(
-        self, job: Job, file_name: str, job_updates: JobUpdates, event_dtos: list
+        self,
+        job: Job,
+        file_name: str,
+        job_updates: JobUpdates,
+        event_dtos: list,
+        cached_db_file_models: dict,
     ) -> None:
         """Update the file events in the database as per the in-cycle file event updates."""
-        file_model_of_event = get_file_model_dao().get_file_model_by_name(
-            job.id, file_name
+        self.stats.check_in("__update_file_events_in_db")
+        file_model_of_event = (
+            cached_db_file_models[file_name]
+            if file_name in cached_db_file_models
+            else get_file_model_dao().get_file_model_by_name(job.id, file_name)
         )
         if file_model_of_event is None:
             logger.error("File model not found for file event: %s", file_name)
             return
         for event_dto in event_dtos:
+            self.stats.check_in("FileEventDTO.build_model")
             event = event_dto.build_model(file_model_of_event)
+            self.stats.check_out("FileEventDTO.build_model")
+            self.stats.check_in("add_file_event")
             get_file_event_dao().add_file_event(event, commit=False)
-            if file_name in job_updates.file_model_updates:
-                job_updates.file_model_updates[file_name].last_event = event.event
-                job_updates.file_model_updates[file_name].last_event_timestamp = (
-                    event.timestamp
-                )
-        if file_name not in job_updates.file_model_updates:
-            # backpopulate to update object for UI display
-            job_updates.file_model_updates[file_name] = FileModelDTO.from_model(
-                file_model_of_event, job.name
-            )
+            self.stats.check_out("add_file_event")
 
-    def __back_populate_file_updates(
+        most_recent_event = max(event_dtos, key=lambda e: e.timestamp)
+        if file_name not in job_updates.file_model_updates:
+            # update cached event for proper UI display
+            self.stats.check_in("file_model_dto update for evt")
+            file_model_dto = self.app.cache.get_cached_file(job.name, file_name)
+            file_model_dto.last_event = most_recent_event.event
+            file_model_dto.last_event_timestamp = most_recent_event.timestamp
+            self.stats.check_out("file_model_dto update for evt")
+        else:
+            job_updates.file_model_updates[file_name].last_event = (
+                most_recent_event.event
+            )
+            job_updates.file_model_updates[file_name].last_event_timestamp = (
+                most_recent_event.timestamp
+            )
+        self.stats.check_out("__update_file_events_in_db")
+
+    def __update_if_dropped_file(
         self, job: Job, file_model_dto: FileModelDTO, job_updates: JobUpdates
     ) -> None:
-        """Updates are always partial, so we need to back-populate the cached DTOs with the
-        full state from the DB."""
-        cache = self.app.cache
+        """Dropped files have a special treatment: we need to update the total job
+        size."""
         job_name = job.name
-        file_model = get_file_model_dao().get_file_model_by_name(
-            job.id, file_model_dto.name
-        )
-        if file_model is None:
-            logger.error(
-                "File model not found for file model DTO: %s",
-                file_model_dto.name,
-            )
-            return
-        file_model_dto.update_from_model(file_model)
+        cache = self.app.cache
 
         # sync up the local cache state
         if not cache.is_cached_job(job_name):
@@ -177,11 +206,50 @@ class UpdateCycle:
                 job_updates.job_update, file_model_dto
             )
             job_updates.job_update.merge_into_model(job)
-        else:
-            cache.set_cached_file(job_name, file_model_dto.name, file_model_dto)
 
-    def __update_cached_job_fields(self, job: Job, job_updates: JobUpdates) -> None:
-        """Update the cached fields of the job object both in DB and in cached DTO."""
+    def __infer_job_status(self, job: Job, job_updates: JobUpdates) -> None:
+        """Starting, stopping are transient states, in case the updates all occurred, it's
+        the ticker (this method) that sets it back to a steady running / not running state
+        """
+        if job.status == Job.STATUS_STOPPING:
+            stopping_finished = not self.app.downloads.is_job_downloading(job.name)
+            if stopping_finished:
+                logger.debug(
+                    f"""Stopping apparently finished, setting job to 
+                    {Job.STATUS_NOT_RUNNING} state."""
+                )
+                job.status = Job.STATUS_NOT_RUNNING
+                job_updates.job_update.status = Job.STATUS_NOT_RUNNING
+        elif job.status == Job.STATUS_STARTING:
+            files = self.app.cache.get_cached_files(job.name)
+            inactive_files = [
+                file
+                for file in files.values()
+                if file.status
+                in [
+                    FileModel.STATUS_FAILED,
+                    FileModel.STATUS_STOPPED,
+                    FileModel.STATUS_NEW,
+                ]
+            ]
+            if len(inactive_files) == 0:
+                logger.debug(
+                    f"""Starting apparently finished, setting job to 
+                    {Job.STATUS_RUNNING} state."""
+                )
+                job.status = Job.STATUS_RUNNING
+                job_updates.job_update.status = Job.STATUS_RUNNING
+        else:
+            derived_status = (
+                Job.STATUS_RUNNING
+                if self.app.downloads.is_job_downloading(job.name)
+                else Job.STATUS_NOT_RUNNING
+            )
+            job.status = derived_status
+            job_updates.job_update.status = derived_status
+
+    def __update_calculated_job_fields(self, job: Job, job_updates: JobUpdates) -> None:
+        """Update the cached fields of the job object both the model and the DTO."""
         # back-populate cached fields to job update DTO for UI display
         job_updates.job_update.total_size_bytes = job.total_size_bytes
         job_updates.job_update.selected_files_with_known_size = (
@@ -191,7 +259,12 @@ class UpdateCycle:
 
         # downloaded bytes is a cache field, so we need to update it in the job object
         downloaded_bytes = (
-            get_file_model_dao().get_total_downloaded_bytes_for_job(job.id) or 0
+            # sum up the downloaded bytes of all files in cache
+            sum(
+                file.downloaded_bytes
+                for file in self.app.cache.get_cached_files(job.name).values()
+                if file.downloaded_bytes is not None
+            )
         )
         job.downloaded_bytes = downloaded_bytes
         job_updates.job_update.downloaded_bytes = downloaded_bytes
@@ -201,9 +274,15 @@ class UpdateCycle:
 
         # downloaded files count
         completed_files = (
-            get_file_model_dao().get_completed_file_count_for_job_id(job.id) or 0
+            # count the files that are completed in cache
+            sum(
+                1
+                for file in self.app.cache.get_cached_files(job.name).values()
+                if file.status == FileModel.STATUS_COMPLETED
+            )
         )
         job_updates.job_update.files_done = completed_files
+        self.__infer_job_status(job, job_updates)
 
     def process_job_updates(self, cycle_job_updates: JobUpdates, merge=True) -> None:
         app = self.app
@@ -214,21 +293,21 @@ class UpdateCycle:
             if job_updates is None:
                 job_updates = cycle_job_updates
             else:
+                self.stats.check_in("merge_job_updates")
                 job_updates.merge(cycle_job_updates)
+                self.stats.check_out("merge_job_updates")
         else:
             job_updates = cycle_job_updates
 
+        self.stats.check_in("app_db_locked")
         # update db
         with app.db_lock:
             # merge job updates into db
-            derived_status = (
-                Job.STATUS_RUNNING
-                if app.downloads.is_job_downloading(job_name)
-                else Job.STATUS_NOT_RUNNING
-            )
-            job = self.__update_job_in_db(job_name, job_updates, derived_status)
+            job = self.__update_job_in_db(job_name, job_updates)
             if job is None:
-                logger.warning("Skipping journal processing for stale job: %s", job_name)
+                logger.warning(
+                    "Skipping journal processing for stale job: %s", job_name
+                )
                 return
             active_thread_count = app.downloads.get_active_thread_count(job_name)
             allocated_thread_count = app.downloads.get_allocated_thread_count(job_name)
@@ -237,28 +316,36 @@ class UpdateCycle:
             job_updates.job_update.threads_allocated = allocated_thread_count
 
             # merge file model updates into db
+            cached_db_file_models = {}
             for file_model_dto in job_updates.file_model_updates.values():
-                self.__update_file_model_in_db(job, file_model_dto)
+                cached_db_file_models[file_model_dto.name] = self.__update_file_model(
+                    job, file_model_dto
+                )
+                self.__update_if_dropped_file(job, file_model_dto, job_updates)
 
             for file_name, event_dtos in job_updates.file_event_updates.items():
-                self.__update_file_events_in_db(job, file_name, job_updates, event_dtos)
+                self.__update_file_events_in_db(
+                    job, file_name, job_updates, event_dtos, cached_db_file_models
+                )
 
-            # back-populate most recent file event to every file model DTO for UI display
-            for file_model_dto in job_updates.file_model_updates.values():
-                self.__back_populate_file_updates(job, file_model_dto, job_updates)
-
-            self.__update_cached_job_fields(job, job_updates)
+            self.__update_calculated_job_fields(job, job_updates)
 
             # commit db
+            self.stats.check_in("save_job")
             get_job_dao().save_job(job)
+            self.stats.check_out("save_job")
+
+        self.stats.check_out("app_db_locked")
 
         # selectively update ui
         if job_updates.job_update is not None:
             if app.downloads.is_job_resuming(job_name):
                 job_updates.job_update.status = "Resuming"
             self.main_window.update_job_signal.emit(job_updates.job_update)
+        self.stats.check_in("update_file_signal")
         for file_model_dto in job_updates.file_model_updates.values():
             self.main_window.update_file_signal.emit(file_model_dto)
+        self.stats.check_out("update_file_signal")
 
     def __update_rate_limits(self) -> None:
         """Update the rate limits"""

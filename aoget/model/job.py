@@ -14,6 +14,8 @@ class Job(Base):
     STATUS_RUNNING = "Running"
     STATUS_NOT_RUNNING = "Not Running"
     STATUS_COMPLETED = "Completed"
+    STATUS_STOPPING = "Stopping"
+    STATUS_STARTING = "Starting"
 
     RESUME_STARTING = "Resume Starting"
     RESUME_SUCCESS = "Resume Success"

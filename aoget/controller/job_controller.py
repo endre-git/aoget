@@ -5,6 +5,7 @@ from threading import Event
 from typing import List
 from db.aogetdb import get_job_dao
 from config.app_config import get_config_value, AppConfig
+from model.job import Job
 from model.dto.job_dto import JobDTO
 from model.file_model import FileModel
 import model.yaml.job_yaml as job_yaml
@@ -75,14 +76,31 @@ class JobController:
 
     def start_job(self, job_name: str) -> None:
         """Start the given job"""
+        self.update_ui_job_status(job_name, Job.STATUS_STARTING)
+        self.app.update_cycle.journal_of_job(job_name).update_job_status(
+            Job.STATUS_STARTING
+        )
         file_dtos = self.files.get_selected_file_dtos(job_name).values()
         self.files.start_download_file_dtos(job_name, file_dtos)
 
     def stop_job(self, job_name: str) -> None:
         """Stop the given job"""
         if self.app.downloads.is_running_for_job(job_name):
-            for file_dto in self.files.get_selected_file_dtos(job_name).values():
-                self.files.stop_download_file_dto(job_name, file_dto)
+            # set state to Stopping
+            self.update_ui_job_status(job_name, Job.STATUS_STOPPING)
+            self.app.update_cycle.journal_of_job(job_name).update_job_status(
+                Job.STATUS_STOPPING
+            )
+            all_selected_files = self.files.get_selected_file_dtos(job_name).values()
+            self.files.stop_download_file_dtos(job_name, all_selected_files)
+
+    def update_ui_job_status(self, job_name: str, status: str) -> None:
+        """Update the job status on the UI. Note that this is cosmetical. If you
+        want an eventual DB update, update the journal as well. This is needed
+        because the update cycle is async and the UI needs to be updated immediately."""
+        job_dto = self.get_job_dto_by_name(job_name)
+        job_dto.status = status
+        self.app.main_window.update_job_signal.emit(job_dto)
 
     def add_thread(self, job_name: str) -> None:
         """Increase the threads for the given job"""

@@ -117,29 +117,29 @@ class TestJobController:
 
     def test_start_job(self, job_controller, mock_file_controller):
         file_dto = MagicMock()
-        mock_file_controller.get_selected_file_dtos.return_value = {
-            "Test File": file_dto
-        }
-        job_controller.start_job("Test Job")
-        mock_file_controller.get_selected_file_dtos.assert_called_once_with("Test Job")
-        mock_file_controller.start_download_file_dtos.assert_called_once()
+        with patch("aoget.controller.job_controller.get_job_dao"):
+            mock_file_controller.get_selected_file_dtos.return_value = {
+                "Test File": file_dto
+            }
+            job_controller.start_job("Test Job")
+            mock_file_controller.get_selected_file_dtos.assert_called_once_with("Test Job")
+            mock_file_controller.start_download_file_dtos.assert_called_once()
 
     def test_stop_job(
         self, job_controller, mock_app_state_handlers, mock_file_controller
     ):
-        file_dto = MagicMock()
-        mock_file_controller.get_selected_file_dtos.return_value = {
-            "Test File": file_dto
-        }
-        mock_app_state_handlers.downloads.is_running_for_job.return_value = True
-        job_controller.stop_job("Test Job")
-        mock_app_state_handlers.downloads.is_running_for_job.assert_called_once_with(
-            "Test Job"
-        )
-        mock_file_controller.get_selected_file_dtos.assert_called_once_with("Test Job")
-        mock_file_controller.stop_download_file_dto.assert_called_once_with(
-            "Test Job", file_dto
-        )
+        with patch("aoget.controller.job_controller.get_job_dao"):
+            file_dto = MagicMock()
+            mock_file_controller.get_selected_file_dtos.return_value = {
+                "Test File": file_dto
+            }
+            mock_app_state_handlers.downloads.is_running_for_job.return_value = True
+            job_controller.stop_job("Test Job")
+            mock_app_state_handlers.downloads.is_running_for_job.assert_called_once_with(
+                "Test Job"
+            )
+            mock_file_controller.get_selected_file_dtos.assert_called_once_with("Test Job")
+            mock_file_controller.stop_download_file_dtos.assert_called_once()
 
     def test_add_thread(self, job_controller, mock_app_state_handlers):
         downloader_mock = mock_app_state_handlers.downloads.get_downloader.return_value

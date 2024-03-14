@@ -38,6 +38,19 @@ class TestAppCache(unittest.TestCase):
         self.app_cache.drop_job(job_name)
         self.assertNotIn(job_name, self.app_cache.file_dto_cache)
 
+    def test_is_cached_file(self):
+        job_name = "Test Job"
+        file_name = "test_file.txt"
+        self.app_cache.file_dto_cache[job_name] = {file_name: "file_data"}
+        self.assertTrue(self.app_cache.is_cached_file(job_name, file_name))
+
+    def test_get_cached_file(self):
+        job_name = "Test Job"
+        file_name = "test_file.txt"
+        self.app_cache.file_dto_cache[job_name] = {file_name: "file_data"}
+        self.assertEqual("file_data", self.app_cache.get_cached_file(job_name, file_name))
+
+
 
 if __name__ == "__main__":
     unittest.main()

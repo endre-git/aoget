@@ -37,7 +37,7 @@ def file_model_dto():
 @pytest.fixture
 def queued_downloader(job_dto, mock_journal_daemon):
     return QueuedDownloader(
-        job=job_dto, monitor=mock_journal_daemon, worker_pool_size=1
+        job=job_dto, journal_daemon=mock_journal_daemon, worker_pool_size=1
     )
 
 
@@ -48,9 +48,9 @@ def test_downloader(queued_downloader, file_model_dto):
         queued_downloader.start_download_threads()
         queued_downloader.stop()
 
-        #mock_download_file.assert_called_once()
-        #assert mock_download_file.call_args[0][0] == file_model_dto.url
-        #assert mock_download_file.call_args[0][1].endswith(file_model_dto.name)
+        # mock_download_file.assert_called_once()
+        # assert mock_download_file.call_args[0][0] == file_model_dto.url
+        # assert mock_download_file.call_args[0][1].endswith(file_model_dto.name)
 
 
 def test_stop_download_threads(queued_downloader):
@@ -78,3 +78,78 @@ def test_update_priority(queued_downloader, file_model_dto):
     file_model_dto.priority = 1
     queued_downloader.update_priority(file_model_dto)
     assert queued_downloader.queue.pop_file().priority == 1
+
+
+def test_shutdown(queued_downloader):
+    queued_downloader.files_downloading.append("test_file")
+    mock_signal = MagicMock()
+    queued_downloader.signals = {"test_file": mock_signal}
+    queued_downloader.shutdown()
+    assert not queued_downloader.are_download_threads_running
+    mock_signal.cancel.assert_called_once()
+
+
+def test_dequeue_files(queued_downloader):
+    file_model_dto_1 = FileModelDTO(
+        name="testfile1",
+        job_name="test_job",
+        url="http://example.com/testfile1",
+        priority=2,
+    )
+    file_model_dto_2 = FileModelDTO(
+        name="testfile2",
+        job_name="test_job",
+        url="http://example.com/testfile2",
+        priority=3,
+    )
+    file_model_dto_3 = FileModelDTO(
+        name="testfile3",
+        job_name="test_job",
+        url="http://example.com/testfile3",
+        priority=4,
+    )
+    queued_downloader.files_in_queue = ["testfile2", "testfile3"]
+    queued_downloader.queue = MagicMock()
+    queued_downloader.dequeue_files(
+        [file_model_dto_1, file_model_dto_2, file_model_dto_3]
+    )
+    assert len(queued_downloader.files_in_queue) == 0
+    queued_downloader.queue.remove_all.assert_called_with(
+        [file_model_dto_1, file_model_dto_2, file_model_dto_3]
+    )
+
+
+def test_stop_active_downloads(queued_downloader):
+    file_model_dto_1 = FileModelDTO(
+        name="testfile1",
+        job_name="test_job",
+        url="http://example.com/testfile1",
+        priority=2,
+    )
+    file_model_dto_2 = FileModelDTO(
+        name="testfile2",
+        job_name="test_job",
+        url="http://example.com/testfile2",
+        priority=3,
+    )
+    file_model_dto_3 = FileModelDTO(
+        name="testfile3",
+        job_name="test_job",
+        url="http://example.com/testfile3",
+        priority=4,
+    )
+    queued_downloader.files_downloading.append("testfile2")
+    queued_downloader.files_downloading.append("testfile3")
+    mock_signal_file2 = MagicMock()
+    mock_signal_file3 = MagicMock()
+    queued_downloader.signals = {
+        "testfile2": mock_signal_file2,
+        "testfile3": mock_signal_file3,
+    }
+
+    queued_downloader.stop_active_downloads(
+        [file_model_dto_1, file_model_dto_2, file_model_dto_3]
+    )
+    assert len(queued_downloader.files_downloading) == 2  # they were not removed, just cancelled
+    mock_signal_file2.cancel.assert_called_once()
+    mock_signal_file3.cancel.assert_called_once()
