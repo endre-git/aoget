@@ -669,6 +669,12 @@ class QueuedDownloader:
             with self.size_resolver_lock:
                 self.resolved_all_file_sizes = had_failures
                 self.is_resolver_running = False
+            if had_failures:
+                logger.error(
+                    "Failed to resolve file sizes for job %s after %d attempts",
+                    job_name,
+                    SIZE_RESOLVER_ATTEMPTS,
+                )
 
         t = threading.Thread(
             target=resolve_size_task, name=f"size-resolver-{self.job.name}"

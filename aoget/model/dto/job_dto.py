@@ -15,6 +15,7 @@ class JobDTO:
         selected_files_count=None,
         selected_files_with_known_size=None,
         progress=None,
+        size_resolver_status=None,
         deleted=False,
     ):
         self.id = id
@@ -31,6 +32,7 @@ class JobDTO:
         self.selected_files_count = selected_files_count
         self.selected_files_with_known_size = selected_files_with_known_size
         self.progress = progress
+        self.size_resolver_status = size_resolver_status
         self.deleted = False
 
     @classmethod
@@ -88,6 +90,8 @@ class JobDTO:
             self.selected_files_with_known_size = other.selected_files_with_known_size
         if other.progress:
             self.progress = other.progress
+        if other.size_resolver_status:
+            self.size_resolver_status = other.size_resolver_status
         return self
 
     def merge_into_model(self, job_model):

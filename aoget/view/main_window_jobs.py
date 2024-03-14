@@ -468,15 +468,23 @@ class MainWindowJobs:
         """Set the progress cell for the given job based on the current state of the job"""
         mw = self.main_window
         if job.is_size_not_resolved():
-            mw.tblJobs.removeCellWidget(row, JOB_PROGRESS_IDX)
-            mw.tblJobs.setItem(
-                row,
-                JOB_PROGRESS_IDX,
-                ProgressBarPlaceholderWidgetItem(
-                    f"Resolving file size {job.selected_files_with_known_size}/{job.selected_files_count}"
-                ),
-            )
-            return
+            if job.size_resolver_status == "Running":
+                mw.tblJobs.removeCellWidget(row, JOB_PROGRESS_IDX)
+                mw.tblJobs.setItem(
+                    row,
+                    JOB_PROGRESS_IDX,
+                    ProgressBarPlaceholderWidgetItem(
+                        f"Resolving file size {job.selected_files_with_known_size}/{job.selected_files_count}"
+                    ),
+                )
+                return
+            else:
+                mw.tblJobs.setItem(
+                    row,
+                    JOB_PROGRESS_IDX,
+                    ProgressBarPlaceholderWidgetItem("Could not resolve file sizes."),
+                )
+                return
         if job.total_size_bytes is None or job.total_size_bytes == 0:
             mw.tblJobs.setItem(
                 row,

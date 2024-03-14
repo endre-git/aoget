@@ -250,14 +250,13 @@ class UpdateCycle:
 
     def __update_calculated_job_fields(self, job: Job, job_updates: JobUpdates) -> None:
         """Update the cached fields of the job object both the model and the DTO."""
+        job_dto = job_updates.job_update
         # back-populate cached fields to job update DTO for UI display
-        job_updates.job_update.total_size_bytes = job.total_size_bytes
-        job_updates.job_update.selected_files_with_known_size = (
-            job.selected_files_with_known_size
-        )
+        job_dto.total_size_bytes = job.total_size_bytes
+        job_dto.selected_files_with_known_size = job.selected_files_with_known_size
         if job.selected_files_count is None or job.selected_files_count < 0:
             job.selected_files_count = len(self.app.cache.get_files_of_job(job.name))
-        job_updates.job_update.selected_files_count = job.selected_files_count
+        job_dto.selected_files_count = job.selected_files_count
 
         # downloaded bytes is a cache field, so we need to update it in the job object
         downloaded_bytes = (
@@ -269,10 +268,10 @@ class UpdateCycle:
             )
         )
         job.downloaded_bytes = downloaded_bytes
-        job_updates.job_update.downloaded_bytes = downloaded_bytes
+        job_dto.downloaded_bytes = downloaded_bytes
         if job.total_size_bytes == job.downloaded_bytes:
             job.status = Job.STATUS_COMPLETED
-            job_updates.job_update.status = Job.STATUS_COMPLETED
+            job_dto.status = Job.STATUS_COMPLETED
 
         # downloaded files count
         completed_files = (
@@ -283,7 +282,10 @@ class UpdateCycle:
                 if file.status == FileModel.STATUS_COMPLETED
             )
         )
-        job_updates.job_update.files_done = completed_files
+        job_dto.files_done = completed_files
+        job_dto.size_resolver_status = (
+            "Running" if self.app.downloads.is_job_size_resolving() else "Not running"
+        )
         self.__infer_job_status(job, job_updates)
 
     def process_job_updates(self, cycle_job_updates: JobUpdates, merge=True) -> None:

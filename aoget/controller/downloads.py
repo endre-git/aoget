@@ -8,9 +8,7 @@ from web.queued_downloader import QueuedDownloader
 class Downloads:
     """App-level downloads object that manages the downloaders for each job."""
 
-    def __init__(
-        self, app_state_handlers: any
-    ):
+    def __init__(self, app_state_handlers: any):
         """Create a new Downloads object."""
         self.app = app_state_handlers
         self.job_downloaders = {}
@@ -143,6 +141,13 @@ class Downloads:
         return (
             self.is_running_for_job(job_name)
             and self.get_downloader(job_name).is_downloading()
+        )
+
+    def is_job_size_resolving(self, job_name: str) -> bool:
+        """Check if the given job is resolving sizes."""
+        return (
+            self.is_running_for_job(job_name)
+            and self.get_downloader(job_name).is_resolving_file_sizes()
         )
 
     def get_all_active_job_names(self) -> list:
