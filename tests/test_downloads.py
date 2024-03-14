@@ -115,6 +115,22 @@ class TestDownloads(unittest.TestCase):
         for downloader in self.downloads.job_downloaders.values():
             downloader.set_retry_attempts.assert_called_with(9)
 
+    def test_dequeue_files(self):
+        job_name = "test_job"
+        file_dtos = ["file1", "file2"]
+        downloader = MagicMock()
+        self.downloads.get_downloader = MagicMock(return_value=downloader)
+        self.downloads.dequeue_files(job_name, file_dtos)
+        downloader.dequeue_files.assert_called_with(file_dtos)
+
+    def test_stop_active_downloads(self):
+        job_name = "test_job"
+        file_dtos = ["file1", "file2"]
+        downloader = MagicMock()
+        self.downloads.get_downloader = MagicMock(return_value=downloader)
+        self.downloads.stop_active_downloads(job_name, file_dtos)
+        downloader.stop_active_downloads.assert_called_with(file_dtos)
+
 
 if __name__ == '__main__':
     unittest.main()

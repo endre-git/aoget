@@ -18,11 +18,12 @@ class TestFileQueue(unittest.TestCase):
         queue.put_file(file4)
         popped = queue.pop_file()
         assert popped.name == "testfile4"
-    
+
     def test_cant_put_null(self):
         queue = FileQueue()
         with self.assertRaises(ValueError):
             queue.put_file(None)
+
 
 if __name__ == "__main__":
     unittest.main()
