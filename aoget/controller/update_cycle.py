@@ -255,6 +255,8 @@ class UpdateCycle:
         job_updates.job_update.selected_files_with_known_size = (
             job.selected_files_with_known_size
         )
+        if job.selected_files_count is None or job.selected_files_count < 0:
+            job.selected_files_count = len(self.app.cache.get_files_of_job(job.name))
         job_updates.job_update.selected_files_count = job.selected_files_count
 
         # downloaded bytes is a cache field, so we need to update it in the job object
