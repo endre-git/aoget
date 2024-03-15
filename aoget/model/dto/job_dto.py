@@ -15,6 +15,7 @@ class JobDTO:
         selected_files_count=None,
         selected_files_with_known_size=None,
         progress=None,
+        size_resolver_status=None,
         deleted=False,
     ):
         self.id = id
@@ -31,6 +32,7 @@ class JobDTO:
         self.selected_files_count = selected_files_count
         self.selected_files_with_known_size = selected_files_with_known_size
         self.progress = progress
+        self.size_resolver_status = size_resolver_status
         self.deleted = False
 
     @classmethod
@@ -51,16 +53,6 @@ class JobDTO:
         # job_dto.files = [FileModelDTO.from_model(file_model) for file_model in job_model.files]
         return job_dto
 
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "status": self.status,
-            "page_url": self.page_url,
-            "total_size_bytes": self.total_size_bytes,
-            "target_folder": self.target_folder,
-            "deleted": self.deleted,
-        }
-
     def merge(self, other):
         if other.name:
             self.name = other.name
@@ -79,7 +71,7 @@ class JobDTO:
         if other.threads_active:
             self.threads_active = other.threads_active
         if other.threads_allocated:
-            self.threads_allocated = other.thread_count
+            self.threads_allocated = other.threads_allocated
         if other.files_done:
             self.files_done = other.files_done
         if other.selected_files_count:
@@ -88,6 +80,8 @@ class JobDTO:
             self.selected_files_with_known_size = other.selected_files_with_known_size
         if other.progress:
             self.progress = other.progress
+        if other.size_resolver_status:
+            self.size_resolver_status = other.size_resolver_status
         return self
 
     def merge_into_model(self, job_model):

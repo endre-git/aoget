@@ -609,7 +609,7 @@ class QueuedDownloader:
             target=health_check_task, name=f"health-check-{self.job.name}"
         ).start()
 
-    def resolve_file_sizes(self, job_name: str, filemodels: list) -> None:
+    def resolve_file_sizes(self, job_name: str, filemodels: list) -> threading.Thread:
         """Resolve the file sizes of the given filemodels.
         :param job_name:
             The name of the job
@@ -624,7 +624,7 @@ class QueuedDownloader:
 
             attempt = 1
             had_failures = True
-            while attempt < SIZE_RESOLVER_ATTEMPTS and had_failures:
+            while attempt <= SIZE_RESOLVER_ATTEMPTS and had_failures:
 
                 had_failures = False
                 logger.debug(
@@ -654,22 +654,30 @@ class QueuedDownloader:
                             job_name, filemodel.name, "Size resolver failed: " + str(e)
                         )
                         had_failures = True
-                    attempt += 1
                     logger.debug(
                         "Size resolver attempt %d for job %s finished with sucess: %b",
                         attempt,
                         job_name,
                         not had_failures,
                     )
+                attempt += 1
             logger.debug(
                 "Finished resolving file sizes in background for %d files of job %s",
                 len(filemodels),
                 job_name,
             )
             with self.size_resolver_lock:
-                self.resolved_all_file_sizes = True
+                self.resolved_all_file_sizes = had_failures
                 self.is_resolver_running = False
+            if had_failures:
+                logger.error(
+                    "Failed to resolve file sizes for job %s after %d attempts",
+                    job_name,
+                    SIZE_RESOLVER_ATTEMPTS,
+                )
 
-        threading.Thread(
+        t = threading.Thread(
             target=resolve_size_task, name=f"size-resolver-{self.job.name}"
-        ).start()
+        )
+        t.start()
+        return t

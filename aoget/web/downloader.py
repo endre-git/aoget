@@ -269,7 +269,28 @@ def __attempt_download_file(
         return __downloader(url, local_path, signals=signals)
 
 
-def resolve_remote_file_size(url: str) -> int:
+def resolve_remote_file_size(url: str, attempts: int = 5):
+    """Resolve the size of a remote file.
+    Parameters
+    ----------
+    url: str
+        Remote resource (file) url
+    attempts: int
+        Number of attempts to resolve the file size"""
+    current_attempt = 0
+    while current_attempt < attempts:
+        try:
+            result = __attempt_resolve_remote_file_size(url)
+            return result
+        except Exception as e:
+            logger.error(f"Resolving file size for {url} failed in attempt #{current_attempt + 1}: {e}")
+            logger.exception(e)
+        current_attempt += 1
+    logger.error(f"Resolving file size for {url} failed after {attempts} attempts, giving up.")
+    raise Exception(f"Resolving file size for {url} failed after {attempts} attempts, giving up.")
+
+
+def __attempt_resolve_remote_file_size(url: str) -> int:
     """Resolve the size of a remote file. Go through redirects if necessary.
     Parameters
     ----------
@@ -281,7 +302,7 @@ def resolve_remote_file_size(url: str) -> int:
     actual_location = r.headers.get("location", None)
     if content_length == 0 and actual_location is not None:
         logger.debug("Resolving redirect to %s from URL %s", actual_location, url)
-        return resolve_remote_file_size(actual_location)
+        return __attempt_resolve_remote_file_size(actual_location)
     return content_length
 
 

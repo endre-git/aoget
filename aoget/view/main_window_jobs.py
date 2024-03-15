@@ -305,7 +305,9 @@ class MainWindowJobs:
             Files <b>will</b> be deleted.</p>""",
         ):
             try:
-                messages = mw.controller.jobs.delete_job(job_name, delete_from_disk=True)
+                messages = mw.controller.jobs.delete_job(
+                    job_name, delete_from_disk=True
+                )
                 if messages:
                     show_warnings(
                         mw, "Removed job with the following warnings:", messages
@@ -368,7 +370,9 @@ class MainWindowJobs:
                         and newly_selected_job != selected_job_name
                     ):
                         mw.show_files(newly_selected_job)
-                        mw.controller.jobs.job_post_select(newly_selected_job, is_new=True)
+                        mw.controller.jobs.job_post_select(
+                            newly_selected_job, is_new=True
+                        )
                     elif get_config_value(AppConfig.AUTO_START_JOBS):
                         mw.controller.jobs.start_job(dlg.controller.job.name)
             except Exception as e:
@@ -464,13 +468,23 @@ class MainWindowJobs:
         """Set the progress cell for the given job based on the current state of the job"""
         mw = self.main_window
         if job.is_size_not_resolved():
-            mw.tblJobs.removeCellWidget(row, JOB_PROGRESS_IDX)
-            mw.tblJobs.setItem(
-                row,
-                JOB_PROGRESS_IDX,
-                ProgressBarPlaceholderWidgetItem("Resolving size..."),
-            )
-            return
+            if job.size_resolver_status == "Running":
+                mw.tblJobs.removeCellWidget(row, JOB_PROGRESS_IDX)
+                mw.tblJobs.setItem(
+                    row,
+                    JOB_PROGRESS_IDX,
+                    ProgressBarPlaceholderWidgetItem(
+                        f"Resolving file size {job.selected_files_with_known_size}/{job.selected_files_count}"
+                    ),
+                )
+                return
+            else:
+                mw.tblJobs.setItem(
+                    row,
+                    JOB_PROGRESS_IDX,
+                    ProgressBarPlaceholderWidgetItem("Job size not resolved."),
+                )
+                return
         if job.total_size_bytes is None or job.total_size_bytes == 0:
             mw.tblJobs.setItem(
                 row,
