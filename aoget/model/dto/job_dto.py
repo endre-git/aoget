@@ -81,7 +81,7 @@ class JobDTO:
         if other.threads_active:
             self.threads_active = other.threads_active
         if other.threads_allocated:
-            self.threads_allocated = other.thread_count
+            self.threads_allocated = other.threads_allocated
         if other.files_done:
             self.files_done = other.files_done
         if other.selected_files_count:
