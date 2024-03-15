@@ -269,28 +269,27 @@ class UpdateCycle:
         )
         job.downloaded_bytes = downloaded_bytes
         job_dto.downloaded_bytes = downloaded_bytes
-        
+
         # downloaded files count
         completed_files = (
             # count the files that are completed in cache
             sum(
                 1
                 for file in self.app.cache.get_cached_files(job.name).values()
-                if file.status == FileModel.STATUS_COMPLETED
+                if file.status == FileModel.STATUS_COMPLETED and file.selected
             )
         )
-        job_dto.files_done = completed_files
-        if (
-            job.total_size_bytes == job.downloaded_bytes
-            or job.files_done == job.selected_files_count
-        ):
-            job.status = Job.STATUS_COMPLETED
-            job_dto.status = Job.STATUS_COMPLETED
+        job.files_done = job_dto.files_done = completed_files
+        if job.files_done == job.selected_files_count:
+            job.status = job_dto.status = Job.STATUS_COMPLETED
 
         job_dto.size_resolver_status = (
-            "Running" if self.app.downloads.is_job_size_resolving() else "Not running"
+            "Running"
+            if self.app.downloads.is_job_size_resolving(job.name)
+            else "Not running"
         )
-        self.__infer_job_status(job, job_updates)
+        if job.status != Job.STATUS_COMPLETED:
+            self.__infer_job_status(job, job_updates)
 
     def process_job_updates(self, cycle_job_updates: JobUpdates, merge=True) -> None:
         app = self.app

@@ -482,7 +482,7 @@ class MainWindowJobs:
                 mw.tblJobs.setItem(
                     row,
                     JOB_PROGRESS_IDX,
-                    ProgressBarPlaceholderWidgetItem("Could not resolve file sizes."),
+                    ProgressBarPlaceholderWidgetItem("Job size not resolved."),
                 )
                 return
         if job.total_size_bytes is None or job.total_size_bytes == 0:

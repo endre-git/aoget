@@ -53,16 +53,6 @@ class JobDTO:
         # job_dto.files = [FileModelDTO.from_model(file_model) for file_model in job_model.files]
         return job_dto
 
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "status": self.status,
-            "page_url": self.page_url,
-            "total_size_bytes": self.total_size_bytes,
-            "target_folder": self.target_folder,
-            "deleted": self.deleted,
-        }
-
     def merge(self, other):
         if other.name:
             self.name = other.name
