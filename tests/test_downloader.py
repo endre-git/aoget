@@ -2,7 +2,12 @@ import unittest
 import math
 from unittest.mock import MagicMock, patch
 from pathlib import Path
-from aoget.web.downloader import DownloadSignals, download_file, validate_file
+from aoget.web.downloader import (
+    DownloadSignals,
+    download_file,
+    validate_file,
+    resolve_remote_file_size,
+)
 
 
 class TestProgressObserver(DownloadSignals):
@@ -112,7 +117,18 @@ class TestDownloader(unittest.TestCase):
 
             # Assert that the file size is still the same
             self.assertEqual(file.stat().st_size, self.file_size)
-            self.assertEqual(progress_observer.event, "File was already on disk and complete.")
+            self.assertEqual(
+                progress_observer.event, "File was already on disk and complete."
+            )
+
+    def test_resolve_remote_file_size_five_attempts(self):
+        with patch(
+            "aoget.web.downloader.__attempt_resolve_remote_file_size"
+        ) as mock_resolve_attempt:
+            mock_resolve_attempt.side_effect = [Exception("error")] * 4
+            with self.assertRaises(Exception):
+                resolve_remote_file_size("https://example.com/file.txt")
+            self.assertEqual(5, mock_resolve_attempt.call_count)
 
     def test_five_attempts(self):
         progress_observer = TestProgressObserver()
