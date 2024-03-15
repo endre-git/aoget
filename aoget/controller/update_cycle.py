@@ -269,10 +269,7 @@ class UpdateCycle:
         )
         job.downloaded_bytes = downloaded_bytes
         job_dto.downloaded_bytes = downloaded_bytes
-        if job.total_size_bytes == job.downloaded_bytes:
-            job.status = Job.STATUS_COMPLETED
-            job_dto.status = Job.STATUS_COMPLETED
-
+        
         # downloaded files count
         completed_files = (
             # count the files that are completed in cache
@@ -283,6 +280,13 @@ class UpdateCycle:
             )
         )
         job_dto.files_done = completed_files
+        if (
+            job.total_size_bytes == job.downloaded_bytes
+            or job.files_done == job.selected_files_count
+        ):
+            job.status = Job.STATUS_COMPLETED
+            job_dto.status = Job.STATUS_COMPLETED
+
         job_dto.size_resolver_status = (
             "Running" if self.app.downloads.is_job_size_resolving() else "Not running"
         )
