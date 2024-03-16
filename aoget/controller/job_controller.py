@@ -260,6 +260,10 @@ class JobController:
         with self.app.db_lock:
             return get_job_dao().get_job_by_name(job_name) is not None
 
+    def start_size_resolver_for_job(self, job_name: str) -> None:
+        """Start the size resolver for the given job"""
+        self.background_controller.resolve_file_sizes(job_name)
+
     def stop_size_resolver_for_job(self, job_name: str) -> None:
         """Stop the size resolver for the given job"""
         self.background_controller.stop_size_resolver(job_name)

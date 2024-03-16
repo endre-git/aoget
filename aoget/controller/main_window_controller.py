@@ -42,6 +42,7 @@ class MainWindowController:
             self.main_window.show_crash_report(crash_report)
 
         files_per_job = {}
+        size_resolvers_to_start_for_jobs = []
         with self.db_lock:
             t0 = time.time()
             jobs = get_job_dao().get_all_jobs()
@@ -70,6 +71,11 @@ class MainWindowController:
                 if job.downloaded_bytes == job.total_size_bytes:
                     job.status = Job.STATUS_COMPLETED
                 get_job_dao().save_job(job)
+                if (
+                    job.selected_files_count > 0
+                    and job.selected_files_with_known_size < job.selected_files_count
+                ):
+                    size_resolvers_to_start_for_jobs.append(job.name)
         logger.info("Cache buildup took %s seconds.", time.time() - t0)
         t0 = time.time()
 
@@ -85,6 +91,10 @@ class MainWindowController:
         )
         self.validation_is_running = True
         self.validation_thread.start()
+
+        # start size resolvers where applicable
+        for job_name in size_resolvers_to_start_for_jobs:
+            self.jobs.start_size_resolver_for_job(job_name)
 
     def set_global_bandwidth_limit(self, rate_limit_bps: int) -> None:
         """Set the global bandwidth limit"""
