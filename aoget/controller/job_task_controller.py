@@ -13,7 +13,6 @@ class JobTaskController:
         self.db_lock = app_state_handlers.db_lock
         self.app = app_state_handlers
 
-    # TODO app-cache
     def resolve_file_sizes(self, job_name: str) -> None:
         """Resolve the file sizes of all selected files that have an unknown size"""
         cache = self.app.cache
@@ -61,3 +60,17 @@ class JobTaskController:
             downloads.is_running_for_job(job_name)
             and downloads.get_downloader(job_name).is_resolving_file_sizes()
         )
+
+    def stop_size_resolver(self, job_name: str) -> None:
+        """Stop the size resolver for the given job"""
+        if self.is_size_resolver_running(job_name):
+            self.app.downloads.get_downloader(job_name).stop_resolving_file_sizes()
+        else:
+            logger.warning(
+                "Size resolver for job %s is not running, cannot stop it.", job_name
+            )
+
+    def restart_size_resolver(self, job_name: str) -> None:
+        """Restart the size resolver for the given job"""
+        self.app.downloads.get_downloader(job_name).size_resolver_cancelled = False
+        self.resolve_file_sizes(job_name)

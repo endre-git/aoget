@@ -260,10 +260,12 @@ class MainWindowJobs:
             )
             return
 
+        mw.controller.jobs.stop_size_resolver_for_job(job_name)
         dlg = JobEditorDialog(mw.controller, job_name)
         val = dlg.exec()
         if val == 1:
             mw.show_files(job_name)
+        mw.controller.jobs.restart_size_resolver_for_job(job_name)
 
     def __on_job_remove_from_list(self):
         """Remove the selected job from the list"""

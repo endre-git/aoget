@@ -264,7 +264,7 @@ class QueuedDownloader:
             try:
                 file_to_download = self.queue.pop_file()
                 if FileQueue.is_poison_pill(file_to_download):
-                    logger.info("Worker received poison pill, stopping.")
+                    logger.debug("Worker received poison pill, stopping.")
                     return
                 logger.debug("Worker took file: %s", file_to_download.name)
                 if file_to_download.name not in self.files_in_queue:
@@ -621,6 +621,10 @@ class QueuedDownloader:
             target=health_check_task, name=f"health-check-{self.job.name}"
         ).start()
 
+    def stop_resolving_file_sizes(self) -> None:
+        """Stop resolving the file sizes."""
+        self.size_resolver_cancelled = True
+
     def resolve_file_sizes(self, job_name: str, filemodels: list) -> threading.Thread:
         """Resolve the file sizes of the given filemodels.
         :param job_name:
@@ -644,6 +648,8 @@ class QueuedDownloader:
                 )
                 for filemodel in filemodels:
                     if self.size_resolver_cancelled:
+                        with self.size_resolver_lock:
+                            self.is_resolver_running = False
                         return
                     if filemodel.size_bytes is not None and filemodel.size_bytes > 0:
                         continue
