@@ -164,6 +164,7 @@ class FileModelController:
                 if file_dto.size_bytes is not None and file_dto.size_bytes > -1:
                     known_size_count += 1
                 file_dto.merge_into_model(file_model)
+                file_dto.update_from_model(file_model)
                 job.add_file(file_model)
             job.selected_files_count = selected_count
             job.selected_files_with_known_size = known_size_count

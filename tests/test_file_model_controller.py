@@ -228,7 +228,9 @@ class TestFileModelController:
             assert resolved_path == os.path.join('fake_path', 'testfile1')
 
     def test_set_files_of_job(self, file_model_controller):
-        with patch('aoget.controller.file_model_controller.get_file_model_dao'), patch(
+        with patch(
+            'aoget.controller.file_model_controller.get_file_model_dao'
+        ) as file_model_dao_mock, patch(
             'aoget.controller.file_model_controller.get_job_dao'
         ) as job_dao_mock:
             test_job = Job(
@@ -265,6 +267,9 @@ class TestFileModelController:
             )
             cache = AppCache()
             file_model_controller.app.cache = cache
+            file_model_dao_mock.return_value.create_file_model.return_value = FileModel(
+                test_job, 'http://example.com/file_name'
+            )
             job_dao_mock.return_value.get_job_by_id.return_value = test_job
             file_model_controller.set_files_of_job(
                 'test_job', [file_dto_1, file_dto_2, file_dto_3]

@@ -108,6 +108,8 @@ class FileModelDTO:
             if not other_file_model_dto.selected
             else self.selected
         )
+        if other_file_model_dto.job_name:
+            self.job_name = other_file_model_dto.job_name
         if other_file_model_dto.url:
             self.url = other_file_model_dto.url
         if other_file_model_dto.priority:
@@ -183,6 +185,7 @@ class FileModelDTO:
         self.selected = (
             file_model.selected if not file_model.selected else self.selected
         )
+        self.job_name = file_model.job.name
         self.url = file_model.url if file_model.url else self.url
         self.size_bytes = (
             file_model.size_bytes
