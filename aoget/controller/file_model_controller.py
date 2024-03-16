@@ -447,7 +447,9 @@ class FileModelController:
                 file_statuses[file_dto.name] = FileModel.STATUS_QUEUED
             journal.add_file_events(file_events)
             journal.update_file_statuses(file_statuses)
-            logger.info("Updated journal in %s seconds.", human_duration(time.time() - t0))
+            logger.info(
+                "Updated journal in %s seconds.", human_duration(time.time() - t0)
+            )
             t0 = time.time()
             self.app.downloads.download_files(job_name, non_running_file_dtos)
             logger.info(
@@ -463,8 +465,16 @@ class FileModelController:
         elif file_dto.status == FileModel.STATUS_QUEUED:
             self.stop_download(job_name, file_dto.name, add_to_journal=True)
 
-    def stop_download_file_dtos(self, job_name: str, file_dtos: list) -> None:
-        """Stop the downloads of the given files in the given job"""
+    def stop_download_file_dtos(
+        self, job_name: str, file_dtos: list, sync: bool = False
+    ) -> None:
+        """Stop the downloads of the given files in the given job
+        :param job_name:
+            The name of the job
+        :param file_dtos:
+            The file DTOs to stop downloading
+        :param sync:
+            Whether to wait for the downloads to stop"""
         with self.app.job_lock(job_name):
             t0 = time.time()
             downloads = self.app.downloads
@@ -486,7 +496,9 @@ class FileModelController:
             )
             t0 = time.time()
             downloads.dequeue_files(job_name, queued_file_dtos)
-            logger.info("Dequeued files in %s seconds.", human_duration(time.time() - t0))
+            logger.info(
+                "Dequeued files in %s seconds.", human_duration(time.time() - t0)
+            )
 
             t0 = time.time()
             downloading_file_dtos = list(
@@ -505,7 +517,8 @@ class FileModelController:
                 human_duration(time.time() - t0),
             )
             t0 = time.time()
-            downloads.stop_active_downloads(job_name, downloading_file_dtos)
+            downloads.stop_active_downloads(job_name, downloading_file_dtos, sync)
             logger.info(
-                "Stopped active downloads in %s seconds.", human_duration(time.time() - t0)
+                "Stopped active downloads in %s seconds.",
+                human_duration(time.time() - t0),
             )

@@ -115,13 +115,6 @@ class QueuedDownloader:
         self.is_health_check_running = False
         self.is_resuming = False
 
-    def run(self) -> None:
-        """Run the download queue. Blocks until all files are downloaded."""
-        self.__start_workers()
-        self.__populate_queue()
-        self.queue.join()
-        self.__stop_workers(sync=True)
-
     def start_download_threads(self) -> None:
         """Start the download queue."""
         with self.download_thread_lock:
@@ -129,9 +122,12 @@ class QueuedDownloader:
                 self.__start_workers()
                 self.are_download_threads_running = True
 
-    def stop(self) -> None:
+    def stop(self, sync: bool = True) -> None:
         """Stop the download queue."""
-        self.__stop_workers(sync=True)
+        self.health_check_cancelled = True
+        self.size_resolver_cancelled = True
+        self.files_in_queue.clear()
+        self.__stop_workers(sync=sync)
 
     def shutdown(self) -> None:
         """Shutdown the download queue, stop running downloads, drop in-queue downloads.
@@ -173,13 +169,27 @@ class QueuedDownloader:
                 self.files_in_queue.remove(file.name)
         self.queue.remove_all(files)
 
-    def stop_active_downloads(self, files: list) -> None:
+    def stop_active_downloads(self, files: list, sync: bool = False) -> None:
         """Stop the active downloads of the given files.
         :param files:
-            The files to stop"""
+            The files to stop
+        :param sync:
+            Whether to wait for the downloads to stop.
+            Timeout is 2 seconds. Defaults to False.
+        """
+        if sync:
+            events = {}
         for file in files:
             if file.name in self.files_downloading:
+                if sync:
+                    event = events[file.name] = threading.Event()
+                    self.signals[file.name].register_status_listener(
+                        event, FileModel.STATUS_STOPPED
+                    )
                 self.signals[file.name].cancel(shutdown=False)
+        if sync:
+            for event in events.values():
+                event.wait(2)
 
     def cancel_download(self, filename: str) -> None:
         """Cancel the download of the given file.
@@ -240,7 +250,7 @@ class QueuedDownloader:
 
     def __stop_workers(self, sync=False) -> None:
         """Stop the workers by putting None (poison pill) on the queue and joining the threads"""
-        for i in self.threads:
+        for i in enumerate(self.threads):
             self.queue.poison_pill()
         if sync:
             for t in self.threads:
@@ -254,7 +264,7 @@ class QueuedDownloader:
             try:
                 file_to_download = self.queue.pop_file()
                 if FileQueue.is_poison_pill(file_to_download):
-                    logger.debug("Worker received poison pill, stopping.")
+                    logger.info("Worker received poison pill, stopping.")
                     return
                 logger.debug("Worker took file: %s", file_to_download.name)
                 if file_to_download.name not in self.files_in_queue:
@@ -306,6 +316,8 @@ class QueuedDownloader:
 
     def remove_thread(self) -> None:
         """Kill a thread from the worker pool."""
+        if self.worker_pool_size <= 0:
+            return
         self.worker_pool_size -= 1
         if len(self.threads) > 1:
             self.queue.poison_pill()

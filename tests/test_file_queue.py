@@ -24,6 +24,12 @@ class TestFileQueue(unittest.TestCase):
         with self.assertRaises(ValueError):
             queue.put_file(None)
 
+    def test_poison_pill(self):
+        queue = FileQueue()
+        queue.poison_pill()
+        popped = queue.pop_file()
+        assert FileQueue.is_poison_pill(popped)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -201,10 +201,9 @@ class TestJobController:
             journal = MagicMock()
             mock_app_state_handlers.journal_daemon = journal
             job_controller.delete_job("Test Job")
-            downloads = mock_app_state_handlers.downloads
+            job_controller.files.stop_download_file_dtos.assert_called_once()
             update_cycle = mock_app_state_handlers.update_cycle
             cache = mock_app_state_handlers.cache
-            downloads.shutdown_for_job.assert_called_once_with("Test Job")
             update_cycle.drop_job.assert_called_once_with("Test Job")
             cache.drop_job.assert_called_once_with("Test Job")
             mock_dao.return_value.delete_job_by_name.assert_called_once_with("Test Job")
@@ -244,7 +243,6 @@ class TestJobController:
                 page_url="http://example.com",
                 target_folder="fake_path",
             )
-            downloads = mock_app_state_handlers.downloads
             update_cycle = mock_app_state_handlers.update_cycle
             cache = mock_app_state_handlers.cache
             mock_path_exists.return_value = True
@@ -259,7 +257,7 @@ class TestJobController:
             ),)
 
             # mock_os_remove.assert_called_once_with("fake_path")
-            downloads.shutdown_for_job.assert_called_once_with("Test Job")
+            job_controller.files.stop_download_file_dtos.assert_called_once()
             update_cycle.drop_job.assert_called_once_with("Test Job")
             cache.drop_job.assert_called_once_with("Test Job")
             mock_dao.return_value.delete_job_by_name.assert_called_once_with("Test Job")
