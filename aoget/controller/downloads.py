@@ -99,9 +99,9 @@ class Downloads:
         """Dequeue the given files."""
         self.get_downloader(job_name).dequeue_files(file_dtos)
 
-    def stop_active_downloads(self, job_name: str, file_dtos: list) -> None:
+    def stop_active_downloads(self, job_name: str, file_dtos: list, sync: bool = False) -> None:
         """Stop the active downloads for the given files."""
-        self.get_downloader(job_name).stop_active_downloads(file_dtos)
+        self.get_downloader(job_name).stop_active_downloads(file_dtos, sync=sync)
 
     def download_file(self, job_name: str, file_dto: FileModelDTO) -> None:
         """Download the given file."""

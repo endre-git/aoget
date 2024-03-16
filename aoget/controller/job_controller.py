@@ -140,7 +140,12 @@ class JobController:
         downloader.remove_thread()
         if victim_file is not None:
             stopped.wait(2)
+            logger.info(
+                f"Re-queueing {victim_file.name} for {job_name} after thread count decrease."
+            )
             self.files.start_download(job_name, victim_file.name)  # re-queue the file
+        else:
+            logger.info(f"No file was stopped for {job_name} to reduce thread count.")
         self.app.update_cycle.journal_of_job(job_name).update_job_threads(
             threads_allocated=downloader.worker_pool_size,
             threads_active=downloader.get_active_thread_count(),
@@ -154,7 +159,11 @@ class JobController:
             Whether to delete the files from disk"""
         messages = []
         t0 = time.time()
-        self.app.downloads.shutdown_for_job(job_name)
+        downloader = self.app.downloads.get_downloader(job_name)
+        if downloader.is_downloading():
+            all_selected_files = self.files.get_selected_file_dtos(job_name).values()
+            self.files.stop_download_file_dtos(job_name, all_selected_files, sync=True)
+
         logger.info("Stopping downloader took %s seconds.", time.time() - t0)
         t0 = time.time()
 

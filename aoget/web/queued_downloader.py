@@ -173,13 +173,27 @@ class QueuedDownloader:
                 self.files_in_queue.remove(file.name)
         self.queue.remove_all(files)
 
-    def stop_active_downloads(self, files: list) -> None:
+    def stop_active_downloads(self, files: list, sync: bool = False) -> None:
         """Stop the active downloads of the given files.
         :param files:
-            The files to stop"""
+            The files to stop
+        :param sync:
+            Whether to wait for the downloads to stop.
+            Timeout is 2 seconds. Defaults to False.
+        """
+        if sync:
+            events = {}
         for file in files:
             if file.name in self.files_downloading:
+                if sync:
+                    event = events[file.name] = threading.Event()
+                    self.signals[file.name].register_status_listener(
+                        event, FileModel.STATUS_STOPPED
+                    )
                 self.signals[file.name].cancel(shutdown=False)
+        if sync:
+            for event in events.values():
+                event.wait(2)
 
     def cancel_download(self, filename: str) -> None:
         """Cancel the download of the given file.

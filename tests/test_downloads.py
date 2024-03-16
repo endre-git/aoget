@@ -129,7 +129,7 @@ class TestDownloads(unittest.TestCase):
         downloader = MagicMock()
         self.downloads.get_downloader = MagicMock(return_value=downloader)
         self.downloads.stop_active_downloads(job_name, file_dtos)
-        downloader.stop_active_downloads.assert_called_with(file_dtos)
+        downloader.stop_active_downloads.assert_called_with(file_dtos, sync=False)
 
     def test_is_job_resuming(self):
         job_name = "test_job"
