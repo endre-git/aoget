@@ -158,3 +158,8 @@ class Downloads:
         """Set the retry attempts for all downloaders"""
         for downloader in self.job_downloaders.values():
             downloader.download_retry_attempts = retry_attempts
+
+    def drop_job(self, job_name: str) -> None:
+        """Drop the job from the downloads."""
+        if job_name in self.job_downloaders:
+            self.job_downloaders.pop(job_name)

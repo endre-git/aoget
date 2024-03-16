@@ -163,6 +163,7 @@ class JobController:
         if downloader.is_downloading():
             all_selected_files = self.files.get_selected_file_dtos(job_name).values()
             self.files.stop_download_file_dtos(job_name, all_selected_files, sync=True)
+        downloader.stop(sync=False)
 
         logger.info("Stopping downloader took %s seconds.", time.time() - t0)
         t0 = time.time()
@@ -191,6 +192,7 @@ class JobController:
             self.app.update_cycle.drop_job(job_name)
             self.app.cache.drop_job(job_name)
             self.app.journal_daemon.drop_job(job_name)
+            self.app.downloads.drop_job(job_name)
             logger.info(
                 "Deleting journal and file cache took %s seconds.", time.time() - t0
             )
