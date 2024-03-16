@@ -316,6 +316,8 @@ class QueuedDownloader:
 
     def remove_thread(self) -> None:
         """Kill a thread from the worker pool."""
+        if self.worker_pool_size <= 0:
+            return
         self.worker_pool_size -= 1
         if len(self.threads) > 1:
             self.queue.poison_pill()

@@ -1,6 +1,8 @@
 import pytest
 import time
+import threading
 from unittest.mock import MagicMock, patch
+from aoget.web.file_queue import FileQueue
 from aoget.model.dto.job_dto import JobDTO
 from aoget.model.dto.file_model_dto import FileModelDTO
 from aoget.web.queued_downloader import QueuedDownloader
@@ -257,3 +259,36 @@ def test_size_resolver_but_it_cant_resolve(queued_downloader):
         assert queued_downloader.journal_daemon.update_file_size.call_count == 0
         # journal daemon was called 10 attempts * 3 files = 30 times
         assert queued_downloader.journal_daemon.add_file_event.call_count == 30
+
+
+def test_register_listener(queued_downloader):
+    event = threading.Event()
+    queued_downloader.signals["test_file"] = mocks_signal = MagicMock()
+    queued_downloader.register_listener(event, "test_file", "Stopped")
+    mocks_signal.register_status_listener.assert_called_once_with(event, "Stopped")
+
+
+def test_is_checking_health(queued_downloader):
+    assert not queued_downloader.is_checking_health()
+
+
+def test_add_thread(queued_downloader):
+    with patch('aoget.web.queued_downloader.threading.Thread') as mock_thread:
+        queued_downloader.add_thread()
+        mock_thread.assert_called_once()
+        mock_thread.return_value.start.assert_called_once()
+        assert len(queued_downloader.threads) == 1
+
+
+def test_remove_thread_but_already_at_null(queued_downloader):
+    assert len(queued_downloader.threads) == 0
+    queued_downloader.remove_thread()
+    assert len(queued_downloader.threads) == 0
+
+
+def test_remove_thread(queued_downloader):
+    with patch('aoget.web.queued_downloader.threading.Thread'):
+        queued_downloader.add_thread()
+        assert queued_downloader.worker_pool_size == 2
+        queued_downloader.remove_thread()
+        assert queued_downloader.worker_pool_size == 1
