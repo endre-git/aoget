@@ -93,13 +93,32 @@ class UpdateCycle:
         self.stats.check_out("__update_job_in_db")
         return job
 
-    def __update_file_model(self, job: Job, file_model_dto: FileModelDTO) -> FileModel:
+    def __preload_files(self, job: Job, file_names: set) -> dict:
+        """Preload the file models from the database for the given job and file names."""
+        self.stats.check_in("__preload_files")
+        cached_file_models = {}
+        for file_name in file_names:
+            self.stats.check_in("get_file_model_by_name")
+            cached_file_models[file_name] = get_file_model_dao().get_file_model_by_name(
+                job.id, file_name
+            )
+            self.stats.check_out("get_file_model_by_name")
+        self.stats.check_out("__preload_files")
+        return cached_file_models
+
+    def __update_file_model(
+        self, job: Job, file_model_dto: FileModelDTO, cached_file_models: dict
+    ) -> FileModel:
         """Update the file model in the database as per the in-cycle file model updates."""
         self.stats.check_in("__update_file_model_in_db")
         job_id = job.id
         self.stats.check_in("get_file_model_by_name")
-        file_model = get_file_model_dao().get_file_model_by_name(
-            job_id, file_model_dto.name
+        file_model = (
+            cached_file_models[file_model_dto.name]
+            if file_model_dto.name in cached_file_models
+            else get_file_model_dao().get_file_model_by_name(
+                job_id, file_model_dto.name
+            )
         )
         self.stats.check_out("get_file_model_by_name")
         db_size = file_model.size_bytes if file_model else 0
@@ -170,20 +189,18 @@ class UpdateCycle:
             self.stats.check_out("add_file_event")
 
         most_recent_event = max(event_dtos, key=lambda e: e.timestamp)
-        if file_name not in job_updates.file_model_updates:
-            # update cached event for proper UI display
-            self.stats.check_in("file_model_dto update for evt")
-            file_model_dto = self.app.cache.get_cached_file(job.name, file_name)
-            file_model_dto.last_event = most_recent_event.event
-            file_model_dto.last_event_timestamp = most_recent_event.timestamp
-            self.stats.check_out("file_model_dto update for evt")
-        else:
+        if file_name in job_updates.file_model_updates:
             job_updates.file_model_updates[file_name].last_event = (
                 most_recent_event.event
             )
             job_updates.file_model_updates[file_name].last_event_timestamp = (
                 most_recent_event.timestamp
             )
+        self.stats.check_in("file_model_dto update for evt")
+        file_model_dto = self.app.cache.get_cached_file(job.name, file_name)
+        file_model_dto.last_event = most_recent_event.event
+        file_model_dto.last_event_timestamp = most_recent_event.timestamp
+        self.stats.check_out("file_model_dto update for evt")
         self.stats.check_out("__update_file_events_in_db")
 
     def __update_if_dropped_file(
@@ -322,12 +339,13 @@ class UpdateCycle:
             job_updates.job_update.threads_active = active_thread_count
             job_updates.job_update.threads_allocated = allocated_thread_count
 
-            # merge file model updates into db
-            cached_db_file_models = {}
+            all_impacted_file_names = set(job_updates.file_model_updates.keys()).union(
+                set(job_updates.file_event_updates.keys())
+            )
+
+            cached_db_file_models = self.__preload_files(job, all_impacted_file_names)
             for file_model_dto in job_updates.file_model_updates.values():
-                cached_db_file_models[file_model_dto.name] = self.__update_file_model(
-                    job, file_model_dto
-                )
+                self.__update_file_model(job, file_model_dto, cached_db_file_models)
                 self.__update_if_dropped_file(job, file_model_dto, job_updates)
 
             for file_name, event_dtos in job_updates.file_event_updates.items():
@@ -344,13 +362,23 @@ class UpdateCycle:
 
         self.stats.check_out("app_db_locked")
 
-        # selectively update ui
+        # update UI
+
+        # this is needed so that the updates are UI-propagated as file updates even if 
+        # there was only a file event added (that won't show in job_updates.file_updates)
+        self.stats.check_in("get_cached_files")
+        cached_files = app.cache.get_cached_files(job_name)
+        all_impacted_files = {
+            file_name: cached_files[file_name] for file_name in all_impacted_file_names
+        }
+        self.stats.check_out("get_cached_files")
+
         if job_updates.job_update is not None:
             if app.downloads.is_job_resuming(job_name):
                 job_updates.job_update.status = "Resuming"
             self.main_window.update_job_signal.emit(job_updates.job_update)
         self.stats.check_in("update_file_signal")
-        for file_model_dto in job_updates.file_model_updates.values():
+        for file_model_dto in all_impacted_files.values():
             self.main_window.update_file_signal.emit(file_model_dto)
         self.stats.check_out("update_file_signal")
 
