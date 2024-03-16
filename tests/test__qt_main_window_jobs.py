@@ -102,6 +102,9 @@ class TestMainWindowJobs(unittest.TestCase):
         self.window.tblJobs.setCurrentItem(item)
         self.assertTrue(self.main_window_jobs.is_job_selected())
 
+    def test_on_edit_job(self):
+        pass
+
     def tearDown(self):
         self.window.close()
 
