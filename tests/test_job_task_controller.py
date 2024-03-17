@@ -72,6 +72,24 @@ class TestJobTaskController(unittest.TestCase):
         result = self.controller.is_size_resolver_running(job_name)
         self.assertTrue(result)
 
+    def test_stop_size_resolver(self):
+        job_name = "Test Job"
+        self.app_state_handlers.downloads.is_running_for_job = MagicMock(
+            return_value=True
+        )
+
+        self.app_state_handlers.downloads.get_downloader = dl = MagicMock()
+        dl.return_value.is_resolving_file_sizes = MagicMock(return_value=True)
+        dl.return_value.stop_resolving_file_sizes = MagicMock()
+        self.controller.stop_size_resolver(job_name)
+        dl.return_value.stop_resolving_file_sizes.assert_called_once()
+
+    def test_retart_size_resolver(self):
+        job_name = "Test Job"
+        self.controller.resolve_file_sizes = MagicMock()
+        self.controller.restart_size_resolver(job_name)
+        self.controller.resolve_file_sizes.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

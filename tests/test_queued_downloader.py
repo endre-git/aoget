@@ -2,7 +2,6 @@ import pytest
 import time
 import threading
 from unittest.mock import MagicMock, patch
-from aoget.web.file_queue import FileQueue
 from aoget.model.dto.job_dto import JobDTO
 from aoget.model.dto.file_model_dto import FileModelDTO
 from aoget.web.queued_downloader import QueuedDownloader
@@ -259,6 +258,32 @@ def test_size_resolver_but_it_cant_resolve(queued_downloader):
         assert queued_downloader.journal_daemon.update_file_size.call_count == 0
         # journal daemon was called 10 attempts * 3 files = 30 times
         assert queued_downloader.journal_daemon.add_file_event.call_count == 30
+
+
+def test_size_resolver_cancelled(queued_downloader):
+    file_model_dto_1 = FileModelDTO(
+        name="testfile1",
+        job_name="test_job",
+        url="http://example.com/testfile1",
+        priority=2,
+    )
+    file_model_dto_2 = FileModelDTO(
+        name="testfile2",
+        job_name="test_job",
+        url="http://example.com/testfile2",
+        priority=3,
+    )
+    file_model_dto_3 = FileModelDTO(
+        name="testfile3",
+        job_name="test_job",
+        url="http://example.com/testfile3",
+        priority=4,
+    )
+    queued_downloader.size_resolver_cancelled = True
+    queued_downloader.resolve_file_sizes(
+        "test_job", [file_model_dto_1, file_model_dto_2, file_model_dto_3]
+    )
+    assert queued_downloader.journal_daemon.update_file_size.call_count == 0
 
 
 def test_register_listener(queued_downloader):

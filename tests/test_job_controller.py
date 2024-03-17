@@ -272,3 +272,21 @@ class TestJobController:
             )
             job_controller.update_job_from_dto(job_dto)
             mock_dao.return_value.save_job.assert_called_once()
+
+    def test_start_size_resolver_for_job(self, job_controller):
+        job_controller.start_size_resolver_for_job("Test Job")
+        job_controller.background_controller.resolve_file_sizes.assert_called_once_with(
+            "Test Job"
+        )
+
+    def test_stop_size_resolver_for_job(self, job_controller):
+        job_controller.stop_size_resolver_for_job("Test Job")
+        job_controller.background_controller.stop_size_resolver.assert_called_once_with(
+            "Test Job"
+        )
+
+    def test_restart_size_resolver_for_job(self, job_controller):
+        job_controller.restart_size_resolver_for_job("Test Job")
+        job_controller.background_controller.restart_size_resolver.assert_called_once_with(
+            "Test Job"
+        )

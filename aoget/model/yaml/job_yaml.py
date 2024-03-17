@@ -48,5 +48,6 @@ def read_from_yaml(path: str) -> tuple[JobDTO, list]:
             file_model_dto = FileModelDTO.from_url(file["url"])
             file_model_dto.job_name = job_dto.name
             file_model_dto.size_bytes = file["size_bytes"]
+            file_model_dto.priority = 2
             files.append(file_model_dto)
         return job_dto, files
