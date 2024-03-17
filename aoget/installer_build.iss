@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "AOGet Beta"
-#define MyAppVersion "0.9.0"
+#define MyAppVersion "0.9.1"
 #define MyAppPublisher "kosaendre"
 #define MyAppURL "https://github.com/endre-git/aoget"
 #define MyAppExeName "aoget.exe"
