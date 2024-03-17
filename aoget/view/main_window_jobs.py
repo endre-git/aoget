@@ -364,7 +364,7 @@ class MainWindowJobs:
                     self.update_table()
                     newly_selected_job = (
                         self.tblJobs.selectedItems()[0].text()
-                        if self.__is_job_selected()
+                        if self.is_job_selected()
                         else None
                     )
                     if (
