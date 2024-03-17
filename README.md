@@ -32,6 +32,6 @@ Please use the [Discussions](https://github.com/endre-git/aoget/discussions/) ta
 When the app crashes, it'll prompt you to open a new issue. If you have a GitHub account, or willing to create one, please report issues. If you want to go the extra mile, you can check in the [existing set of issues](https://github.com/endre-git/aoget/issues/) whether your case was reported already.
 
 ## Develop
-You can actively develop AOGet. Take a look at the [issues](https://github.com/endre-git/aoget/issues/), fix one, raise a PR and bug me to get it reviewed and merged. Consult the [wiki](https://github.com/endre-git/aoget/issues/) on how to get started.
+You can actively develop AOGet. Take a look at the [issues](https://github.com/endre-git/aoget/issues/), fix one, raise a PR and bug me to get it reviewed and merged. Consult the [wiki](https://github.com/endre-git/aoget/wiki/) on how to get started.
 
 
