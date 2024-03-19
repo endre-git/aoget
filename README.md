@@ -3,6 +3,7 @@ Download the installer from the [Releases page](https://github.com/endre-git/aog
 
 # What's this?
 AOGet is a download manager for easy fileset downloads from archive.org, or any other website that provides directory listing - a collection of downloadable URLs on a single page. It has a qBittorrent/uTorrent-like user interface for easy user adoption.
+[User Guide](https://github.com/endre-git/aoget/wiki/User-Guide) is here.
 
 ## Single GIF manual
 ![Single GIF manual](aoget/docs/aoget_manual.gif)
