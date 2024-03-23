@@ -17,7 +17,7 @@
    <iconset>
     <normaloff>../resources/icons/user.svg</normaloff>../resources/icons/user.svg</iconset>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0,0">
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
@@ -31,25 +31,10 @@
     </widget>
    </item>
    <item>
-    <widget class="QFrame" name="frame">
-     <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
      </property>
-     <property name="frameShadow">
-      <enum>QFrame::Raised</enum>
-     </property>
-     <layout class="QHBoxLayout" name="horizontalLayout" stretch="7,3">
-      <item>
-       <widget class="QLineEdit" name="txtUrl"/>
-      </item>
-      <item>
-       <widget class="QProgressBar" name="progressPageLoad">
-        <property name="value">
-         <number>24</number>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </widget>
    </item>
    <item>
@@ -59,6 +44,13 @@
      </property>
      <property name="frameShadow">
       <enum>QFrame::Raised</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="Line" name="line_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
      </property>
     </widget>
    </item>

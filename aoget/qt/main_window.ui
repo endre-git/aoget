@@ -789,7 +789,7 @@
    </widget>
    <widget class="QMenu" name="menuAccounts">
     <property name="title">
-     <string>Accounts</string>
+     <string>Embedded Browser</string>
     </property>
     <addaction name="actionAccount_login"/>
    </widget>
