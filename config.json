@@ -5,6 +5,8 @@
     "target-folder-history-file": "settings/target-folder-history.lst",
     "url-history-file": "settings/url-history.lst",
     "url-cache-folder": "settings/url-cache",
+    "web-cache-folder": "settings/web-cache",
+    "web-storage-folder": "settings/web-storage",
     "auto-resolve-file-sizes": true,
     "log-file-path": "aoget.log",
     "crash-log-file-path": "aoget-crash-log.html",

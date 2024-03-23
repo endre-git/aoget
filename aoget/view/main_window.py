@@ -9,6 +9,7 @@ from controller.main_window_controller import MainWindowController
 
 from view.crash_report_dialog import CrashReportDialog
 from view.app_settings_dialog import AppSettingsDialog
+from view.login_dialog import LoginDialog
 from view.main_window_jobs import MainWindowJobs
 from view.main_window_files import MainWindowFiles
 from view.translucent_widget import TranslucentWidget
@@ -69,6 +70,7 @@ class MainWindow(QMainWindow):
         self.actionExit.triggered.connect(self.close_app)
         self.actionPause_all.triggered.connect(self.pause_all)
         self.actionResume_all.triggered.connect(self.resume_all)
+        self.actionAccount_login.triggered.connect(self.show_login_dialog)
 
         self.__setup_bandwidth_limit_menu()
         self.__setup_trivial_menu_items()
@@ -241,3 +243,7 @@ class MainWindow(QMainWindow):
 
     def open_github_page(self):
         QDesktopServices.openUrl(QUrl("https://github.com/endre-git/aoget/"))
+
+    def show_login_dialog(self):
+        dlg = LoginDialog()
+        dlg.exec()
