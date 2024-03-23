@@ -787,8 +787,15 @@
     <addaction name="separator"/>
     <addaction name="menuSet_global_bandwidth_limit"/>
    </widget>
+   <widget class="QMenu" name="menuAccounts">
+    <property name="title">
+     <string>Embedded Browser</string>
+    </property>
+    <addaction name="actionAccount_login"/>
+   </widget>
    <addaction name="menuApplication"/>
    <addaction name="menuJobs"/>
+   <addaction name="menuAccounts"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSettings">
@@ -867,6 +874,11 @@
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionAccount_login">
+   <property name="text">
+    <string>Account login</string>
    </property>
   </action>
  </widget>

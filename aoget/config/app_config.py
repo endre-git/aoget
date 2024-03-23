@@ -14,6 +14,8 @@ class AppConfig:
     URL_HISTORY_FILE = "url-history-file"
     DATABASE_URL = "database-url"
     URL_CACHE_FOLDER = "url-cache-folder"
+    WEB_CACHE_FOLDER = "web-cache-folder"
+    WEB_STORAGE_FOLDER = "web-storage-folder"
     AUTO_RESOLVE_FILE_SIZES = "auto-resolve-file-sizes"
     LOG_FILE_PATH = "log-file-path"
     CRASH_LOG_FILE_PATH = "crash-log-file-path"
@@ -38,6 +40,8 @@ class AppConfig:
         URL_HISTORY_FILE: "url_history.json",
         DATABASE_URL: "sqlite:///aoget.db",
         URL_CACHE_FOLDER: "url_cache",
+        WEB_CACHE_FOLDER: "web_cache",
+        WEB_STORAGE_FOLDER: "web_storage",
         AUTO_RESOLVE_FILE_SIZES: True,
         LOG_FILE_PATH: "aoget.log",
         CRASH_LOG_FILE_PATH: "crash.log",
